@@ -12,10 +12,10 @@
             theme: {
                 extend: {
                     animation: {
+                        'shrink-x': 'shrinkX 5s linear forwards',
                         'slide-up-fade': 'slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                         'scale-in': 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                         'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
-                        'shrink-x': 'shrinkX 5s linear forwards',
                     },
                     keyframes: {
                         shrinkX: { '0%': { width: '100%' }, '100%': { width: '0%' } },
@@ -49,19 +49,37 @@
     <style>
         html.dark ::-webkit-scrollbar-thumb { background: #475569; }
         html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        /* ==========================================
+           ✨ 補回：EPSON 80mm 感熱紙列印專用 CSS
+        ========================================== */
         @media print {
             html, body, html.dark, html.dark body { height: auto !important; min-height: auto !important; overflow: visible !important; background: white !important; color: black !important; margin: 0; padding: 0 !important; -webkit-print-color-adjust: exact; }
+            .h-screen, .h-full { height: auto !important; min-height: auto !important; }
+            .overflow-hidden, .overflow-auto, .overflow-y-auto { overflow: visible !important; }
+            
+            /* 列印時隱藏不需要的 UI */
             .no-print { display: none !important; }
+            
+            /* 列印時強制顯示隱藏的列印區塊 */
             .print-only { display: block !important; position: static !important; width: 100%; height: auto !important; overflow: visible !important; }
+            
+            /* 針對條碼列印的格式 */
             #print-area-barcode { border: none; width: 80mm; margin: 0 auto; }
             .label-item { width: 80mm; padding: 6mm 4mm; display: flex; flex-direction: column; align-items: center; justify-content: center; page-break-inside: avoid; page-break-after: auto; border-bottom: 1px dashed #ccc; margin-bottom: 4mm; box-sizing: border-box; background: white !important; color: black !important; }
             .label-item:last-child { border-bottom: none; margin-bottom: 0; }
             .label-item svg { max-width: 100%; height: auto; }
+            
+            /* 針對盒損單的格式 */
             #print-area-damaged { width: 80mm !important; padding: 4mm !important; color: black !important; font-size: 12px !important; font-family: sans-serif; background: white !important; }
             .damaged-print-item { margin-bottom: 5mm; padding-bottom: 5mm; border-bottom: 1px dashed #ccc; page-break-inside: avoid; }
+            
             @page { size: 80mm auto; margin: 0; }
         }
+        
+        /* 螢幕預覽時隱藏列印區塊 */
         .print-only { display: none; }
+        
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -73,6 +91,9 @@
     <div id="root" class="flex-1 flex flex-col"></div>
 
     <script type="text/babel">
+        // ==========================================
+        // Firebase 初始化與安全連線
+        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyDzqfgGPpbiXFO7DJVG-GIn1MKnDEVtSHw",
             authDomain: "retail-ops-90129.firebaseapp.com",
@@ -95,6 +116,7 @@
             { id: 3, name: '🃏 卡牌遊戲', keywords: '卡牌' },
             { id: 4, name: '☁️ 絨毛玩具', keywords: '娃娃,絨毛,毛絨' }
         ];
+
         const defaultSettings = { targetAmount: 1150, newBarcodes: [], barcodeMap: {}, customNameMap: {}, boxSizeMap: {}, customCategories: defaultCategories };
 
         const { useState, useEffect, useMemo, useRef } = React;
@@ -129,12 +151,13 @@
             return '📦 其他未分類';
         };
 
+        // --- 條碼產生器元件 ---
         function BarcodeImage({ value, name, printMode = false, mini = false, hideName = false, quantity = 1 }) {
             const svgRef = useRef(null);
             useEffect(() => {
                 if (svgRef.current && value && typeof window.JsBarcode !== 'undefined') {
                     try { window.JsBarcode(svgRef.current, value, { format: "CODE128", width: mini ? 1.5 : 2.2, height: mini ? 30 : 60, displayValue: !mini, fontSize: 16, margin: 0, background: "transparent", lineColor: printMode ? "#000" : "currentColor" }); } 
-                    catch (e) { console.error("條碼異常:", e); }
+                    catch (e) { console.error("無法產生條碼:", e); }
                 }
             }, [value, printMode, mini]);
 
@@ -152,6 +175,7 @@
             );
         }
 
+        // --- 即時編輯名稱元件 ---
         function EditableItemName({ item, onSave }) {
             const [isEditing, setIsEditing] = useState(false);
             const [tempName, setTempName] = useState(item.name);
@@ -210,7 +234,12 @@
           const [qrError, setQrError] = useState('');
 
           const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
-          const executePrint = (context) => { setPrintContext(context); setTimeout(() => { window.print(); }, 150); };
+          
+          // ✨ 補回：執行列印呼叫邏輯
+          const executePrint = (context) => { 
+              setPrintContext(context); 
+              setTimeout(() => { window.print(); }, 200); 
+          };
 
           useEffect(() => {
               const afterPrint = () => setPrintContext(null);
@@ -218,6 +247,9 @@
               return () => window.removeEventListener('afterprint', afterPrint);
           }, []);
 
+          // ==========================================
+          // Firestore 雲端同步
+          // ==========================================
           const [dailyRecords, setDailyRecords] = useState([]);
           const [settings, setSettings] = useState(defaultSettings);
           const [damagedItems, setDamagedItems] = useState([]);
@@ -228,7 +260,7 @@
               const unsubRecords = db.collection('retailOps').doc('dailyRecords').onSnapshot(doc => {
                   if (doc.exists) setDailyRecords(doc.data().data || []);
                   setDbStatus('🟢 雲端已同步');
-              }, err => { setDbStatus('🔴 權限不足'); });
+              }, err => { setDbStatus('🔴 權限不足或連線失敗'); });
 
               const unsubSettings = db.collection('retailOps').doc('settings').onSnapshot(doc => {
                   if (doc.exists) setSettings(doc.data().data || defaultSettings);
@@ -268,7 +300,9 @@
               setUndoData(null);
           };
 
-          // 盒損
+          // ==========================================
+          // 盒損登記模組
+          // ==========================================
           const [barcodeInput, setBarcodeInput] = useState('');
           const [lastAction, setLastAction] = useState(null);
           const [isDamagedOverviewExpanded, setIsDamagedOverviewExpanded] = useState(false);
@@ -335,7 +369,9 @@
               reader.readAsText(file); e.target.value = null; 
           };
 
-          // 條碼
+          // ==========================================
+          // 條碼列印模組
+          // ==========================================
           const [barcodeItems, setBarcodeItems] = useState([]);
           const [barcodePrintInput, setBarcodePrintInput] = useState('');
           const [barcodeSearch, setBarcodeSearch] = useState(''); 
@@ -357,13 +393,16 @@
               const item = barcodeItems.find(i => i.id === id); if(item) triggerUndo('barcode', item);
               setBarcodeItems(prev => prev.filter(i => i.id !== id));
           };
+          const clearAllBarcodeItems = () => { if (window.confirm("確定清空預覽列表嗎？")) setBarcodeItems([]); };
 
           const filteredBarcodeItems = useMemo(() => {
               if (!barcodeSearch.trim()) return barcodeItems; const q = barcodeSearch.toLowerCase();
               return barcodeItems.filter(item => item.name.toLowerCase().includes(q) || item.barcode.includes(q));
           }, [barcodeItems, barcodeSearch]);
 
-          // 設定
+          // ==========================================
+          // 日報表與系統設定
+          // ==========================================
           const [newCatName, setNewCatName] = useState('');
           const [newCatKeys, setNewCatKeys] = useState('');
           const handleAddCategory = () => {
@@ -371,6 +410,7 @@
               updateCloudData('settings', { ...settings, customCategories: [...settings.customCategories, { id: Date.now(), name: newCatName, keywords: newCatKeys }] });
               setNewCatName(''); setNewCatKeys('');
           };
+          const handleRemoveCategory = (id) => updateCloudData('settings', { ...settings, customCategories: settings.customCategories.filter(c => c.id !== id) });
 
           const [story, setStory] = useState('');
           const [currentStore, setCurrentStore] = useState('未知店鋪');
@@ -491,8 +531,11 @@
             updateCloudData('settings', { ...settings, newBarcodes: settings.newBarcodes.includes(newBarcodeStr.trim()) ? settings.newBarcodes : [...settings.newBarcodes, newBarcodeStr.trim()], boxSizeMap: { ...settings.boxSizeMap, [newBarcodeStr.trim()]: newBoxSize || 6 } });
             setNewBarcodeStr(''); setNewBoxSize(6);
           };
+          const removeBarcode = (code) => {
+            const newBoxMap = { ...settings.boxSizeMap }; delete newBoxMap[code];
+            updateCloudData('settings', { ...settings, newBarcodes: settings.newBarcodes.filter(b => b !== code), boxSizeMap: newBoxMap });
+          };
 
-          // --- 產生報表內文 ---
           const reportContent = useMemo(() => {
             if (!selectedMonth) return '請先上傳檔案或建立紀錄...';
             let recordsToPrint = dailyRecords.filter(r => r.date.split('/')[0] === selectedMonth);
@@ -538,21 +581,13 @@
           const currentMonthRecords = useMemo(() => dailyRecords.filter(r => r.date.split('/')[0] === selectedMonth).sort((a, b) => b.date.localeCompare(a.date)), [dailyRecords, selectedMonth]); 
           const visibleRecords = isHistoryExpanded ? currentMonthRecords : currentMonthRecords.slice(0, 3);
           
-          // ==========================================
-          // ✨ QR Code 產生 (UTF-8 純文字直接複製版)
-          // ==========================================
+          // QR Code 產生
           useEffect(() => {
               if (!isQRCodeModalOpen || !reportContent) return;
               setQrDataUrl(''); setQrError('');
-              
-              if (typeof window.QRious === 'undefined') {
-                  setQrError('⚠️ 條碼模組載入失敗，請檢查網路狀態。'); return;
-              }
-              if (reportContent.length > 700) {
-                  setQrError(`⚠️ 報表字數過多 (目前約 ${reportContent.length} 字)。\n受限於手機相機解析度，條碼過於密集將無法掃描。\n\n👉 建議：請點擊「複製」按鈕，改用電腦版 LINE 直接發送。`); return;
-              }
+              if (typeof window.QRious === 'undefined') { setQrError('⚠️ 條碼模組載入失敗，請檢查網路狀態。'); return; }
+              if (reportContent.length > 700) { setQrError(`⚠️ 報表字數過多 (目前約 ${reportContent.length} 字)。\n受限於手機相機解析度，條碼過於密集將無法掃描。\n\n👉 建議：請點擊「複製」按鈕，改用電腦版 LINE 直接發送。`); return; }
               try {
-                  // 將中文轉換為 UTF-8，確保手機掃描後顯示為純文字報表
                   const utf8Content = unescape(encodeURIComponent(reportContent));
                   const qr = new window.QRious({ value: utf8Content, size: 350, level: 'L', background: 'white', foreground: '#000000' });
                   const dataUrl = qr.toDataURL();
@@ -560,9 +595,7 @@
               } catch (err) { setQrError('⚠️ 條碼轉換失敗，報表文字可能包含特殊字元，建議改用「複製」按鈕。'); }
           }, [reportContent, isQRCodeModalOpen]);
 
-          // ==========================================
-          // ✨ Auth 登入畫面處理
-          // ==========================================
+          // Auth 登入畫面處理
           const handleLogin = (e) => {
               e.preventDefault();
               if (!emailInput || !passwordInput) return showToast('請填寫帳號與密碼');
@@ -578,15 +611,15 @@
 
           if (!user) {
               return (
-                  <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-6 transition-colors duration-300">
+                  <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-6 transition-colors duration-300 no-print">
                       <button onClick={() => setIsDarkMode(!isDarkMode)} className="absolute top-6 right-6 w-12 h-12 rounded-full flex items-center justify-center bg-white dark:bg-slate-800 text-amber-500 shadow-sm hover:scale-110 transition-transform"><i className={`fa-solid ${isDarkMode ? 'fa-moon' : 'fa-sun'} text-xl`}></i></button>
                       <div className={`w-full max-w-sm bg-white dark:bg-slate-800 p-8 rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-700/50 flex flex-col items-center ${passcodeError ? 'animate-shake' : 'animate-scale-in'}`}>
                           <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-3xl flex items-center justify-center mb-6 shadow-inner"><i className="fa-solid fa-shield-halved text-4xl"></i></div>
                           <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">門市營運系統</h1>
                           <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 text-center">請輸入員工帳號密碼登入 (內部邀請制)</p>
                           <form onSubmit={handleLogin} className="w-full flex flex-col gap-4">
-                              <div className="relative"><i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i><input type="email" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="員工 Email" className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-medium" /></div>
-                              <div className="relative"><i className="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i><input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="密碼" className={`w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-900 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-medium ${authError ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 dark:border-slate-700'}`} /></div>
+                              <div className="relative"><i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i><input type="email" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="員工 Email" className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-medium transition-colors" /></div>
+                              <div className="relative"><i className="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i><input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="密碼" className={`w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-900 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-medium transition-colors ${authError ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 dark:border-slate-700'}`} /></div>
                               {authError && <p className="text-red-500 text-sm font-bold text-center">{authError}</p>}
                               <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-600/30 transition-all active:scale-95 mt-2">安全登入</button>
                           </form>
@@ -596,12 +629,9 @@
               );
           }
 
-          // ==========================================
-          // 主要 UI 渲染區塊 
-          // ==========================================
           return (
             <div className="flex flex-col h-screen w-full font-sans overflow-x-hidden">
-              <header className={`fixed top-0 left-0 right-0 h-20 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-sm border-b border-slate-100 dark:border-slate-700/50 z-50 transition-transform duration-300 ${isNavVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+              <header className={`fixed top-0 left-0 right-0 h-20 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-sm border-b border-slate-100 dark:border-slate-700/50 z-50 transition-transform duration-300 no-print ${isNavVisible ? 'translate-y-0' : '-translate-y-full'}`}>
                 <div className="max-w-6xl mx-auto h-full flex items-center justify-between px-6">
                   <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center tracking-tight"><i className="fa-solid fa-shop text-indigo-500 mr-2 text-2xl"></i><span className="hidden sm:inline">門市整合系統</span></h2>
                   <div className="flex items-center gap-3">
@@ -612,7 +642,7 @@
                 </div>
               </header>
 
-              <div className="pt-24 pb-32 px-4 max-w-6xl mx-auto min-h-screen w-full">
+              <div className="pt-24 pb-32 px-4 max-w-6xl mx-auto min-h-screen w-full no-print">
                 <div className="space-y-6">
 
                     {activeTab === 'daily-report' && (
@@ -654,7 +684,7 @@
                                 {currentMonthRecords.length > 3 && (
                                   <button onClick={() => setIsHistoryExpanded(!isHistoryExpanded)} className={`flex-1 sm:flex-none justify-center text-sm px-3 py-1.5 rounded-lg flex items-center transition-colors ${isHistoryExpanded ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300'}`}><i className={`fa-solid ${isHistoryExpanded ? 'fa-compress' : 'fa-expand'} mr-1`}></i> {isHistoryExpanded ? '收起' : `展開全部(${currentMonthRecords.length})`}</button>
                                 )}
-                                <button onClick={() => setIsBulkImportOpen(!isBulkImportOpen)} className={`flex-1 sm:flex-none justify-center text-sm px-3 py-1.5 rounded-lg flex items-center transition-colors ${isBulkImportOpen ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/30'}`}><i className={`fa-solid ${isBulkImportOpen ? 'fa-xmark' : 'fa-table'} mr-1`}></i> {isBulkImportOpen ? '取消' : '批量匯入'}</button>
+                                <button onClick={() => { setIsBulkImportOpen(!isBulkImportOpen); }} className={`flex-1 sm:flex-none justify-center text-sm px-3 py-1.5 rounded-lg flex items-center transition-colors ${isBulkImportOpen ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/30'}`}><i className={`fa-solid ${isBulkImportOpen ? 'fa-xmark' : 'fa-table'} mr-1`}></i> {isBulkImportOpen ? '取消' : '批量匯入'}</button>
                               </div>
                             </div>
                             {isBulkImportOpen && (
@@ -670,8 +700,29 @@
                               <div className="space-y-3">
                                 {visibleRecords.map(record => (
                                   <div key={record.date} className="flex justify-between items-start p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-blue-100 dark:hover:border-blue-500/50 transition-colors">
-                                    <div className="flex-1"><div className="flex items-center mb-2"><span className="font-bold text-slate-800 dark:text-slate-200 mr-3">{record.date} ({record.weekday})</span><span className="text-blue-600 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-500/20 px-2 py-0.5 rounded text-sm">業績: ${formatMoney(record.sales)}</span></div></div>
-                                    <button onClick={() => deleteRecord(record.date)} className="p-2 ml-4 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/20"><i className="fa-solid fa-trash-can"></i></button>
+                                    <div className="flex-1">
+                                      <div className="flex items-center mb-2">
+                                          <span className="font-bold text-slate-800 dark:text-slate-200 mr-3">{record.date} ({record.weekday})</span>
+                                          <span className="text-blue-600 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-500/20 px-2 py-0.5 rounded text-sm">業績: ${formatMoney(record.sales)}</span>
+                                      </div>
+                                      
+                                      {/* ✨ 補回：歷史業績的 MEGA 與 點數兌換資訊卡片 */}
+                                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-slate-500 dark:text-slate-400 mt-3">
+                                          <div className="bg-white dark:bg-slate-700 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-600">
+                                              <span className="block text-xs text-slate-400 dark:text-slate-400 mb-1">點數兌換</span>
+                                              <span className="font-medium text-slate-700 dark:text-slate-200">${formatMoney(record.points || 0)}</span>
+                                          </div>
+                                          <div className="bg-white dark:bg-slate-700 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-600">
+                                              <span className="block text-xs text-slate-400 dark:text-slate-400 mb-1">400% MEGA</span>
+                                              <span className="font-medium text-slate-700 dark:text-slate-200">{record.bigToys?.['400']?.qty || 0}隻 / ${formatMoney(record.bigToys?.['400']?.amt || 0)}</span>
+                                          </div>
+                                          <div className="bg-white dark:bg-slate-700 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-600">
+                                              <span className="block text-xs text-slate-400 dark:text-slate-400 mb-1">1000% MEGA</span>
+                                              <span className="font-medium text-slate-700 dark:text-slate-200">{record.bigToys?.['1000']?.qty || 0}隻 / ${formatMoney(record.bigToys?.['1000']?.amt || 0)}</span>
+                                          </div>
+                                      </div>
+                                    </div>
+                                    <button onClick={() => deleteRecord(record.date)} className="p-2 ml-4 mt-1 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/20"><i className="fa-solid fa-trash-can"></i></button>
                                   </div>
                                 ))}
                               </div>
@@ -710,7 +761,7 @@
                         <div className="lg:col-span-5 relative">
                           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700/50 sticky top-24 flex flex-col h-[calc(100vh-8rem)] transition-colors">
                             <div className="flex justify-between items-center mb-4 shrink-0">
-                              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center"><i className="fa-solid fa-file-lines text-slate-400 mr-2"></i>報表預覽</h2>
+                              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center"><i className="fa-solid fa-file-lines text-slate-400 mr-2"></i> 報表預覽</h2>
                               <div className="flex gap-2">
                                 <button onClick={() => setIsQRCodeModalOpen(true)} className="px-3 md:px-4 py-2 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/30 transition-colors flex items-center text-sm font-medium shadow-sm border border-indigo-100 dark:border-indigo-500/20"><i className="fa-solid fa-qrcode mr-2"></i> <span className="hidden md:inline">產生條碼</span><span className="md:hidden">條碼</span></button>
                                 <button onClick={() => navigator.clipboard.writeText(reportContent).then(() => showToast('報表已複製！'))} className="px-3 md:px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-slate-600 transition-colors flex items-center text-sm font-medium shadow-sm"><i className="fa-solid fa-copy md:mr-2"></i> <span className="hidden md:inline">複製</span></button>
@@ -740,14 +791,19 @@
                           </div>
                         )}
                         {damagedItems.length === 0 ? (
-                          <div className="text-center py-20 bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 border-dashed transition-colors"><i className="fa-solid fa-box-open text-5xl text-slate-300 dark:text-slate-600 mb-4 block"></i><p className="text-slate-500 font-medium">雲端尚未登記盒損商品</p></div>
+                          <div className="text-center py-20 bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 border-dashed transition-colors"><i className="fa-solid fa-box-open text-5xl text-slate-300 dark:text-slate-600 mb-4 block"></i><p className="text-slate-500 font-medium">雲端資料庫尚未登記任何盒損商品</p></div>
                         ) : (
                           <>
                             {!damagedSearch && (
                               <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 overflow-hidden mb-6 transition-all">
                                 <div className="bg-slate-50 dark:bg-slate-800/80 px-6 py-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer" onClick={() => setIsDamagedOverviewExpanded(!isDamagedOverviewExpanded)}>
                                   <div className="flex items-center"><div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mr-3"><i className="fa-solid fa-list-check"></i></div><h4 className="font-bold text-slate-700 dark:text-slate-200 text-lg">盤點總覽 <span className="text-sm font-normal text-slate-500 dark:text-slate-400 ml-2">(共 {damagedItems.reduce((sum, item) => sum + item.quantity, 0)} 件)</span></h4></div>
-                                  <div className="flex items-center gap-4"><button onClick={(e) => { e.stopPropagation(); clearAllDamagedItems(); }} className="text-xs px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition-colors font-medium border border-red-100 dark:border-red-500/20 shadow-sm"><i className="fa-solid fa-trash-can mr-1"></i>季末清空</button></div>
+                                  
+                                  {/* ✨ 補回：印出盒損單按鈕 */}
+                                  <div className="flex items-center gap-3">
+                                    <button onClick={(e) => { e.stopPropagation(); executePrint('damaged'); }} className="text-xs px-3 py-1.5 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-lg transition-colors font-medium border border-indigo-200 dark:border-indigo-500/30 shadow-sm"><i className="fa-solid fa-print mr-1"></i>列印清單</button>
+                                    <button onClick={(e) => { e.stopPropagation(); clearAllDamagedItems(); }} className="text-xs px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition-colors font-medium border border-red-100 dark:border-red-500/20 shadow-sm"><i className="fa-solid fa-trash-can mr-1"></i>季末清空</button>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -784,10 +840,27 @@
                             </div>
                             <div className="lg:col-span-7 relative">
                                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700/50 sticky top-28 flex flex-col h-[calc(100vh-16rem)] transition-colors">
-                                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 shrink-0 gap-4"><h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center whitespace-nowrap"><i className="fa-solid fa-list-check text-slate-400 mr-2"></i>待印清單</h2></div>
+                                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 shrink-0 gap-4">
+                                    <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center whitespace-nowrap"><i className="fa-solid fa-list-check text-slate-400 mr-2"></i>待印清單</h2>
+                                    
+                                    {/* ✨ 補回：全部列印按鈕與搜尋列 */}
+                                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                                        {barcodeItems.length > 0 && (
+                                            <button onClick={() => executePrint('barcode-all')} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm flex items-center whitespace-nowrap"><i className="fa-solid fa-print mr-1.5"></i>全部列印</button>
+                                        )}
+                                        {barcodeItems.length > 0 && (
+                                          <div className="relative flex-1 sm:w-48">
+                                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i className="fa-solid fa-filter text-slate-400 text-xs"></i></div>
+                                              <input type="text" value={barcodeSearch} onChange={e => setBarcodeSearch(e.target.value)} className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-indigo-500" placeholder="過濾清單..." />
+                                          </div>
+                                        )}
+                                    </div>
+                                  </div>
                                   <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                                       {barcodeItems.length === 0 ? (
                                           <div className="h-full flex flex-col items-center justify-center border-2 border-slate-100 dark:border-slate-700 border-dashed rounded-xl"><p className="text-slate-500 dark:text-slate-400 font-medium">待印清單為空</p></div>
+                                      ) : filteredBarcodeItems.length === 0 ? (
+                                          <div className="text-center py-10"><p className="text-slate-500 dark:text-slate-400 font-medium">無符合的過濾結果</p></div>
                                       ) : (
                                           <div className="flex flex-col gap-3">
                                               {filteredBarcodeItems.map(item => (
@@ -807,7 +880,7 @@
                     {activeTab === 'settings' && (
                       <div className="max-w-4xl mx-auto space-y-6 pb-10">
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
-                          <div className="flex items-start mb-6 border-b border-slate-100 dark:border-slate-700 pb-6"><div className="p-3 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl mr-4"><i className="fa-solid fa-cloud-arrow-down text-2xl"></i></div><div><h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">系統資料備份與還原</h3></div></div>
+                          <div className="flex items-start mb-6 border-b border-slate-100 dark:border-slate-700 pb-6"><div className="p-3 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl mr-4"><i className="fa-solid fa-cloud-arrow-down text-2xl"></i></div><div><h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">系統資料備份與還原 (雲端同步)</h3></div></div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-start"><button onClick={handleExportData} className="w-full px-4 py-2 bg-slate-800 dark:bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-slate-900 dark:hover:bg-indigo-700 transition-colors shadow-sm"><i className="fa-solid fa-box-archive mr-2"></i> 下載備份檔</button></div>
                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-start"><label className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm cursor-pointer text-center"><i className="fa-solid fa-folder-open mr-2"></i> 選擇備份檔並還原<input type="file" className="hidden" accept=".json" onChange={handleImportData} /></label></div>
@@ -859,7 +932,7 @@
               )}
 
               {undoData && (
-                  <div className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-4 z-50 overflow-hidden animate-slide-up-fade border border-slate-700">
+                  <div className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-4 z-50 overflow-hidden animate-slide-up-fade border border-slate-700 no-print">
                       <span className="text-sm font-medium">已刪除 <span className="font-bold text-slate-200">{undoData.item.name}</span></span>
                       <button onClick={handleUndoAction} className="text-indigo-400 font-bold text-sm hover:text-indigo-300 flex items-center gap-1"><i className="fa-solid fa-rotate-left"></i> 復原</button>
                       <div className="absolute bottom-0 left-0 h-1 bg-indigo-500 animate-shrink-x origin-left w-full"></div>
@@ -867,10 +940,58 @@
               )}
               
               {toast && (
-                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-emerald-500 text-white px-6 py-2 rounded-full shadow-lg font-bold animate-slide-up-fade">
+                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-emerald-500 text-white px-6 py-2 rounded-full shadow-lg font-bold animate-slide-up-fade no-print">
                   {toast}
                 </div>
               )}
+              
+              {/* =========================================
+                  ✨ 補回：列印渲染區域 (Print Only DOM)
+              ========================================= */}
+              <div className="print-only">
+                  {printContext === 'damaged' && (
+                    <div id="print-area-damaged">
+                        <div className="text-center pb-3 border-b border-black mb-3">
+                            <h2 className="font-bold text-[16px] m-0 leading-tight">📦 盤點/盒損作業單</h2>
+                            <p className="text-[10px] mt-1 m-0">列印時間: {new Date().toLocaleString()}</p>
+                        </div>
+                        {groupedDamagedItems.map(([category, items]) => (
+                        <div key={category} className="mb-2">
+                            <div className="font-bold text-[14px] bg-gray-200 px-2 py-1 mb-2">【{category.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '')}】</div>
+                            {items.map(item => (
+                            <div key={item.id} className="damaged-print-item flex flex-col">
+                                <div className="flex justify-between items-start mb-2 leading-tight">
+                                    <div className="pr-2 flex-1"><div className="font-bold text-[14px]">{item.name}</div></div>
+                                    <div className="font-bold text-[16px] whitespace-nowrap">x {item.quantity}</div>
+                                </div>
+                                <div className="mt-1 flex justify-center w-full">
+                                    <BarcodeImage value={item.barcode} printMode={false} hideName={true} />
+                                </div>
+                            </div>
+                            ))}
+                        </div>
+                        ))}
+                        <div className="border-t border-black pt-3 mt-4 text-center text-[14px] font-bold">
+                            本次盤點總件數: {damagedItems.reduce((sum, item) => sum + item.quantity, 0)} 件
+                        </div>
+                    </div>
+                  )}
+
+                  {printContext === 'barcode-all' && (
+                      <div id="print-area-barcode">
+                          {barcodeItems.map(item => (
+                              <BarcodeImage key={item.id} value={item.barcode} name={item.name} quantity={item.quantity} printMode={true} />
+                          ))}
+                      </div>
+                  )}
+
+                  {printContext?.type === 'barcode-single' && (
+                      <div id="print-area-barcode">
+                          <BarcodeImage value={printContext.item.barcode} name={printContext.item.name} quantity={printContext.item.quantity} printMode={true} />
+                      </div>
+                  )}
+              </div>
+
             </div>
           );
         }
