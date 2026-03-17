@@ -34,6 +34,7 @@
     </script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -50,36 +51,24 @@
         html.dark ::-webkit-scrollbar-thumb { background: #475569; }
         html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
         
-        /* ==========================================
-           ✨ 補回：EPSON 80mm 感熱紙列印專用 CSS
-        ========================================== */
+        /* 列印專用 CSS */
         @media print {
             html, body, html.dark, html.dark body { height: auto !important; min-height: auto !important; overflow: visible !important; background: white !important; color: black !important; margin: 0; padding: 0 !important; -webkit-print-color-adjust: exact; }
             .h-screen, .h-full { height: auto !important; min-height: auto !important; }
             .overflow-hidden, .overflow-auto, .overflow-y-auto { overflow: visible !important; }
-            
-            /* 列印時隱藏不需要的 UI */
             .no-print { display: none !important; }
-            
-            /* 列印時強制顯示隱藏的列印區塊 */
             .print-only { display: block !important; position: static !important; width: 100%; height: auto !important; overflow: visible !important; }
             
-            /* 針對條碼列印的格式 */
             #print-area-barcode { border: none; width: 80mm; margin: 0 auto; }
             .label-item { width: 80mm; padding: 6mm 4mm; display: flex; flex-direction: column; align-items: center; justify-content: center; page-break-inside: avoid; page-break-after: auto; border-bottom: 1px dashed #ccc; margin-bottom: 4mm; box-sizing: border-box; background: white !important; color: black !important; }
             .label-item:last-child { border-bottom: none; margin-bottom: 0; }
             .label-item svg { max-width: 100%; height: auto; }
             
-            /* 針對盒損單的格式 */
             #print-area-damaged { width: 80mm !important; padding: 4mm !important; color: black !important; font-size: 12px !important; font-family: sans-serif; background: white !important; }
             .damaged-print-item { margin-bottom: 5mm; padding-bottom: 5mm; border-bottom: 1px dashed #ccc; page-break-inside: avoid; }
-            
             @page { size: 80mm auto; margin: 0; }
         }
-        
-        /* 螢幕預覽時隱藏列印區塊 */
         .print-only { display: none; }
-        
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -151,7 +140,6 @@
             return '📦 其他未分類';
         };
 
-        // --- 條碼產生器元件 ---
         function BarcodeImage({ value, name, printMode = false, mini = false, hideName = false, quantity = 1 }) {
             const svgRef = useRef(null);
             useEffect(() => {
@@ -175,7 +163,6 @@
             );
         }
 
-        // --- 即時編輯名稱元件 ---
         function EditableItemName({ item, onSave }) {
             const [isEditing, setIsEditing] = useState(false);
             const [tempName, setTempName] = useState(item.name);
@@ -199,9 +186,6 @@
           const [passwordInput, setPasswordInput] = useState('');
           const [authError, setAuthError] = useState('');
           const [passcodeError, setPasscodeError] = useState(false);
-          
-          const [isNavVisible, setIsNavVisible] = useState(true);
-          const lastScrollY = useRef(0);
 
           useEffect(() => {
               if (!auth) { setAuthLoading(false); return; }
@@ -210,20 +194,6 @@
           }, []);
 
           useEffect(() => { document.documentElement.classList.toggle('dark', isDarkMode); localStorage.setItem('darkMode', isDarkMode); }, [isDarkMode]);
-
-          useEffect(() => {
-              if (!user) return;
-              const handleScroll = () => {
-                  const currentScrollY = window.scrollY;
-                  if (Math.abs(currentScrollY - lastScrollY.current) < 10) return;
-                  if (currentScrollY > lastScrollY.current && currentScrollY > 80) setIsNavVisible(false);
-                  else setIsNavVisible(true);
-                  if (currentScrollY < 10) setIsNavVisible(true);
-                  lastScrollY.current = currentScrollY;
-              };
-              window.addEventListener('scroll', handleScroll, { passive: true });
-              return () => window.removeEventListener('scroll', handleScroll);
-          }, [user]);
 
           const [activeTab, setActiveTab] = useState('daily-report');
           const [toast, setToast] = useState('');
@@ -235,7 +205,6 @@
 
           const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
           
-          // ✨ 補回：執行列印呼叫邏輯
           const executePrint = (context) => { 
               setPrintContext(context); 
               setTimeout(() => { window.print(); }, 200); 
@@ -501,6 +470,8 @@
             updateCloudData('dailyRecords', [...filtered, { date: formattedDate, weekday: getWeekday(todayStats.dateStr), sales: todayStats.sales, points: todayStats.points, bigToys: todayStats.bigToys }].sort((a, b) => a.date.localeCompare(b.date)), '已同步儲存今日業績至雲端！');
           };
 
+          const deleteRecord = (dateToRemove) => updateCloudData('dailyRecords', dailyRecords.filter(r => r.date !== dateToRemove));
+
           const handleBulkImport = () => {
             if (!bulkInput.trim()) return;
             let newRecords = [...dailyRecords]; let count = 0;
@@ -536,6 +507,7 @@
             updateCloudData('settings', { ...settings, newBarcodes: settings.newBarcodes.filter(b => b !== code), boxSizeMap: newBoxMap });
           };
 
+          // --- 產生報表內文 ---
           const reportContent = useMemo(() => {
             if (!selectedMonth) return '請先上傳檔案或建立紀錄...';
             let recordsToPrint = dailyRecords.filter(r => r.date.split('/')[0] === selectedMonth);
@@ -581,21 +553,31 @@
           const currentMonthRecords = useMemo(() => dailyRecords.filter(r => r.date.split('/')[0] === selectedMonth).sort((a, b) => b.date.localeCompare(a.date)), [dailyRecords, selectedMonth]); 
           const visibleRecords = isHistoryExpanded ? currentMonthRecords : currentMonthRecords.slice(0, 3);
           
-          // QR Code 產生
+          // ==========================================
+          // ✨ 完美解除字數限制 QR Code 產生
+          // ==========================================
           useEffect(() => {
               if (!isQRCodeModalOpen || !reportContent) return;
               setQrDataUrl(''); setQrError('');
-              if (typeof window.QRious === 'undefined') { setQrError('⚠️ 條碼模組載入失敗，請檢查網路狀態。'); return; }
-              if (reportContent.length > 700) { setQrError(`⚠️ 報表字數過多 (目前約 ${reportContent.length} 字)。\n受限於手機相機解析度，條碼過於密集將無法掃描。\n\n👉 建議：請點擊「複製」按鈕，改用電腦版 LINE 直接發送。`); return; }
+              
+              if (typeof window.QRious === 'undefined') {
+                  setQrError('⚠️ 條碼模組載入失敗，請檢查網路狀態。'); return;
+              }
+              
               try {
+                  // 無論多長都強制轉成 UTF-8 純文字 QR Code
                   const utf8Content = unescape(encodeURIComponent(reportContent));
                   const qr = new window.QRious({ value: utf8Content, size: 350, level: 'L', background: 'white', foreground: '#000000' });
                   const dataUrl = qr.toDataURL();
                   if (dataUrl && dataUrl.length > 100) setQrDataUrl(dataUrl); else throw new Error("圖片異常");
-              } catch (err) { setQrError('⚠️ 條碼轉換失敗，報表文字可能包含特殊字元，建議改用「複製」按鈕。'); }
+              } catch (err) { 
+                  setQrError('⚠️ 條碼轉換失敗，報表文字可能包含無法解析的特殊字元，建議改用「複製」按鈕。'); 
+              }
           }, [reportContent, isQRCodeModalOpen]);
 
+          // ==========================================
           // Auth 登入畫面處理
+          // ==========================================
           const handleLogin = (e) => {
               e.preventDefault();
               if (!emailInput || !passwordInput) return showToast('請填寫帳號與密碼');
@@ -629,9 +611,14 @@
               );
           }
 
+          // ==========================================
+          // 主要 UI 渲染區塊 
+          // ==========================================
           return (
             <div className="flex flex-col h-screen w-full font-sans overflow-x-hidden">
-              <header className={`fixed top-0 left-0 right-0 h-20 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-sm border-b border-slate-100 dark:border-slate-700/50 z-50 transition-transform duration-300 no-print ${isNavVisible ? 'translate-y-0' : '-translate-y-full'}`}>
+              
+              {/* ✨ 已移除滾動隱藏邏輯，現在 Navbar 永遠固定在最上方 */}
+              <header className="fixed top-0 left-0 right-0 h-20 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md shadow-sm border-b border-slate-100 dark:border-slate-700/50 z-50 no-print">
                 <div className="max-w-6xl mx-auto h-full flex items-center justify-between px-6">
                   <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center tracking-tight"><i className="fa-solid fa-shop text-indigo-500 mr-2 text-2xl"></i><span className="hidden sm:inline">門市整合系統</span></h2>
                   <div className="flex items-center gap-3">
@@ -645,6 +632,9 @@
               <div className="pt-24 pb-32 px-4 max-w-6xl mx-auto min-h-screen w-full no-print">
                 <div className="space-y-6">
 
+                    {/* =========================================
+                        分頁 1: 銷售日報表
+                    ========================================= */}
                     {activeTab === 'daily-report' && (
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full pb-10">
                         <div className="lg:col-span-7 space-y-6">
@@ -705,8 +695,6 @@
                                           <span className="font-bold text-slate-800 dark:text-slate-200 mr-3">{record.date} ({record.weekday})</span>
                                           <span className="text-blue-600 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-500/20 px-2 py-0.5 rounded text-sm">業績: ${formatMoney(record.sales)}</span>
                                       </div>
-                                      
-                                      {/* ✨ 補回：歷史業績的 MEGA 與 點數兌換資訊卡片 */}
                                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-slate-500 dark:text-slate-400 mt-3">
                                           <div className="bg-white dark:bg-slate-700 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-600">
                                               <span className="block text-xs text-slate-400 dark:text-slate-400 mb-1">點數兌換</span>
@@ -773,6 +761,9 @@
                       </div>
                     )}
 
+                    {/* =========================================
+                        分頁 2: 盒損登記器 (Damaged Box)
+                    ========================================= */}
                     {activeTab === 'damaged-box' && (
                       <div className="max-w-3xl mx-auto space-y-6 pb-10">
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden transition-colors">
@@ -799,14 +790,38 @@
                                 <div className="bg-slate-50 dark:bg-slate-800/80 px-6 py-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer" onClick={() => setIsDamagedOverviewExpanded(!isDamagedOverviewExpanded)}>
                                   <div className="flex items-center"><div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mr-3"><i className="fa-solid fa-list-check"></i></div><h4 className="font-bold text-slate-700 dark:text-slate-200 text-lg">盤點總覽 <span className="text-sm font-normal text-slate-500 dark:text-slate-400 ml-2">(共 {damagedItems.reduce((sum, item) => sum + item.quantity, 0)} 件)</span></h4></div>
                                   
-                                  {/* ✨ 補回：印出盒損單按鈕 */}
+                                  {/* ✨ 盤點總覽展開與按鈕 */}
                                   <div className="flex items-center gap-3">
                                     <button onClick={(e) => { e.stopPropagation(); executePrint('damaged'); }} className="text-xs px-3 py-1.5 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-lg transition-colors font-medium border border-indigo-200 dark:border-indigo-500/30 shadow-sm"><i className="fa-solid fa-print mr-1"></i>列印清單</button>
                                     <button onClick={(e) => { e.stopPropagation(); clearAllDamagedItems(); }} className="text-xs px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition-colors font-medium border border-red-100 dark:border-red-500/20 shadow-sm"><i className="fa-solid fa-trash-can mr-1"></i>季末清空</button>
+                                    <div className="text-slate-400 flex items-center gap-2 ml-2"><span className="text-sm font-medium">{isDamagedOverviewExpanded ? '收起' : '展開'}</span><i className={`fa-solid fa-chevron-${isDamagedOverviewExpanded ? 'up' : 'down'}`}></i></div>
                                   </div>
                                 </div>
+                                {isDamagedOverviewExpanded && (
+                                  <div className="p-6 bg-white dark:bg-slate-800">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      {groupedDamagedItems.map(([category, items]) => (
+                                        <div key={`overview-${category}`} className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                                          <h5 className="font-bold text-slate-700 dark:text-slate-300 mb-3 border-b border-slate-200 dark:border-slate-700 pb-2 flex justify-between items-end">
+                                            <span>{category}</span>
+                                            <span className="text-indigo-600 dark:text-indigo-400 font-black">{items.reduce((s, i) => s + i.quantity, 0)} 件</span>
+                                          </h5>
+                                          <ul className="space-y-2">
+                                            {items.map(item => (
+                                              <li key={`overview-item-${item.id}`} className="flex justify-between items-start text-sm">
+                                                <span className="text-slate-600 dark:text-slate-400 pr-2 leading-tight flex-1">{item.name}</span>
+                                                <span className="font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600 shadow-sm">x {item.quantity}</span>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
+
                             <div className="space-y-6">
                               {groupedDamagedItems.map(([category, items]) => (
                                 <div key={category} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
@@ -830,6 +845,9 @@
                       </div>
                     )}
 
+                    {/* =========================================
+                        分頁 3: 條碼列印中心
+                    ========================================= */}
                     {activeTab === 'barcode-print' && (
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full pb-10">
                             <div className="lg:col-span-5 space-y-6">
@@ -843,7 +861,6 @@
                                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 shrink-0 gap-4">
                                     <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center whitespace-nowrap"><i className="fa-solid fa-list-check text-slate-400 mr-2"></i>待印清單</h2>
                                     
-                                    {/* ✨ 補回：全部列印按鈕與搜尋列 */}
                                     <div className="flex items-center gap-3 w-full sm:w-auto">
                                         {barcodeItems.length > 0 && (
                                             <button onClick={() => executePrint('barcode-all')} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm flex items-center whitespace-nowrap"><i className="fa-solid fa-print mr-1.5"></i>全部列印</button>
@@ -877,6 +894,9 @@
                         </div>
                     )}
 
+                    {/* =========================================
+                        分頁 4: 系統設定
+                    ========================================= */}
                     {activeTab === 'settings' && (
                       <div className="max-w-4xl mx-auto space-y-6 pb-10">
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
@@ -905,14 +925,15 @@
                 </div>
               </div>
 
-              {/* ✨ 底部 Navigation Dock */}
-              <nav className={`fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-2xl rounded-full px-8 py-3 flex items-center gap-8 z-40 transition-all duration-300 no-print ${isNavVisible ? 'translate-y-0 opacity-100' : 'translate-y-32 opacity-0'}`}>
+              {/* ✨ 底部 Navigation Dock：移除滾動隱藏邏輯，固定在底部 */}
+              <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-2xl rounded-full px-8 py-3 flex items-center gap-8 z-40 no-print">
                   <button onClick={() => setActiveTab('daily-report')} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${activeTab === 'daily-report' ? 'bg-indigo-600 text-white shadow-lg -translate-y-2' : 'text-slate-500 hover:bg-slate-100'}`}><i className="fa-solid fa-file-invoice text-xl"></i></button>
                   <button onClick={() => setActiveTab('damaged-box')} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${activeTab === 'damaged-box' ? 'bg-indigo-600 text-white shadow-lg -translate-y-2' : 'text-slate-500 hover:bg-slate-100'}`}><i className="fa-solid fa-box-open text-xl"></i></button>
                   <button onClick={() => setActiveTab('barcode-print')} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${activeTab === 'barcode-print' ? 'bg-indigo-600 text-white shadow-lg -translate-y-2' : 'text-slate-500 hover:bg-slate-100'}`}><i className="fa-solid fa-barcode text-xl"></i></button>
                   <button onClick={() => setActiveTab('settings')} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${activeTab === 'settings' ? 'bg-indigo-600 text-white shadow-lg -translate-y-2' : 'text-slate-500 hover:bg-slate-100'}`}><i className="fa-solid fa-gear text-xl"></i></button>
               </nav>
 
+              {/* QR Code 彈出視窗 */}
               {isQRCodeModalOpen && (
                   <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 no-print animate-scale-in">
                       <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
@@ -927,10 +948,12 @@
                                   {qrError ? <div className="text-red-500 text-xs p-4 whitespace-pre-wrap font-bold leading-relaxed">{qrError}</div> : <img src={qrDataUrl} className="mx-auto block w-full h-auto rounded-lg" />}
                               </div>
                           </div>
+                          <div className="p-4"><button onClick={() => setIsQRCodeModalOpen(false)} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold">已掃描完成</button></div>
                       </div>
                   </div>
               )}
 
+              {/* 復原 Undo Toast */}
               {undoData && (
                   <div className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-4 z-50 overflow-hidden animate-slide-up-fade border border-slate-700 no-print">
                       <span className="text-sm font-medium">已刪除 <span className="font-bold text-slate-200">{undoData.item.name}</span></span>
@@ -946,7 +969,7 @@
               )}
               
               {/* =========================================
-                  ✨ 補回：列印渲染區域 (Print Only DOM)
+                  列印渲染區域 (Print Only DOM)
               ========================================= */}
               <div className="print-only">
                   {printContext === 'damaged' && (
