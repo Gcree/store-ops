@@ -1033,14 +1033,29 @@
                             </div>
                           </div>
 
-                          <form onSubmit={handleBarcodePrintScan} className="relative mb-4 flex gap-2">
-                            <div className="relative flex-1 group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i className="fa-solid fa-magnifying-glass text-slate-400"></i></div>
-                                <input ref={barcodeInputRef} type="text" value={barcodePrintInput} onChange={(e) => setBarcodePrintInput(e.target.value)} className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white transition-all font-medium text-lg" placeholder="在此掃描或輸入..." autoFocus />
+                          {/* ✨ 修復：這才是陳列品專用的輸入表單 */}
+                          <form onSubmit={handleDisplayScanSubmit} className="relative group flex gap-2 mb-8">
+                            <div className="relative flex-1">
+                                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none transition-transform group-focus-within:scale-110">
+                                    <i className="fa-solid fa-barcode text-amber-500/70 text-lg"></i>
+                                </div>
+                                <input 
+                                    ref={displayInputRef} 
+                                    type="text" 
+                                    value={displayBarcodeInput} 
+                                    onChange={(e) => setDisplayBarcodeInput(e.target.value)} 
+                                    className="block w-full pl-14 pr-4 py-5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-amber-500/50 dark:text-white text-lg transition-all outline-none shadow-inner font-mono" 
+                                    placeholder="掃描陳列品建檔..." 
+                                    autoFocus 
+                                />
                             </div>
-                            <button type="button" onClick={() => { setScannerTarget('print'); setScannerOpen(true); }} className="px-5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-colors shadow-sm"><i className="fa-solid fa-camera text-xl"></i></button>
-                            <button type="submit" className="px-6 bg-slate-800 dark:bg-indigo-600 text-white hover:bg-slate-900 dark:hover:bg-indigo-700 rounded-xl font-medium">加入</button>
-                        </form>
+                            <button type="button" onClick={() => { setScannerTarget('display'); setScannerOpen(true); }} className="px-5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-amber-500 dark:hover:text-amber-400 rounded-2xl transition-colors shadow-sm">
+                                <i className="fa-solid fa-camera text-xl"></i>
+                            </button>
+                            <button type="submit" className="px-6 bg-slate-800 dark:bg-slate-700 text-white hover:bg-amber-500 dark:hover:bg-amber-500 rounded-2xl font-bold transition-colors shadow-sm">
+                                登錄
+                            </button>
+                          </form>
                         </div>
 
                         {/* 典藏品網格呈現 (Archive Grid) */}
