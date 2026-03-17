@@ -10,7 +10,23 @@
         tailwind.config = {
             darkMode: 'class',
             theme: {
+                // ✨ 1. 強制套用 Apple 系統字體 (SF Pro)
+                fontFamily: {
+                    sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                    mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', '"Liberation Mono"', '"Courier New"', 'monospace'],
+                },
                 extend: {
+                    // ✨ 2. 完美映射 Apple HIG 字級與黃金比例字距 (Tracking)
+                    fontSize: {
+                        'xs': ['12px', { lineHeight: '16px', letterSpacing: '0em' }],       // Caption
+                        'sm': ['14px', { lineHeight: '18px', letterSpacing: '-0.006em' }],  // Subhead / Footnote
+                        'base': ['17px', { lineHeight: '22px', letterSpacing: '-0.022em' }],// Body (Apple 原生標準 17pt)
+                        'lg': ['19px', { lineHeight: '24px', letterSpacing: '-0.021em' }],  // Callout
+                        'xl': ['20px', { lineHeight: '25px', letterSpacing: '-0.022em' }],  // Title 3
+                        '2xl': ['22px', { lineHeight: '28px', letterSpacing: '-0.026em' }], // Title 2
+                        '3xl': ['28px', { lineHeight: '34px', letterSpacing: '-0.038em' }], // Title 1
+                        '4xl': ['34px', { lineHeight: '41px', letterSpacing: '-0.041em' }], // Large Title
+                    },
                     animation: {
                         'shrink-x': 'shrinkX 5s linear forwards',
                         'slide-up-fade': 'slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
@@ -46,6 +62,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
         html.dark ::-webkit-scrollbar-thumb { background: #475569; }
@@ -74,9 +91,14 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         body { padding-bottom: 80px; transition: background-color 0.3s ease, color 0.3s ease; }
+        /* 相機掃描器的美化 CSS */
+        #reader { border: none !important; border-radius: 1rem; overflow: hidden; background: #000; }
+        #reader button { background-color: #6366f1 !important; color: white !important; padding: 0.5rem 1rem !important; border-radius: 0.75rem !important; margin: 0.5rem !important; cursor: pointer; font-weight: bold; border: none; }
+        #reader select { padding: 0.5rem; border-radius: 0.5rem; margin-bottom: 1rem; }
     </style>
+
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 min-h-screen flex flex-col">
+<body class="antialiased text-base bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 min-h-screen flex flex-col">
     <div id="root" class="flex-1 flex flex-col"></div>
 
     <script type="text/babel">
@@ -206,10 +228,68 @@
 
           const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
           
-          const executePrint = (context) => { 
-              setPrintContext(context); 
-              setTimeout(() => { window.print(); }, 200); 
+          // ==========================================
+          // ✨ 新增功能：匯出 Excel 清單
+          // ==========================================
+          const exportToExcel = (data, filename) => {
+              if (data.length === 0) return showToast('⚠️ 匯出失敗：沒有資料可以匯出');
+              // 1. 將資料格式化為易讀的 Excel 欄位
+              const exportData = data.map(item => ({
+                  '條碼': item.barcode,
+                  '品名': item.name,
+                  '數量': item.quantity,
+                  '狀態': item.status ? (item.status === 'displayed' ? '陳列中' : '已撤下') : '盒損'
+              }));
+              // 2. 建立工作表與活頁簿
+              const worksheet = window.XLSX.utils.json_to_sheet(exportData);
+              const workbook = window.XLSX.utils.book_new();
+              window.XLSX.utils.book_append_sheet(workbook, worksheet, "品項清單");
+              // 3. 觸發下載 (檔名加上當前日期)
+              const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+              window.XLSX.writeFile(workbook, `${filename}_${dateStr}.xlsx`);
           };
+
+          // ==========================================
+          // ✨ 新增功能：手機鏡頭掃描器狀態與邏輯
+          // ==========================================
+          const [scannerOpen, setScannerOpen] = useState(false);
+          const [scannerTarget, setScannerTarget] = useState(''); // 紀錄是誰呼叫相機：'damaged' | 'display' | 'print'
+          const [dictSearch, setDictSearch] = useState('');       // 字典庫搜尋用
+          
+          // ✨ 新增：控制字典庫的折疊與分頁狀態
+          const [isDictExpanded, setIsDictExpanded] = useState(true); 
+          const [dictCurrentPage, setDictCurrentPage] = useState(1);
+
+          useEffect(() => {
+              if (!scannerOpen) return;
+              // 啟動相機掃描器
+              const html5QrcodeScanner = new window.Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 150 } }, false);
+              html5QrcodeScanner.render((decodedText) => {
+                  // 掃描成功後關閉相機並顯示提示
+                  html5QrcodeScanner.clear();
+                  setScannerOpen(false);
+                  showToast('📸 條碼掃描成功！');
+                  
+                  // ✨ 新增：硬體震動回饋 (觸發 100 毫秒的俐落短震)
+                  if (typeof navigator.vibrate === 'function') {
+                      navigator.vibrate(100);
+                  }
+                  
+                  // 判斷是誰呼叫的，把條碼塞進去
+                  if (scannerTarget === 'damaged') {
+                      setBarcodeInput(decodedText);
+                      setTimeout(() => damagedInputRef.current?.focus(), 100);
+                  } else if (scannerTarget === 'display') {
+                      setDisplayBarcodeInput(decodedText);
+                      setTimeout(() => displayInputRef.current?.focus(), 100);
+                  } else if (scannerTarget === 'print') {
+                      setBarcodePrintInput(decodedText);
+                      setTimeout(() => barcodeInputRef.current?.focus(), 100);
+                  }
+              }, (error) => { /* 忽略持續掃描中的錯誤，避免 Console 報錯洗版 */ });
+
+              return () => { html5QrcodeScanner.clear().catch(e => console.error(e)); };
+          }, [scannerOpen, scannerTarget]);
 
           useEffect(() => {
               const afterPrint = () => setPrintContext(null);
@@ -619,7 +699,7 @@
                  } else report += `${desc}➡️0\n`;
               });
             } else report += `(尚未設定任何新品條碼)\n`;
-            report += `\n(3）${story || '請在輸入今日的小作文...'}`;
+            report += `\n(3）${story || '請輸入今日的小作文...'}`;
             return report;
           }, [dailyRecords, todayStats, settings, story, currentStore, selectedMonth]);
 
@@ -734,7 +814,7 @@
                           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
                               <div className="flex items-center">
-                                <h2 className="text-xl font-semibold flex items-center whitespace-nowrap dark:text-slate-100"><i className="fa-solid fa-cloud text-blue-500 mr-2"></i> 雲端歷史業績</h2>
+                                <h2 className="text-xl font-semibold flex items-center whitespace-nowrap dark:text-slate-100"><i className="fa-solid fa-cloud text-blue-500 mr-2"></i> 歷史業績</h2>
                                 {availableMonths.length > 0 && (
                                   <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="ml-3 px-2 py-1 text-sm bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-medium border border-blue-100 dark:border-blue-500/30 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
                                     {availableMonths.map(m => <option key={m} value={m}>{parseInt(m, 10)} 月份</option>)}
@@ -811,7 +891,7 @@
                                 </div>
                               </div>
                               <div className="pt-6 border-t border-slate-100 dark:border-slate-700/50">
-                                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">今日銷售狀況分享 (故事)</label>
+                                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">賣場狀況分享（小作文）</label>
                                 <textarea className="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-lg outline-none h-24 resize-none dark:bg-slate-900 dark:text-white" placeholder="例如：今天是週五，人潮明顯增加..." value={story} onChange={(e) => setStory(e.target.value)}></textarea>
                               </div>
                           </div>
@@ -840,10 +920,13 @@
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden transition-colors">
                           <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] px-3 py-1 font-bold rounded-bl-lg flex items-center shadow-sm"><i className="fa-solid fa-cloud-arrow-up mr-1"></i> 雲端同步開啟</div>
                           <div className="mb-4 mt-2"><h3 className="text-lg font-semibold flex items-center dark:text-slate-100"><i className="fa-solid fa-barcode text-slate-500 mr-2"></i> 盒損條碼登錄</h3></div>
-                          <form onSubmit={handleScanSubmit} className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i className="fa-solid fa-magnifying-glass text-slate-400"></i></div>
-                            <input ref={damagedInputRef} type="text" value={barcodeInput} onChange={(e) => setBarcodeInput(e.target.value)} className="block w-full pl-12 pr-4 py-4 border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white text-lg transition-colors font-medium placeholder:text-slate-400" placeholder="等待掃描中..." autoFocus />
-                            <button type="submit" className="absolute inset-y-2 right-2 px-6 bg-slate-800 dark:bg-indigo-600 text-white hover:bg-slate-900 dark:hover:bg-indigo-700 rounded-lg font-medium transition-colors">加入</button>
+                          <form onSubmit={handleScanSubmit} className="relative group flex gap-2">
+                            <div className="relative flex-1">
+                                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none transition-transform group-focus-within:scale-110"><i className="fa-solid fa-barcode text-slate-400 text-lg"></i></div>
+                                <input ref={damagedInputRef} type="text" value={barcodeInput} onChange={(e) => setBarcodeInput(e.target.value)} className="block w-full pl-14 pr-4 py-5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-indigo-500 dark:text-white text-lg transition-all outline-none shadow-inner font-mono" placeholder="輸入條碼..." autoFocus />
+                            </div>
+                            <button type="button" onClick={() => { setScannerTarget('damaged'); setScannerOpen(true); }} className="px-5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-2xl transition-colors shadow-sm"><i className="fa-solid fa-camera text-xl"></i></button>
+                            <button type="submit" className="px-6 bg-slate-800 dark:bg-indigo-600 text-white hover:bg-slate-900 dark:hover:bg-indigo-700 rounded-2xl font-bold transition-colors shadow-sm">加入</button>
                           </form>
                         </div>
                         {damagedItems.length > 0 && (
@@ -861,8 +944,7 @@
                                 <div className="bg-slate-50 dark:bg-slate-800/80 px-6 py-4 flex justify-between items-center border-b border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer" onClick={() => setIsDamagedOverviewExpanded(!isDamagedOverviewExpanded)}>
                                   <div className="flex items-center"><div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mr-3"><i className="fa-solid fa-list-check"></i></div><h4 className="font-bold text-slate-700 dark:text-slate-200 text-lg">盤點總覽 <span className="text-sm font-normal text-slate-500 dark:text-slate-400 ml-2">(共 {damagedItems.reduce((sum, item) => sum + item.quantity, 0)} 件)</span></h4></div>
                                   <div className="flex items-center gap-3">
-                                    <button onClick={(e) => { e.stopPropagation(); executePrint('damaged'); }} className="text-xs px-3 py-1.5 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-lg transition-colors font-medium border border-indigo-200 dark:border-indigo-500/30 shadow-sm"><i className="fa-solid fa-print mr-1"></i>列印清單</button>
-                                    <button onClick={(e) => { e.stopPropagation(); clearAllDamagedItems(); }} className="text-xs px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition-colors font-medium border border-red-100 dark:border-red-500/20 shadow-sm"><i className="fa-solid fa-trash-can mr-1"></i>季末清空</button>
+                                    <button onClick={(e) => { e.stopPropagation(); exportToExcel(damagedItems, '盒損盤點清單'); }} className="text-xs px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg transition-colors font-medium border border-emerald-200 dark:border-emerald-500/30 shadow-sm"><i className="fa-solid fa-file-excel mr-1"></i>匯出 Excel</button>                                    <button onClick={(e) => { e.stopPropagation(); clearAllDamagedItems(); }} className="text-xs px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition-colors font-medium border border-red-100 dark:border-red-500/20 shadow-sm"><i className="fa-solid fa-trash-can mr-1"></i>季末清空</button>
                                     <div className="text-slate-400 flex items-center gap-2 ml-2"><span className="text-sm font-medium">{isDamagedOverviewExpanded ? '收起' : '展開'}</span><i className={`fa-solid fa-chevron-${isDamagedOverviewExpanded ? 'up' : 'down'}`}></i></div>
                                   </div>
                                 </div>
@@ -932,31 +1014,33 @@
                                     陳列品建檔，輕鬆管理櫃上陳列中與撤下的品項。
                                 </p>
                             </div>
-                            
+                        
+                            <div className="flex items-center gap-3 w-full md:w-auto">
+                                {/* ✨ 加入匯出按鈕 */}
+                                <button onClick={() => exportToExcel(displayItems, '陳列品典藏庫清單')} className="px-4 py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-xl text-sm font-bold transition-colors shadow-sm border border-emerald-200 dark:border-emerald-500/30">
+                                    <i className="fa-solid fa-file-excel mr-1"></i>匯出 Excel
+                                </button>
+
                             {/* 質感切換 Tab */}
-                            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shadow-inner w-full md:w-auto">
-                                <button onClick={() => setDisplayFilter('stored')} className={`flex-1 md:w-32 py-2.5 text-sm font-bold rounded-lg transition-all duration-300 ${displayFilter === 'stored' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                                    <i className="fa-solid fa-box-archive mr-2"></i>已撤下
-                                </button>
-                                <button onClick={() => setDisplayFilter('displayed')} className={`flex-1 md:w-32 py-2.5 text-sm font-bold rounded-lg transition-all duration-300 ${displayFilter === 'displayed' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                                    <i className="fa-solid fa-lightbulb mr-2"></i>陳列中
-                                </button>
+                                <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shadow-inner w-full md:w-auto">
+                                    <button onClick={() => setDisplayFilter('stored')} className={`flex-1 md:w-32 py-2.5 text-sm font-bold rounded-lg transition-all duration-300 ${displayFilter === 'stored' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                                        <i className="fa-solid fa-box-archive mr-2"></i>已撤下
+                                    </button>
+                                    <button onClick={() => setDisplayFilter('displayed')} className={`flex-1 md:w-32 py-2.5 text-sm font-bold rounded-lg transition-all duration-300 ${displayFilter === 'displayed' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                                        <i className="fa-solid fa-lightbulb mr-2"></i>陳列中
+                                    </button>
+                                </div>
                             </div>
                           </div>
 
-                          <form onSubmit={handleDisplayScanSubmit} className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none transition-transform group-focus-within:scale-110">
-                              <i className="fa-solid fa-barcode text-amber-500/70 text-lg"></i>
+                          <form onSubmit={handleBarcodePrintScan} className="relative mb-4 flex gap-2">
+                            <div className="relative flex-1 group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><i className="fa-solid fa-magnifying-glass text-slate-400"></i></div>
+                                <input ref={barcodeInputRef} type="text" value={barcodePrintInput} onChange={(e) => setBarcodePrintInput(e.target.value)} className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white transition-all font-medium text-lg" placeholder="在此掃描或輸入..." autoFocus />
                             </div>
-                            <input 
-                                ref={displayInputRef} type="text" value={displayBarcodeInput} onChange={(e) => setDisplayBarcodeInput(e.target.value)} 
-                                className="block w-full pl-14 pr-32 py-5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-amber-500/50 dark:focus:ring-amber-500/50 dark:text-white text-lg transition-all outline-none shadow-inner font-mono placeholder:font-sans" 
-                                placeholder="掃描陳列品條碼建檔..." autoFocus 
-                            />
-                            <button type="submit" className="absolute inset-y-2 right-2 px-6 bg-slate-800 dark:bg-slate-700 text-white hover:bg-amber-500 dark:hover:bg-amber-500 rounded-xl font-bold transition-colors shadow-sm">
-                                新增陳列
-                            </button>
-                          </form>
+                            <button type="button" onClick={() => { setScannerTarget('print'); setScannerOpen(true); }} className="px-5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-colors shadow-sm"><i className="fa-solid fa-camera text-xl"></i></button>
+                            <button type="submit" className="px-6 bg-slate-800 dark:bg-indigo-600 text-white hover:bg-slate-900 dark:hover:bg-indigo-700 rounded-xl font-medium">加入</button>
+                        </form>
                         </div>
 
                         {/* 典藏品網格呈現 (Archive Grid) */}
@@ -996,19 +1080,56 @@
                                             </div>
                                         </div>
 
-                                        {/* 底部操作列 */}
-                                        <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50">
-                                            <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
-                                                <button onClick={() => updateDisplayQuantity(item.id, -1)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors shadow-sm"><i className="fa-solid fa-minus text-xs"></i></button>
-                                                <div className="w-10 text-center font-bold text-slate-700 dark:text-slate-200 text-sm">{item.quantity}</div>
-                                                <button onClick={() => updateDisplayQuantity(item.id, 1)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors shadow-sm"><i className="fa-solid fa-plus text-xs"></i></button>
-                                            </div>
+                                       {/* 底部操作列 */}
+                                       <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700/50">
+                                        {/* 數量增減按鈕 */}
+                                        <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
+                                            <button onClick={() => updateDisplayQuantity(item.id, -1)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors shadow-sm"><i className="fa-solid fa-minus text-xs"></i></button>
+                                            <div className="w-10 text-center font-bold text-slate-700 dark:text-slate-200 text-sm">{item.quantity}</div>
+                                            <button onClick={() => updateDisplayQuantity(item.id, 1)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 transition-colors shadow-sm"><i className="fa-solid fa-plus text-xs"></i></button>
+                                        </div>
+                                        
+                                        {/* ✨ 右側操作按鈕群：加入一鍵複製按鈕 */}
+                                        <div className="flex items-center gap-1">
+                                            <button 
+                                                    onClick={() => {
+                                                        const textToCopy = `${item.barcode}\t${item.name}`;
+                                                        // 先嘗試現代寫法，如果被瀏覽器擋住，就啟用備用暴力破解法
+                                                        if (navigator.clipboard && window.isSecureContext) {
+                                                            navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製條碼與品名！')).catch(fallbackCopy);
+                                                        } else {
+                                                            fallbackCopy();
+                                                        }
+
+                                                        // 傳統備用複製法 (支援本地端 file:// 網址操作)
+                                                        function fallbackCopy() {
+                                                            const textArea = document.createElement("textarea");
+                                                            textArea.value = textToCopy;
+                                                            textArea.style.position = "fixed"; // 避免畫面捲動
+                                                            textArea.style.opacity = "0";      // 隱藏起來
+                                                            document.body.appendChild(textArea);
+                                                            textArea.focus();
+                                                            textArea.select();
+                                                            try {
+                                                                document.execCommand('copy');
+                                                                showToast('📋 已複製條碼與品名！');
+                                                            } catch (err) {
+                                                                showToast('❌ 複製失敗，請手動複製');
+                                                            }
+                                                            document.body.removeChild(textArea);
+                                                        }
+                                                    }} 
+                                                    className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-colors"
+                                                    title="一鍵複製條碼與品名"
+                                                >
+                                                    <i className="fa-solid fa-copy"></i>
+                                                </button>
                                             
-                                            <button onClick={() => removeDisplayItem(item.id)} className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors">
+                                            <button onClick={() => removeDisplayItem(item.id)} className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors" title="移除此陳列品">
                                                 <i className="fa-solid fa-trash-can"></i>
                                             </button>
                                         </div>
-
+                                    </div>
                                     </div>
                                 ))}
                             </div>
@@ -1064,32 +1185,196 @@
                         </div>
                     )}
 
-                    {/* =========================================
+                   {/* =========================================
                         分頁 5: 系統設定
                     ========================================= */}
                     {activeTab === 'settings' && (
                       <div className="max-w-4xl mx-auto space-y-6 pb-10 animate-scale-in">
+                        
+                        {/* 區塊 1：系統資料備份與還原 */}
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
-                          <div className="flex items-start mb-6 border-b border-slate-100 dark:border-slate-700 pb-6"><div className="p-3 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl mr-4"><i className="fa-solid fa-cloud-arrow-down text-2xl"></i></div><div><h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">系統資料備份與還原 (雲端同步)</h3></div></div>
+                          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 dark:border-slate-700 pb-6">
+                              <div className="p-3 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl flex-shrink-0">
+                                  <i className="fa-solid fa-cloud-arrow-down text-2xl"></i>
+                              </div>
+                              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">系統資料備份與還原 (雲端同步)</h3>
+                          </div>
+                          
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-start"><button onClick={handleExportData} className="w-full px-4 py-2 bg-slate-800 dark:bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-slate-900 dark:hover:bg-indigo-700 transition-colors shadow-sm"><i className="fa-solid fa-box-archive mr-2"></i> 下載備份檔</button></div>
-                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-start"><label className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm cursor-pointer text-center"><i className="fa-solid fa-folder-open mr-2"></i> 選擇備份檔並還原<input type="file" className="hidden" accept=".json" onChange={handleImportData} /></label></div>
+                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-start">
+                                <button onClick={handleExportData} className="w-full px-4 py-2 bg-slate-800 dark:bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-slate-900 dark:hover:bg-indigo-700 transition-colors shadow-sm">
+                                    <i className="fa-solid fa-box-archive mr-2"></i> 下載備份檔
+                                </button>
+                            </div>
+                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-start">
+                                <label className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm cursor-pointer text-center">
+                                    <i className="fa-solid fa-folder-open mr-2"></i> 選擇備份檔並還原
+                                    <input type="file" className="hidden" accept=".json" onChange={handleImportData} />
+                                </label>
+                            </div>
                           </div>
                         </div>
 
+                        {/* 區塊 2：自動分類規則 */}
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
                           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2 flex items-center"><i className="fa-solid fa-layer-group text-blue-500 mr-2"></i>自動分類規則</h3>
-                          <div className="flex flex-col sm:flex-row gap-3 mb-6"><input type="text" className="w-full sm:w-1/3 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" placeholder="分類名稱" value={newCatName} onChange={(e)=>setNewCatName(e.target.value)} /><input type="text" className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" placeholder="關鍵字" value={newCatKeys} onChange={(e)=>setNewCatKeys(e.target.value)} /><button onClick={handleAddCategory} className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 shadow-sm font-medium">建立</button></div>
-                          <div className="space-y-3">{settings.customCategories.map(cat => (<div key={cat.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900 px-4 py-3 rounded-xl border border-slate-100 dark:border-slate-700"><div><div className="font-bold text-slate-700 dark:text-slate-200">{cat.name}</div><div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">關鍵字：{cat.keywords}</div></div><button onClick={() => handleRemoveCategory(cat.id)} className="text-slate-400 hover:text-red-500 p-2"><i className="fa-solid fa-trash-can"></i></button></div>))}</div>
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
-                          <div className="flex items-start mb-6 border-b border-slate-100 dark:border-slate-700 pb-6"><div className="p-3 bg-teal-50 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 rounded-xl mr-4"><i className="fa-solid fa-book-open text-2xl"></i></div><div><h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">匯入中文名稱 (共用字典)</h3></div></div>
-                          <div className="mt-2 p-4 bg-teal-50/50 dark:bg-teal-500/10 rounded-xl border border-teal-100 dark:border-teal-500/20">
-                            <textarea className="w-full px-4 py-3 border border-slate-200 dark:border-teal-500/30 rounded-lg outline-none h-48 text-sm font-mono whitespace-pre dark:bg-slate-900 dark:text-slate-200" placeholder="條碼與品名 (以逗號或Tab分隔)" value={dictInput} onChange={(e) => setDictInput(e.target.value)}></textarea>
-                            <div className="flex justify-end mt-3 gap-3"><button onClick={() => { if(window.confirm('確定清空所有手動匯入的翻譯字典？')){ updateCloudData('settings', {...settings, customNameMap: {}}, '已清空翻譯字典！'); } }} className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">清空字典</button><button onClick={handleImportDict} className="px-4 py-2 bg-teal-500 text-white text-sm font-medium rounded-lg hover:bg-teal-600 shadow-sm transition-colors"><i className="fa-solid fa-cloud-arrow-up mr-2"></i> 同步至雲端</button></div>
+                          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                              <input type="text" className="w-full sm:w-1/3 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" placeholder="分類名稱" value={newCatName} onChange={(e)=>setNewCatName(e.target.value)} />
+                              <input type="text" className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" placeholder="關鍵字" value={newCatKeys} onChange={(e)=>setNewCatKeys(e.target.value)} />
+                              <button onClick={handleAddCategory} className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 shadow-sm font-medium">建立</button>
+                          </div>
+                          <div className="space-y-3">
+                              {settings.customCategories.map(cat => (
+                                  <div key={cat.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900 px-4 py-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                                      <div>
+                                          <div className="font-bold text-slate-700 dark:text-slate-200">{cat.name}</div>
+                                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">關鍵字：{cat.keywords}</div>
+                                      </div>
+                                      <button onClick={() => handleRemoveCategory(cat.id)} className="text-slate-400 hover:text-red-500 p-2"><i className="fa-solid fa-trash-can"></i></button>
+                                  </div>
+                              ))}
                           </div>
                         </div>
+
+{/* =========================================
+                            區塊 3：整合版共用字典庫管理 (折疊 + 分頁)
+                        ========================================= */}
+                        <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
+                          
+                            {/* 標題區 (加入點擊折疊功能) */}
+                            <div 
+                                className={`flex items-center justify-between cursor-pointer group transition-all ${isDictExpanded ? 'mb-6 border-b border-slate-100 dark:border-slate-700 pb-6' : ''}`}
+                                onClick={() => setIsDictExpanded(!isDictExpanded)}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-teal-50 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner group-hover:scale-105 transition-transform">
+                                        <i className="fa-solid fa-book-open text-xl"></i>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">共用字典庫管理</h3>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 hidden sm:block">管理並匯入條碼對應的中文品名，全門市設備即時同步。</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-400 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap">
+                                        共 {Object.keys(settings.customNameMap).length} 筆
+                                    </span>
+                                    <div className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors">
+                                        <i className={`fa-solid fa-chevron-${isDictExpanded ? 'up' : 'down'} transition-transform duration-300`}></i>
+                                    </div>
+                                </div>
+                            </div>
+  
+                            {/* 展開後的內容區 (左右分欄) */}
+                            {isDictExpanded && (() => {
+                                // --- 分頁邏輯計算 ---
+                                const filteredDict = Object.entries(settings.customNameMap)
+                                    .filter(([bc, name]) => bc.includes(dictSearch) || name.toLowerCase().includes(dictSearch.toLowerCase()));
+                                
+                                const ITEMS_PER_PAGE = 5;
+                                const dictTotalPages = Math.max(1, Math.ceil(filteredDict.length / ITEMS_PER_PAGE));
+                                const paginatedDict = filteredDict.slice((dictCurrentPage - 1) * ITEMS_PER_PAGE, dictCurrentPage * ITEMS_PER_PAGE);
+  
+                                return (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-scale-in origin-top">
+                                        
+                                        {/* 左側：視覺化管理與搜尋 */}
+                                        <div className="flex flex-col h-full">
+                                            <div className="mb-4 relative group">
+                                                <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors"></i>
+                                                <input 
+                                                    type="text" placeholder="搜尋已建檔之條碼或品名..." 
+                                                    value={dictSearch} 
+                                                    onChange={e => { 
+                                                        setDictSearch(e.target.value); 
+                                                        setDictCurrentPage(1); // 搜尋時自動重置回第一頁
+                                                    }} 
+                                                    className="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-teal-500/50 transition-shadow text-sm font-medium" 
+                                                />
+                                            </div>
+                                            
+                                            <div className="flex-1 flex flex-col border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 overflow-hidden">
+                                                <div className="flex-1 divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto">
+                                                    {paginatedDict.map(([bc, name]) => (
+                                                        <div key={bc} className="p-3 px-5 flex justify-between items-center hover:bg-white dark:hover:bg-slate-800 transition-colors group">
+                                                            <div className="pr-4">
+                                                                <div className="font-bold text-slate-700 dark:text-slate-200 text-sm mb-1 leading-tight">{name}</div>
+                                                                <div className="text-xs font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 inline-block px-1.5 py-0.5 rounded">{bc}</div>
+                                                            </div>
+                                                            <button onClick={() => {
+                                                                if(window.confirm(`確定要刪除「${name}」的字典紀錄嗎？`)) {
+                                                                    const newMap = {...settings.customNameMap};
+                                                                    delete newMap[bc];
+                                                                    updateCloudData('settings', {...settings, customNameMap: newMap});
+                                                                    // 若刪除後該頁空了，自動往前翻頁
+                                                                    if (paginatedDict.length === 1 && dictCurrentPage > 1) setDictCurrentPage(p => p - 1);
+                                                                }
+                                                            }} className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 lg:opacity-0 group-hover:opacity-100 transition-all shadow-sm">
+                                                                <i className="fa-solid fa-trash-can"></i>
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    
+                                                    {/* 查無資料或空狀態 */}
+                                                    {filteredDict.length === 0 && (
+                                                        <div className="flex flex-col items-center justify-center text-slate-400 text-sm font-medium p-8 h-full min-h-[200px]">
+                                                            <i className={`fa-solid ${dictSearch ? 'fa-magnifying-glass-minus' : 'fa-box-open'} text-4xl text-slate-200 dark:text-slate-700 mb-3`}></i>
+                                                            {dictSearch ? '找不到相符的字典資料' : '字典庫目前是空的\n請由右側匯入資料'}
+                                                        </div>
+                                                    )}
+                                                </div>
+  
+                                                {/* ✨ 分頁控制列 */}
+                                                {dictTotalPages > 1 && (
+                                                    <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+                                                        <button 
+                                                            disabled={dictCurrentPage === 1} 
+                                                            onClick={() => setDictCurrentPage(p => Math.max(1, p - 1))} 
+                                                            className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center"
+                                                        >
+                                                            <i className="fa-solid fa-angle-left mr-1.5"></i> 上一頁
+                                                        </button>
+                                                        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
+                                                            第 {dictCurrentPage} / {dictTotalPages} 頁
+                                                        </span>
+                                                        <button 
+                                                            disabled={dictCurrentPage === dictTotalPages} 
+                                                            onClick={() => setDictCurrentPage(p => Math.min(dictTotalPages, p + 1))} 
+                                                            className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center"
+                                                        >
+                                                            下一頁 <i className="fa-solid fa-angle-right ml-1.5"></i>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+  
+                                        {/* 右側：批量匯入區塊 */}
+                                        <div className="flex flex-col h-full bg-teal-50/50 dark:bg-teal-500/5 rounded-2xl border border-teal-100 dark:border-teal-500/20 p-5 md:p-6">
+                                            <label className="block text-base font-bold text-teal-800 dark:text-teal-400 mb-2 flex items-center">
+                                                <i className="fa-solid fa-paste mr-2"></i>批量匯入 (覆寫/新增)
+                                            </label>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                                                請貼上 Excel 內容，格式需為：<br/><strong className="text-teal-600 dark:text-teal-500">「條碼 [Tab或逗號] 品名」</strong>，每行一筆。
+                                            </p>
+                                            
+                                            <textarea className="w-full flex-1 px-4 py-4 border border-teal-200/60 dark:border-teal-500/30 rounded-xl outline-none min-h-[140px] text-sm font-mono whitespace-pre dark:bg-slate-900/80 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 transition-shadow resize-none" placeholder="6941313089877	DIMOO 隱藏版&#10;6941313071988	SKULLPANDA 盒玩..." value={dictInput} onChange={(e) => setDictInput(e.target.value)}></textarea>
+                                            
+                                            <div className="flex flex-wrap justify-end mt-5 gap-3">
+                                                <button onClick={() => { if(window.confirm('確定清空所有手動匯入的翻譯字典？')){ updateCloudData('settings', {...settings, customNameMap: {}}, '已清空翻譯字典！'); setDictCurrentPage(1); } }} className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
+                                                    清空字典
+                                                </button>
+                                                <button onClick={handleImportDict} className="flex-1 sm:flex-none px-6 py-2.5 bg-teal-500 text-white text-sm font-bold rounded-xl hover:bg-teal-600 shadow-lg shadow-teal-500/20 transition-all active:scale-95 flex items-center justify-center">
+                                                    <i className="fa-solid fa-cloud-arrow-up mr-2"></i> 同步至雲端
+                                                </button>
+                                            </div>
+                                        </div>
+  
+                                    </div>
+                                );
+                            })()}
+                          </div>
+
                       </div>
                     )}
                 </div>
@@ -1164,6 +1449,25 @@
                   </div>
               )}
 
+              {/* ✨ 新增：相機掃描器彈出視窗 */}
+              {scannerOpen && (
+                <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-scale-in no-print">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-slate-700">
+                        <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/80">
+                            <h3 className="font-bold dark:text-white flex items-center text-lg"><i className="fa-solid fa-camera text-indigo-500 mr-2"></i>條碼鏡頭掃描</h3>
+                            <button onClick={() => setScannerOpen(false)} className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-colors"><i className="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div className="p-4 bg-black">
+                            {/* html5-qrcode 會將相機畫面渲染在這個 div 裡 */}
+                            <div id="reader" className="w-full"></div>
+                        </div>
+                        <div className="p-4 text-center text-sm font-bold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/80">
+                            請將商品條碼對準螢幕方框內
+                        </div>
+                    </div>
+                </div>
+            )}   
+              
               {undoData && (
                   <div className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-4 z-50 overflow-hidden animate-slide-up-fade border border-slate-700 no-print">
                       <span className="text-sm font-medium">已刪除 <span className="font-bold text-slate-200">{undoData.item.name}</span></span>
