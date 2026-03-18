@@ -411,24 +411,32 @@
                 latestDataRef.current = { damagedItems, displayItems, barcodeItems, settings, displayFilter };
             }, [damagedItems, displayItems, barcodeItems, settings, displayFilter]);
 
-            // 自動送出引擎
-            const processAutoSubmit = (barcode, target) => {
+            // 自動送出引擎 (修復：清除隱形空白字元 ＋ 防止快速掃描覆寫)
+            const processAutoSubmit = (rawBarcode, target) => {
+                // ✨ 修復「未知商品」：強制清除條碼頭尾的隱形空白與換行符號
+                const barcode = rawBarcode.trim();
                 const state = latestDataRef.current;
                 const productName = state.settings.customNameMap[barcode] || state.settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
 
                 if (target === 'damaged') {
-                    const existing = state.damagedItems.findIndex(item => item.barcode === barcode);
-                    const newData = existing >= 0
-                        ? state.damagedItems.map(item => item.barcode === barcode ? { ...item, quantity: item.quantity + 1 } : item)
-                        : [...state.damagedItems, { id: Date.now(), barcode, name: productName, quantity: 1 }];
-                    updateCloudData('damagedItems', newData);
+                    setDamagedItems(prev => {
+                        const existing = prev.findIndex(item => item.barcode === barcode);
+                        const newData = existing >= 0
+                            ? prev.map(item => item.barcode === barcode ? { ...item, quantity: item.quantity + 1 } : item)
+                            : [...prev, { id: Date.now(), barcode, name: productName, quantity: 1 }];
+                        updateCloudData('damagedItems', newData);
+                        return newData;
+                    });
                     showToast(`📦 盒損已自動加入：${productName}`);
                 } else if (target === 'display') {
-                    const existing = state.displayItems.findIndex(item => item.barcode === barcode && item.status === state.displayFilter);
-                    const newData = existing >= 0
-                        ? state.displayItems.map(item => (item.barcode === barcode && item.status === state.displayFilter) ? { ...item, quantity: item.quantity + 1 } : item)
-                        : [...state.displayItems, { id: Date.now(), barcode, name: productName, quantity: 1, status: state.displayFilter }];
-                    updateCloudData('displayItems', newData);
+                    setDisplayItems(prev => {
+                        const existing = prev.findIndex(item => item.barcode === barcode && item.status === state.displayFilter);
+                        const newData = existing >= 0
+                            ? prev.map(item => (item.barcode === barcode && item.status === state.displayFilter) ? { ...item, quantity: item.quantity + 1 } : item)
+                            : [...prev, { id: Date.now(), barcode, name: productName, quantity: 1, status: state.displayFilter }];
+                        updateCloudData('displayItems', newData);
+                        return newData;
+                    });
                     showToast(`✨ 陳列品已自動登錄：${productName}`);
                 } else if (target === 'print') {
                     setBarcodeItems(prev => {
@@ -558,38 +566,49 @@
             };
 
             // ==========================================
-            // 盒損登記模組
+            // 盒損登記模組 (導入防覆寫佇列更新)
             // ==========================================
             const [barcodeInput, setBarcodeInput] = useState('');
             const [lastAction, setLastAction] = useState(null);
             const [isDamagedOverviewExpanded, setIsDamagedOverviewExpanded] = useState(false);
             const [damagedSearch, setDamagedSearch] = useState('');
-
-            // ✨ 新增：紀錄目前選擇的盒損分類 Tab (預設顯示全部)
             const [activeDamagedCategory, setActiveDamagedCategory] = useState('全部');
-
             const damagedInputRef = useRef(null);
 
+            // 支援 USB 掃描槍：連續秒刷也不會遺失資料
             const handleScanSubmit = (e) => {
                 e.preventDefault(); const barcode = barcodeInput.trim(); if (!barcode) return;
                 let productName = settings.customNameMap[barcode] || settings.barcodeMap[barcode] || `未知商品 (條碼: ${barcode})`;
-                const existing = damagedItems.findIndex(item => item.barcode === barcode);
-                let newData;
-                if (existing >= 0) {
-                    newData = [...damagedItems]; newData[existing].quantity += 1;
-                    setLastAction(`已增加數量：${productName}`);
-                } else {
-                    newData = [...damagedItems, { id: Date.now(), barcode, name: productName, quantity: 1 }];
-                    setLastAction(`已新增：${productName}`);
-                }
-                updateCloudData('damagedItems', newData);
+
+                setDamagedItems(prev => {
+                    const existing = prev.findIndex(item => item.barcode === barcode);
+                    const newData = existing >= 0
+                        ? prev.map(item => item.barcode === barcode ? { ...item, quantity: item.quantity + 1 } : item)
+                        : [...prev, { id: Date.now(), barcode, name: productName, quantity: 1 }];
+                    updateCloudData('damagedItems', newData);
+                    return newData;
+                });
+
+                setLastAction(`已登錄：${productName}`);
                 setBarcodeInput(''); setTimeout(() => damagedInputRef.current?.focus(), 10);
             };
 
-            const updateQuantity = (id, delta) => updateCloudData('damagedItems', damagedItems.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
+            // 防止使用者連點加減號導致資料遺失
+            const updateQuantity = (id, delta) => {
+                setDamagedItems(prev => {
+                    const newData = prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item);
+                    updateCloudData('damagedItems', newData);
+                    return newData;
+                });
+            };
+
             const removeDamagedItem = (id) => {
-                const item = damagedItems.find(i => i.id === id); if (item) triggerUndo('damaged', item, damagedItems);
-                updateCloudData('damagedItems', damagedItems.filter(i => i.id !== id));
+                setDamagedItems(prev => {
+                    const item = prev.find(i => i.id === id); if (item) triggerUndo('damaged', item, prev);
+                    const newData = prev.filter(i => i.id !== id);
+                    updateCloudData('damagedItems', newData);
+                    return newData;
+                });
             };
             const clearAllDamagedItems = () => { if (window.confirm("確定清空所有紀錄嗎？")) { updateCloudData('damagedItems', []); setLastAction(null); } };
 
@@ -608,48 +627,54 @@
             }, [filteredDamagedItems, settings.customCategories]);
 
             // ==========================================
-            // ✨ 新增模組：陳列品典藏庫 (Display Items)
+            // 陳列品典藏庫 (Display Items - 導入防覆寫機制)
             // ==========================================
             const [displayBarcodeInput, setDisplayBarcodeInput] = useState('');
-            const [displayFilter, setDisplayFilter] = useState('stored'); // 'stored' 典藏庫 | 'displayed' 櫃上陳列
-            const [revealedBarcodes, setRevealedBarcodes] = useState({}); // 控制條碼是否顯示
+            const [displayFilter, setDisplayFilter] = useState('stored');
+            const [revealedBarcodes, setRevealedBarcodes] = useState({});
             const displayInputRef = useRef(null);
 
             const handleDisplayScanSubmit = (e) => {
-                e.preventDefault();
-                const barcode = displayBarcodeInput.trim();
-                if (!barcode) return;
-
+                e.preventDefault(); const barcode = displayBarcodeInput.trim(); if (!barcode) return;
                 let productName = settings.customNameMap[barcode] || settings.barcodeMap[barcode] || `未知商品 (條碼: ${barcode})`;
-                const existing = displayItems.findIndex(item => item.barcode === barcode && item.status === displayFilter); // 檢查同狀態中是否有該商品
 
-                let newData;
-                if (existing >= 0) {
-                    newData = [...displayItems];
-                    newData[existing].quantity += 1;
-                    showToast(`📦 已增加典藏數量：${productName}`);
-                } else {
-                    // ✨ 將新增狀態綁定為「目前正在看的那個分類 (displayFilter)」
-                    newData = [...displayItems, { id: Date.now(), barcode, name: productName, quantity: 1, status: displayFilter }];
-                    showToast(`✨ 已登錄至「${displayFilter === 'displayed' ? '展示中' : '已典藏'}」：${productName}`);
-                }
-                updateCloudData('displayItems', newData);
-                setDisplayBarcodeInput('');
-                setTimeout(() => displayInputRef.current?.focus(), 10);
+                setDisplayItems(prev => {
+                    const existing = prev.findIndex(item => item.barcode === barcode && item.status === displayFilter);
+                    const newData = existing >= 0
+                        ? prev.map(item => (item.barcode === barcode && item.status === displayFilter) ? { ...item, quantity: item.quantity + 1 } : item)
+                        : [...prev, { id: Date.now(), barcode, name: productName, quantity: 1, status: displayFilter }];
+                    updateCloudData('displayItems', newData);
+                    return newData;
+                });
+
+                showToast(`✨ 已登錄：${productName}`);
+                setDisplayBarcodeInput(''); setTimeout(() => displayInputRef.current?.focus(), 10);
             };
 
             const toggleDisplayStatus = (id, currentStatus) => {
                 const newStatus = currentStatus === 'displayed' ? 'stored' : 'displayed';
-                updateCloudData('displayItems', displayItems.map(item => item.id === id ? { ...item, status: newStatus } : item), newStatus === 'displayed' ? '已轉移至展示中！' : '已收回典藏庫！');
+                setDisplayItems(prev => {
+                    const newData = prev.map(item => item.id === id ? { ...item, status: newStatus } : item);
+                    updateCloudData('displayItems', newData, newStatus === 'displayed' ? '已轉移至展示中！' : '已收回典藏庫！');
+                    return newData;
+                });
             };
 
             const updateDisplayQuantity = (id, delta) => {
-                updateCloudData('displayItems', displayItems.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
+                setDisplayItems(prev => {
+                    const newData = prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item);
+                    updateCloudData('displayItems', newData);
+                    return newData;
+                });
             };
 
             const removeDisplayItem = (id) => {
                 if (window.confirm("確定要從清單中永久移除此陳列品嗎？")) {
-                    updateCloudData('displayItems', displayItems.filter(item => item.id !== id));
+                    setDisplayItems(prev => {
+                        const newData = prev.filter(item => item.id !== id);
+                        updateCloudData('displayItems', newData);
+                        return newData;
+                    });
                 }
             };
 
