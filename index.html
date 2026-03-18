@@ -399,54 +399,93 @@
             };
 
             // ==========================================
-            // ✨ 新增：極簡相機掃描與「自動加入」邏輯
+            // ✨ 新增：極簡相機掃描與「自動加入」邏輯 (防彈防連刷版)
             // ==========================================
             const [scannerOpen, setScannerOpen] = useState(false);
             const [scannerTarget, setScannerTarget] = useState('');
             const [dictSearch, setDictSearch] = useState('');
 
-            // 利用 Ref 確保相機回呼時，能抓到最熱騰騰的資料
+            // 1. 建立掃描防護鎖：防止手機鏡頭在關閉前「連續觸發」相同的條碼
+            const scanLockRef = useRef(false);
+
             const latestDataRef = useRef({ damagedItems, displayItems, barcodeItems, settings, displayFilter });
             useEffect(() => {
                 latestDataRef.current = { damagedItems, displayItems, barcodeItems, settings, displayFilter };
             }, [damagedItems, displayItems, barcodeItems, settings, displayFilter]);
 
-            // 自動送出引擎 (修復：清除隱形空白字元 ＋ 防止快速掃描覆寫)
+            // 自動送出引擎
             const processAutoSubmit = (rawBarcode, target) => {
-                // ✨ 修復「未知商品」：強制清除條碼頭尾的隱形空白與換行符號
-                const barcode = rawBarcode.trim();
+                // 2. 終極字串淨化：拔除所有的換行、空白、零寬字元，只保留「英文字母、數字與橫線」
+                const barcode = rawBarcode.replace(/[^a-zA-Z0-9-]/g, '').trim();
                 const state = latestDataRef.current;
                 const productName = state.settings.customNameMap[barcode] || state.settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
 
                 if (target === 'damaged') {
-                    setDamagedItems(prev => {
-                        const existing = prev.findIndex(item => item.barcode === barcode);
-                        const newData = existing >= 0
-                            ? prev.map(item => item.barcode === barcode ? { ...item, quantity: item.quantity + 1 } : item)
-                            : [...prev, { id: Date.now(), barcode, name: productName, quantity: 1 }];
-                        updateCloudData('damagedItems', newData);
-                        return newData;
-                    });
+                    const existing = state.damagedItems.findIndex(item => item.barcode === barcode);
+                    const newData = existing >= 0
+                        ? state.damagedItems.map(item => item.barcode === barcode ? { ...item, quantity: item.quantity + 1 } : item)
+                        : [...state.damagedItems, { id: Date.now(), barcode, name: productName, quantity: 1 }];
+                    setDamagedItems(newData);
+                    updateCloudData('damagedItems', newData);
                     showToast(`📦 盒損已自動加入：${productName}`);
                 } else if (target === 'display') {
-                    setDisplayItems(prev => {
-                        const existing = prev.findIndex(item => item.barcode === barcode && item.status === state.displayFilter);
-                        const newData = existing >= 0
-                            ? prev.map(item => (item.barcode === barcode && item.status === state.displayFilter) ? { ...item, quantity: item.quantity + 1 } : item)
-                            : [...prev, { id: Date.now(), barcode, name: productName, quantity: 1, status: state.displayFilter }];
-                        updateCloudData('displayItems', newData);
-                        return newData;
-                    });
+                    const existing = state.displayItems.findIndex(item => item.barcode === barcode && item.status === state.displayFilter);
+                    const newData = existing >= 0
+                        ? state.displayItems.map(item => (item.barcode === barcode && item.status === state.displayFilter) ? { ...item, quantity: item.quantity + 1 } : item)
+                        : [...state.displayItems, { id: Date.now(), barcode, name: productName, quantity: 1, status: state.displayFilter }];
+                    setDisplayItems(newData);
+                    updateCloudData('displayItems', newData);
                     showToast(`✨ 陳列品已自動登錄：${productName}`);
                 } else if (target === 'print') {
-                    setBarcodeItems(prev => {
-                        const ex = prev.find(i => i.barcode === barcode);
-                        if (ex) { showToast(`✅ 列印數量 +1：${productName}`); return prev.map(i => i.barcode === barcode ? { ...i, quantity: i.quantity + 1 } : i); }
-                        showToast(`🖨️ 已加入待印清單：${productName}`);
-                        return [{ id: Date.now(), barcode, name: productName, quantity: 1 }, ...prev];
-                    });
+                    const existing = state.barcodeItems.find(i => i.barcode === barcode);
+                    const newData = existing
+                        ? state.barcodeItems.map(i => i.barcode === barcode ? { ...i, quantity: i.quantity + 1 } : i)
+                        : [{ id: Date.now(), barcode, name: productName, quantity: 1 }, ...state.barcodeItems];
+                    setBarcodeItems(newData);
+                    showToast(`🖨️ 已加入待印清單：${productName}`);
                 }
             };
+
+            // 相機啟動與停止邏輯
+            useEffect(() => {
+                if (!scannerOpen) {
+                    scanLockRef.current = false; // 相機關閉時，解開防護鎖，準備迎接下一次掃描
+                    return;
+                }
+
+                const html5QrCode = new window.Html5Qrcode("reader");
+
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 120 } },
+                    (decodedText) => {
+                        // 3. 攔截連刷：如果鎖已經關上，直接無視這 0.2 秒內後續湧入的 10 幾次掃描結果！
+                        if (scanLockRef.current) return;
+                        scanLockRef.current = true; // 抓到第一個真實條碼的瞬間，立刻上鎖！
+
+                        if (typeof navigator.vibrate === 'function') navigator.vibrate(100);
+
+                        html5QrCode.stop().then(() => {
+                            setScannerOpen(false);
+                            processAutoSubmit(decodedText, scannerTarget);
+                        }).catch(() => {
+                            // 即使停止相機出現延遲，也要強行處理資料並關閉 UI
+                            setScannerOpen(false);
+                            processAutoSubmit(decodedText, scannerTarget);
+                        });
+                    },
+                    (error) => { /* 忽略背景尋找條碼的過程 */ }
+                ).catch(err => {
+                    showToast('⚠️ 無法啟動相機，請確認瀏覽器權限');
+                    setScannerOpen(false);
+                });
+
+                return () => {
+                    if (html5QrCode.isScanning) {
+                        html5QrCode.stop().catch(console.error);
+                    }
+                };
+            }, [scannerOpen, scannerTarget]);
 
             // ✨ 新增：控制字典庫的折疊與分頁狀態
             const [isDictExpanded, setIsDictExpanded] = useState(true);
