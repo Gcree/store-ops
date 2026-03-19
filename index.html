@@ -77,6 +77,46 @@
             background: #64748b;
         }
 
+        /* ==========================================
+           ✨ 全域 UI/UX 微交互升級 (iOS / Android 最佳化)
+           ========================================== */
+        
+        /* 1. iOS 底部安全區與全域點擊優化 */
+        body {
+            /* 讓系統底部永遠留出 iPhone 黑條的空間 */
+            padding-bottom: env(safe-area-inset-bottom);
+            /* 移除手機端點擊按鈕時，醜陋的預設灰色方形閃爍 */
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        /* 2 & 3. 全局按鈕：物理下壓 Q 彈回饋 + 觸控加速 */
+        button {
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            /* 關閉瀏覽器預設的雙擊放大，讓點擊判定瞬間快 300ms */
+            touch-action: manipulation; 
+        }
+        button:active {
+            /* 所有按鈕點下去瞬間，都會有真實的內縮感 */
+            transform: scale(0.95) !important;
+        }
+
+        /* 4. 全局 Sticky 標題列：自動加上毛玻璃與滾動陰影 */
+        .sticky.top-0 {
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            background-color: rgba(248, 250, 252, 0.85) !important; /* Tailwind slate-50 的半透明版 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
+            z-index: 20;
+        }
+        
+        /* 支援深色模式的毛玻璃 */
+        .dark .sticky.top-0 {
+            background-color: rgba(30, 41, 59, 0.85) !important; /* Tailwind slate-800 的半透明版 */
+            border-bottom: 1px solid rgba(51, 65, 85, 0.8) !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2) !important;
+        }
+
         /* 列印專用 CSS */
         @media print {
 
@@ -378,7 +418,7 @@
                             {cat.keywords}
                         </div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); onDelete(cat.id); }} className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0 shadow-sm border border-transparent hover:border-red-100 dark:hover:border-red-500/20" title="刪除規則">
+                    <button onClick={(e) => { e.stopPropagation(); onDelete(cat.id); }} className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0 shadow-sm border border-transparent hover:border-red-100 dark:hover:border-red-500/20" title="刪除規則">
                         <i className="fa-solid fa-trash-can"></i>
                     </button>
                 </div>
@@ -1102,8 +1142,9 @@
                         </div>
                     )}
 
-                    <div className="pt-8 pb-32 px-4 max-w-6xl mx-auto min-h-screen w-full no-print">
-                        <div className="space-y-6">
+                    {/* ✨ 導入網格系統邊距：手機 24px (px-6)，平板/電腦加大 */}
+              <div className="pt-8 pb-32 px-6 md:px-8 lg:px-12 max-w-7xl mx-auto min-h-screen w-full no-print">
+                <div className="space-y-6 md:space-y-8">
 
                             {/* =========================================
                         分頁 1: 銷售日報表
@@ -1444,9 +1485,9 @@
                                                                                     {/* 操作按鈕群 */}
                                                                                     <div className="flex items-center gap-3 ml-auto">
                                                                                         <div className="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden p-1">
-                                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-colors shadow-sm"><i className="fa-solid fa-minus text-xs"></i></button>
+                                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-colors shadow-sm"><i className="fa-solid fa-minus text-xs"></i></button>
                                                                                             <div className="w-10 text-center font-bold text-slate-800 dark:text-slate-100 text-base">{item.quantity}</div>
-                                                                                            <button onClick={() => updateQuantity(item.id, 1)} className="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-colors shadow-sm"><i className="fa-solid fa-plus text-xs"></i></button>
+                                                                                            <button onClick={() => updateQuantity(item.id, 1)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-colors shadow-sm"><i className="fa-solid fa-plus text-xs"></i></button>
                                                                                         </div>
 
                                                                                         <button onClick={() => removeDamagedItem(item.id)} className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0">
@@ -1607,7 +1648,7 @@
                                     <div className="lg:col-span-4 space-y-6">
                                         <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
                                             <div className="mb-5">
-                                                <div className="w-10 h-10 bg-blue-50 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400 rounded-lg flex items-center justify-center mb-3">
+                                                <div className="w-11 h-11 bg-blue-50 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400 rounded-lg flex items-center justify-center mb-3">
                                                     <i className="fa-solid fa-barcode text-xl"></i>
                                                 </div>
                                                 <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">連續條碼掃描</h3>
@@ -1926,11 +1967,11 @@
 
                         {/* 左側：主要分頁按鈕 */}
                         <div className="flex items-center gap-2 sm:gap-3 px-2">
-                            <button onClick={() => { setActiveTab('daily-report'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'daily-report' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="銷售日報"><i className="fa-solid fa-file-invoice text-lg"></i></button>
-                            <button onClick={() => { setActiveTab('damaged-box'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'damaged-box' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="盒損登記"><i className="fa-solid fa-box-open text-lg"></i></button>
-                            <button onClick={() => { setActiveTab('display-items'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'display-items' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="陳列品管理"><i className="fa-solid fa-gem text-lg"></i></button>
-                            <button onClick={() => { setActiveTab('barcode-print'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'barcode-print' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="條碼列印"><i className="fa-solid fa-barcode text-lg"></i></button>
-                            <button onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'settings' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="系統設定"><i className="fa-solid fa-gear text-lg"></i></button>
+                            <button onClick={() => { setActiveTab('daily-report'); setIsMobileMenuOpen(false); }} className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'daily-report' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="銷售日報"><i className="fa-solid fa-file-invoice text-lg"></i></button>
+                            <button onClick={() => { setActiveTab('damaged-box'); setIsMobileMenuOpen(false); }} className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'damaged-box' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="盒損登記"><i className="fa-solid fa-box-open text-lg"></i></button>
+                            <button onClick={() => { setActiveTab('display-items'); setIsMobileMenuOpen(false); }} className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'display-items' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="陳列品管理"><i className="fa-solid fa-gem text-lg"></i></button>
+                            <button onClick={() => { setActiveTab('barcode-print'); setIsMobileMenuOpen(false); }} className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'barcode-print' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="條碼列印"><i className="fa-solid fa-barcode text-lg"></i></button>
+                            <button onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }} className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'settings' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="系統設定"><i className="fa-solid fa-gear text-lg"></i></button>
                         </div>
 
                         {/* 中間：分隔線 (僅桌機/平板顯示) */}
@@ -1941,17 +1982,17 @@
                             <div className={`text-xs font-bold px-3 py-1.5 rounded-full ${dbStatus.includes('同步') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
                                 {dbStatus}
                             </div>
-                            <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-700 text-amber-500 hover:scale-110 transition-transform">
+                            <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-11 h-11 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-700 text-amber-500 hover:scale-110 transition-transform">
                                 <i className={`fa-solid ${isDarkMode ? 'fa-moon' : 'fa-sun'}`}></i>
                             </button>
-                            <button onClick={handleLogout} className="w-10 h-10 rounded-full flex items-center justify-center bg-rose-50 dark:bg-rose-500/20 text-rose-500 hover:scale-110 transition-transform" title="登出">
+                            <button onClick={handleLogout} className="w-11 h-11 rounded-full flex items-center justify-center bg-rose-50 dark:bg-rose-500/20 text-rose-500 hover:scale-110 transition-transform" title="登出">
                                 <i className="fa-solid fa-arrow-right-from-bracket"></i>
                             </button>
                         </div>
 
                         {/* 右側：漢堡選單按鈕 (僅手機顯示) */}
                         <div className="sm:hidden relative ml-1 pr-1">
-                            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isMobileMenuOpen ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isMobileMenuOpen ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
                                 <i className={`fa-solid ${isMobileMenuOpen ? 'fa-xmark' : 'fa-bars'} text-lg`}></i>
                             </button>
 
@@ -2015,7 +2056,7 @@
                                     <i className="fa-solid fa-barcode text-blue-400 mr-2"></i>
                                     {scannerTarget === 'damaged' ? '自動登錄：盒損品' : scannerTarget === 'display' ? '自動登錄：陳列品' : '自動登錄：列印清單'}
                                 </div>
-                                <button onClick={() => setScannerOpen(false)} className="w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-lg border border-white/10">
+                                <button onClick={() => setScannerOpen(false)} className="w-11 h-11 rounded-full bg-white/10 text-white hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-lg border border-white/10">
                                     <i className="fa-solid fa-xmark text-lg"></i>
                                 </button>
                             </div>
@@ -2042,27 +2083,27 @@
 
 
 
-                    {/* ✨ 質感底色 ＋ 紅色進度條 Undo 復原介面 */}
-                    {undoData && (
-                        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-6 py-3.5 rounded-2xl shadow-2xl flex items-center gap-5 z-[80] overflow-hidden animate-slide-up-fade border border-red-200 dark:border-red-700 no-print transition-colors">
-                            <span className="text-sm font-bold tracking-wide flex items-center">
-                                <i className="fa-solid fa-circle-exclamation text-rose-500 mr-2"></i>
-                                {undoData.message}
-                            </span>
-                            <button onClick={handleUndoAction} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-lg font-bold text-sm active:scale-95 flex items-center gap-2 transition-all cursor-pointer shadow-sm border border-slate-200 dark:border-slate-600">
-                                <i className="fa-solid fa-rotate-left"></i> 復原
-                            </button>
-                            {/* 5 秒直線倒數進度條 (警戒紅) */}
-                            <div className="absolute bottom-0 left-0 h-1.5 bg-rose-500 animate-shrink-x origin-left w-full shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
-                        </div>
-                    )}
+                    {/* ✨ 質感底色 ＋ 紅色進度條 Undo 復原介面 (修復手機版擠壓與 24px 邊距) */}
+              {undoData && (
+                <div className="fixed bottom-28 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] md:w-auto md:min-w-[360px] max-w-md bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-4 md:px-6 md:py-4 rounded-2xl shadow-2xl flex items-center justify-between gap-4 z-[80] overflow-hidden animate-slide-up-fade border border-slate-200 dark:border-slate-700 no-print transition-colors">
+                    <span className="text-sm font-bold tracking-wide flex items-center flex-1 leading-snug min-w-0">
+                        <i className="fa-solid fa-circle-exclamation text-rose-500 mr-2.5 shrink-0"></i>
+                        <span className="line-clamp-2">{undoData.message}</span>
+                    </span>
+                    <button onClick={handleUndoAction} className="shrink-0 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2 transition-all cursor-pointer shadow-sm border border-slate-200 dark:border-slate-600">
+                        <i className="fa-solid fa-rotate-left"></i> 復原
+                    </button>
+                    {/* 5 秒直線倒數進度條 */}
+                    <div className="absolute bottom-0 left-0 h-1.5 bg-rose-500 animate-shrink-x origin-left w-full shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
+                </div>
+            )}
 
-                    {/* 這裡是你原本用來顯示成功/錯誤訊息的綠色小彈窗 */}
-                    {toast && (
-                        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-emerald-500 text-white px-6 py-2 rounded-full shadow-lg font-bold animate-slide-up-fade no-print">
-                            {toast}
-                        </div>
-                    )}
+                    {/* ✨ 全域綠色 Toast 提示 (修復手機版寬度與 24px 邊距) */}
+              {toast && (
+                <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] sm:w-auto max-w-md z-[60] bg-emerald-500 text-white px-6 py-3.5 rounded-2xl shadow-xl font-bold animate-slide-up-fade no-print flex items-center justify-center text-center text-sm md:text-base leading-snug">
+                  {toast}
+                </div>
+              )}
 
                     {/* =========================================
                   列印渲染區域 (Print Only DOM)
