@@ -294,11 +294,13 @@
             return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
         };
         const determineCategory = (productName, categories) => {
+            // ✨ 防呆：確保比對前，將品名與關鍵字一律轉為小寫 (toLowerCase)，實現大小寫通吃
+            const lowerProductName = (productName || '').toLowerCase();
             for (let cat of categories) {
-                const keywords = cat.keywords.split(',').map(k => k.trim()).filter(k => k);
-                if (keywords.some(k => productName.includes(k))) return cat.name;
+                const keywords = cat.keywords.split(',').map(k => k.trim().toLowerCase()).filter(k => k);
+                if (keywords.some(k => lowerProductName.includes(k))) return cat.name;
             }
-            return '📦 其他未分類';
+            return '📦 其他 IP';
         };
 
         function BarcodeImage({ value, name, printMode = false, mini = false, hideName = false, quantity = 1 }) {
@@ -331,10 +333,54 @@
             useEffect(() => { if (isEditing) inputRef.current?.focus(); }, [isEditing]);
             const save = () => { if (tempName.trim() && tempName !== item.name) onSave(item.id, item.barcode, tempName.trim()); setIsEditing(false); };
 
-            if (isEditing) return <input ref={inputRef} type="text" value={tempName} onChange={e => setTempName(e.target.value)} onBlur={save} onKeyDown={e => e.key === 'Enter' && save()} className="w-full px-2 py-1 text-sm border border-indigo-300 rounded dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />;
+            if (isEditing) return <input ref={inputRef} type="text" value={tempName} onChange={e => setTempName(e.target.value)} onBlur={save} onKeyDown={e => e.key === 'Enter' && save()} className="w-full px-2 py-1 text-sm border border-blue-300 rounded dark:bg-slate-700 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" />;
             return (
-                <div className={`font-bold text-lg cursor-pointer group flex items-center gap-2 transition-colors ${item.name.includes('未知商品') ? 'text-rose-500 hover:text-rose-600' : 'hover:text-indigo-500'}`} onClick={() => setIsEditing(true)}>
+                <div className={`font-bold text-lg cursor-pointer group flex items-center gap-2 transition-colors ${item.name.includes('未知商品') ? 'text-rose-500 hover:text-rose-600' : 'hover:text-blue-500'}`} onClick={() => setIsEditing(true)}>
                     <span>{item.name}</span><i className="fa-solid fa-pen text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                </div>
+            );
+        }
+
+        // ✨ 新增：自動分類規則的專屬「原地編輯」元件 (Blue 色系一致版)
+        function EditableCategoryItem({ cat, onSave, onDelete }) {
+            const [isEditing, setIsEditing] = useState(false);
+            const [tempName, setTempName] = useState(cat.name);
+            const [tempKeys, setTempKeys] = useState(cat.keywords);
+
+            const handleSave = () => {
+                if (tempName.trim() && tempKeys.trim()) {
+                    onSave(cat.id, tempName.trim(), tempKeys.trim());
+                }
+                setIsEditing(false);
+            };
+
+            if (isEditing) {
+                return (
+                    <div className="flex flex-col sm:flex-row gap-3 bg-blue-50 dark:bg-slate-800/80 p-4 rounded-xl border border-blue-200 dark:border-blue-500/50 shadow-sm animate-scale-in">
+                        <input type="text" value={tempName} onChange={e => setTempName(e.target.value)} className="flex-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 font-bold" placeholder="分類名稱 (例: 星星人系列)" />
+                        <input type="text" value={tempKeys} onChange={e => setTempKeys(e.target.value)} className="flex-2 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="關鍵字 (逗號分隔)" />
+                        <div className="flex gap-2 justify-end sm:items-center">
+                            <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-sm text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors font-medium">取消</button>
+                            <button onClick={handleSave} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold shadow-sm flex items-center"><i className="fa-solid fa-check mr-1.5"></i>儲存</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900 px-5 py-4 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-500/30 transition-colors group cursor-pointer" onClick={() => setIsEditing(true)}>
+                    <div className="flex-1 pr-4">
+                        <div className="font-bold text-slate-700 dark:text-slate-200 flex items-center text-base">
+                            {cat.name}
+                            <i className="fa-solid fa-pen ml-3 text-xs text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" title="點擊編輯"></i>
+                        </div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed font-mono bg-white dark:bg-slate-800 inline-block px-2 py-0.5 rounded border border-slate-100 dark:border-slate-700">
+                            {cat.keywords}
+                        </div>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); onDelete(cat.id); }} className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0 shadow-sm border border-transparent hover:border-red-100 dark:hover:border-red-500/20" title="刪除規則">
+                        <i className="fa-solid fa-trash-can"></i>
+                    </button>
                 </div>
             );
         }
@@ -467,18 +513,23 @@
                 updateCloudData('settings', { ...settings, customNameMap: { ...settings.customNameMap, [barcode]: newName } }, `已更新字典！`);
             };
 
-            const triggerUndo = (listType, itemToDelete, currentList) => {
+            // ==========================================
+            // ✨ 全局復原 (Undo) 引擎大升級：支援任意操作
+            // ==========================================
+            // (這裡不要有 const [undoData...] 的宣告了，因為上面已經有)
+
+            const triggerUndo = (message, onUndoCallback) => {
                 if (undoData && undoData.timerId) clearTimeout(undoData.timerId);
-                const timerId = setTimeout(() => setUndoData(null), 5000);
-                setUndoData({ listType, item: itemToDelete, timerId, previousState: currentList });
+                const timerId = setTimeout(() => setUndoData(null), 5000); // 準確的 5 秒倒數
+                setUndoData({ message, onUndo: onUndoCallback, timerId });
             };
 
             const handleUndoAction = () => {
                 if (!undoData) return;
                 clearTimeout(undoData.timerId);
-                if (undoData.listType === 'damaged') updateCloudData('damagedItems', undoData.previousState);
-                else if (undoData.listType === 'barcode') setBarcodeItems(prev => [undoData.item, ...prev]);
+                if (typeof undoData.onUndo === 'function') undoData.onUndo();
                 setUndoData(null);
+                showToast('✅ 已成功復原操作！');
             };
 
             // ==========================================
@@ -520,13 +571,29 @@
 
             const removeDamagedItem = (id) => {
                 setDamagedItems(prev => {
-                    const item = prev.find(i => i.id === id); if (item) triggerUndo('damaged', item, prev);
+                    const item = prev.find(i => i.id === id);
                     const newData = prev.filter(i => i.id !== id);
+                    if (item) triggerUndo(`已刪除盒損品：${item.name}`, () => {
+                        setDamagedItems(current => {
+                            const restored = [...current, item];
+                            updateCloudData('damagedItems', restored);
+                            return restored;
+                        });
+                    });
                     updateCloudData('damagedItems', newData);
                     return newData;
                 });
             };
-            const clearAllDamagedItems = () => { if (window.confirm("確定清空所有紀錄嗎？")) { updateCloudData('damagedItems', []); setLastAction(null); } };
+            const clearAllDamagedItems = () => {
+                const backup = [...damagedItems];
+                setDamagedItems([]);
+                updateCloudData('damagedItems', []);
+                setLastAction(null);
+                triggerUndo('已清空季末盒損紀錄', () => {
+                    setDamagedItems(backup);
+                    updateCloudData('damagedItems', backup);
+                });
+            };
 
             const filteredDamagedItems = useMemo(() => {
                 if (!damagedSearch.trim()) return damagedItems; const q = damagedSearch.toLowerCase();
@@ -585,13 +652,19 @@
             };
 
             const removeDisplayItem = (id) => {
-                if (window.confirm("確定要從清單中永久移除此陳列品嗎？")) {
-                    setDisplayItems(prev => {
-                        const newData = prev.filter(item => item.id !== id);
-                        updateCloudData('displayItems', newData);
-                        return newData;
+                setDisplayItems(prev => {
+                    const item = prev.find(i => i.id === id);
+                    const newData = prev.filter(i => i.id !== id);
+                    if (item) triggerUndo(`已移除陳列品：${item.name}`, () => {
+                        setDisplayItems(current => {
+                            const restored = [...current, item];
+                            updateCloudData('displayItems', restored);
+                            return restored;
+                        });
                     });
-                }
+                    updateCloudData('displayItems', newData);
+                    return newData;
+                });
             };
 
             const toggleBarcodeVisibility = (id) => {
@@ -646,10 +719,20 @@
 
             const updateBarcodeItemQuantity = (id, delta) => setBarcodeItems(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
             const removeBarcodeItem = (id) => {
-                const item = barcodeItems.find(i => i.id === id); if (item) triggerUndo('barcode', item);
-                setBarcodeItems(prev => prev.filter(i => i.id !== id));
+                setBarcodeItems(prev => {
+                    const item = prev.find(i => i.id === id);
+                    const newData = prev.filter(i => i.id !== id);
+                    if (item) triggerUndo(`已從列印清單移除：${item.name}`, () => {
+                        setBarcodeItems(current => [item, ...current]);
+                    });
+                    return newData;
+                });
             };
-            const clearAllBarcodeItems = () => { if (window.confirm("確定清空預覽列表嗎？")) setBarcodeItems([]); };
+            const clearAllBarcodeItems = () => {
+                const backup = [...barcodeItems];
+                setBarcodeItems([]);
+                triggerUndo('已清空待印清單', () => setBarcodeItems(backup));
+            };
 
             const filteredBarcodeItems = useMemo(() => {
                 if (!barcodeSearch.trim()) return barcodeItems; const q = barcodeSearch.toLowerCase();
@@ -732,10 +815,19 @@
                 }
                 updateCloudData('settings', { ...settings, barcodeMap: updatedBarcodeMap }); setCurrentStore(storeName);
                 const newDateStr = firstDate || new Date().toISOString().split('T')[0];
-                setTodayStats({ dateStr: newDateStr, sales: todaySales, points: pointsRedeemed, itemStats, bigToys: { '1000': mega1000, '400': mega400 } });
-                setSelectedMonth(formatDateStr(newDateStr).split('/')[0]); showToast('報表解析成功！已同步字典至雲端。');
+
+                const newStats = { dateStr: newDateStr, sales: todaySales, points: pointsRedeemed, itemStats, bigToys: { '1000': mega1000, '400': mega400 } };
+                setTodayStats(newStats);
+                setSelectedMonth(formatDateStr(newDateStr).split('/')[0]);
+
+                // ✨ 升級：自動存檔邏輯 (取代原本的手動按鈕)
+                const formattedDate = formatDateStr(newDateStr);
+                const filtered = dailyRecords.filter(r => r.date !== formattedDate);
+                const newRecords = [...filtered, { date: formattedDate, weekday: getWeekday(newDateStr), sales: todaySales, points: pointsRedeemed, bigToys: newStats.bigToys }].sort((a, b) => a.date.localeCompare(b.date));
+                updateCloudData('dailyRecords', newRecords, '報表解析成功！已自動同步至雲端 ☁️');
             };
 
+            // ✨ 把不小心刪掉的上傳處理函式補回來！
             const handleFileUpload = (e) => {
                 const file = e.target.files[0]; if (!file) return; setIsProcessing(true); const reader = new FileReader();
                 if (file.name.toLowerCase().endsWith('.csv')) {
@@ -750,14 +842,16 @@
                 e.target.value = null;
             };
 
-            const saveRecord = () => {
-                if (!todayStats) return;
-                const formattedDate = formatDateStr(todayStats.dateStr);
-                const filtered = dailyRecords.filter(r => r.date !== formattedDate);
-                updateCloudData('dailyRecords', [...filtered, { date: formattedDate, weekday: getWeekday(todayStats.dateStr), sales: todayStats.sales, points: todayStats.points, bigToys: todayStats.bigToys }].sort((a, b) => a.date.localeCompare(b.date)), '已同步儲存今日業績至雲端！');
+            const deleteRecord = (dateToRemove) => {
+                const recordToRestore = dailyRecords.find(r => r.date === dateToRemove);
+                const newData = dailyRecords.filter(r => r.date !== dateToRemove);
+                updateCloudData('dailyRecords', newData);
+                if (recordToRestore) {
+                    triggerUndo(`已刪除 ${dateToRemove} 的業績紀錄`, () => {
+                        updateCloudData('dailyRecords', [...newData, recordToRestore].sort((a, b) => a.date.localeCompare(b.date)));
+                    });
+                }
             };
-
-            const deleteRecord = (dateToRemove) => updateCloudData('dailyRecords', dailyRecords.filter(r => r.date !== dateToRemove));
 
             const handleBulkImport = () => {
                 if (!bulkInput.trim()) return;
@@ -964,21 +1058,21 @@
 
             const handleLogout = () => { auth.signOut().then(() => showToast('👋 已登出系統')); };
 
-            if (authLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white"><i className="fa-solid fa-circle-notch fa-spin text-3xl text-indigo-500"></i></div>;
+            if (authLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white"><i className="fa-solid fa-circle-notch fa-spin text-3xl text-blue-500"></i></div>;
 
             if (!user) {
                 return (
                     <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex items-center justify-center p-6 transition-colors duration-300 no-print">
                         <button onClick={() => setIsDarkMode(!isDarkMode)} className="absolute top-6 right-6 w-12 h-12 rounded-full flex items-center justify-center bg-white dark:bg-slate-800 text-amber-500 shadow-sm hover:scale-110 transition-transform"><i className={`fa-solid ${isDarkMode ? 'fa-moon' : 'fa-sun'} text-xl`}></i></button>
                         <div className={`w-full max-w-sm bg-white dark:bg-slate-800 p-8 rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-700/50 flex flex-col items-center ${passcodeError ? 'animate-shake' : 'animate-scale-in'}`}>
-                            <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-3xl flex items-center justify-center mb-6 shadow-inner"><i className="fa-solid fa-shield-halved text-4xl"></i></div>
+                            <div className="w-20 h-20 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-3xl flex items-center justify-center mb-6 shadow-inner"><i className="fa-solid fa-shield-halved text-4xl"></i></div>
                             <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">P-ops 懶人系統</h1>
                             <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 text-center">請輸入帳號密碼登入</p>
                             <form onSubmit={handleLogin} className="w-full flex flex-col gap-4">
-                                <div className="relative"><i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i><input type="email" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="員工 Email" className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-medium transition-colors" /></div>
-                                <div className="relative"><i className="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i><input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="密碼" className={`w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-900 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-medium transition-colors ${authError ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 dark:border-slate-700'}`} /></div>
+                                <div className="relative"><i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i><input type="email" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="員工 Email" className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 dark:text-white font-medium transition-colors" /></div>
+                                <div className="relative"><i className="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i><input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="密碼" className={`w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-900 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 dark:text-white font-medium transition-colors ${authError ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 dark:border-slate-700'}`} /></div>
                                 {authError && <p className="text-red-500 text-sm font-bold text-center">{authError}</p>}
-                                <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-indigo-600/30 transition-all active:scale-95 mt-2">安全登入</button>
+                                <button type="submit" className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-600/30 transition-all active:scale-95 mt-2">安全登入</button>
                             </form>
                         </div>
                         {toast && <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[60] bg-rose-500 text-white px-6 py-2 rounded-full shadow-lg font-bold animate-slide-up-fade">{toast}</div>}
@@ -999,7 +1093,7 @@
                     {user && !isDataReady && (
                         <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center transition-all">
                             <div className="bg-white dark:bg-slate-800 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-scale-in border border-slate-200 dark:border-slate-700">
-                                <i className="fa-solid fa-circle-notch fa-spin text-2xl text-indigo-500"></i>
+                                <i className="fa-solid fa-circle-notch fa-spin text-2xl text-blue-500"></i>
                                 <div>
                                     <div className="font-bold text-slate-800 dark:text-slate-100 text-sm">正在安全同步雲端資料...</div>
                                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">為避免資料覆寫，請稍候</div>
@@ -1018,23 +1112,24 @@
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full pb-10 animate-scale-in">
                                     <div className="lg:col-span-7 space-y-6">
                                         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
-                                            <h2 className="text-xl font-semibold mb-4 flex items-center dark:text-slate-100"><i className="fa-solid fa-cloud-arrow-up text-indigo-500 mr-2"></i>上傳今日報表</h2>
+                                            <h2 className="text-xl font-semibold mb-4 flex items-center dark:text-slate-100"><i className="fa-solid fa-cloud-arrow-up text-blue-500 mr-2"></i>上傳今日報表</h2>
                                             <div className="flex items-center justify-center w-full">
-                                                <label className={`flex flex-col items-center justify-center w-full h-32 border-2 ${isProcessing ? 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800' : 'border-indigo-200 dark:border-indigo-500/30 border-dashed bg-indigo-50 dark:bg-indigo-500/5 hover:bg-indigo-100 dark:hover:bg-indigo-500/10 cursor-pointer'} rounded-xl transition-colors`}>
+                                                <label className={`flex flex-col items-center justify-center w-full h-32 border-2 ${isProcessing ? 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800' : 'border-blue-200 dark:border-blue-500/30 border-dashed bg-blue-50 dark:bg-blue-500/5 hover:bg-blue-100 dark:hover:bg-blue-500/10 cursor-pointer'} rounded-xl transition-colors`}>
                                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                        <i className={`fa-solid fa-cloud-arrow-up text-3xl ${isProcessing ? 'text-slate-400' : 'text-indigo-500'} mb-2`}></i>
+                                                        <i className={`fa-solid fa-cloud-arrow-up text-3xl ${isProcessing ? 'text-slate-400' : 'text-blue-500'} mb-2`}></i>
                                                         <p className="mb-2 text-sm text-slate-600 dark:text-slate-300">{isProcessing ? '處理檔案中...' : <><span className="font-semibold">點擊上傳</span> 或拖曳 Excel 檔案至此</>}</p>
                                                     </div>
                                                     <input type="file" className="hidden" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} disabled={isProcessing} />
                                                 </label>
                                             </div>
                                             {todayStats && (
-                                                <div className="mt-4 p-4 bg-indigo-50 dark:bg-indigo-500/20 rounded-xl flex justify-between items-center transition-colors">
+                                                <div className="mt-4 p-5 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex justify-between items-center transition-colors border border-emerald-200 dark:border-emerald-500/30 shadow-sm">
                                                     <div>
-                                                        <span className="block text-sm text-indigo-600 dark:text-indigo-300 font-medium">今日資料已解析 ({todayStats.dateStr})</span>
-                                                        <span className="block text-2xl font-bold text-indigo-900 dark:text-indigo-100">${formatMoney(todayStats.sales)}</span>
+                                                        <span className="block text-sm text-emerald-600 dark:text-emerald-400 font-bold mb-1">
+                                                            <i className="fa-solid fa-check-circle mr-1.5"></i>今日報表已自動同步 ({todayStats.dateStr})
+                                                        </span>
+                                                        <span className="block text-3xl font-black text-emerald-700 dark:text-emerald-100">${formatMoney(todayStats.sales)}</span>
                                                     </div>
-                                                    <button onClick={saveRecord} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center shadow-sm"><i className="fa-solid fa-cloud-arrow-up mr-2"></i> 儲存至雲端</button>
                                                 </div>
                                             )}
                                         </div>
@@ -1101,7 +1196,7 @@
                                             <div className="mb-6 w-full md:w-1/2">
                                                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">選定月份業績目標 (萬)</label>
                                                 <div className="relative">
-                                                    <input type="number" className="w-full pl-4 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none dark:bg-slate-900 dark:text-white" value={settings.targetAmount} onChange={(e) => updateCloudData('settings', { ...settings, targetAmount: Number(e.target.value) })} />
+                                                    <input type="number" className="w-full pl-4 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-900 dark:text-white" value={settings.targetAmount} onChange={(e) => updateCloudData('settings', { ...settings, targetAmount: Number(e.target.value) })} />
                                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-slate-500">萬</span></div>
                                                 </div>
                                             </div>
@@ -1110,11 +1205,11 @@
                                                 <div className="flex flex-col sm:flex-row gap-2 mb-3">
                                                     <input type="text" className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="輸入條碼..." value={newBarcodeStr} onChange={(e) => setNewBarcodeStr(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addNewBarcode()} />
                                                     <div className="relative w-full sm:w-32"><input type="number" className="w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="端盒數量" value={newBoxSize} onChange={(e) => setNewBoxSize(Number(e.target.value))} min="1" /><div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-slate-500 text-xs">入/盒</span></div></div>
-                                                    <button onClick={addNewBarcode} className="px-4 py-2 bg-slate-800 dark:bg-indigo-600 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-indigo-700 transition-colors"><i className="fa-solid fa-plus mr-1"></i> 新增</button>
+                                                    <button onClick={addNewBarcode} className="px-4 py-2 bg-slate-800 dark:bg-blue-600 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-blue-700 transition-colors"><i className="fa-solid fa-plus mr-1"></i> 新增</button>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {settings.newBarcodes.map(code => (
-                                                        <span key={code} className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-sm font-medium">{code} <span className="text-xs ml-1 opacity-60 font-normal">({settings.boxSizeMap[code] || 6}入)</span><button onClick={() => removeBarcode(code)} className="ml-2 hover:text-red-500"><i className="fa-solid fa-xmark"></i></button></span>
+                                                        <span key={code} className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-sm font-medium">{code} <span className="text-xs ml-1 opacity-60 font-normal">({settings.boxSizeMap[code] || 6}入)</span><button onClick={() => removeBarcode(code)} className="ml-2 hover:text-red-500"><i className="fa-solid fa-xmark"></i></button></span>
                                                     ))}
                                                 </div>
                                             </div>
@@ -1131,7 +1226,7 @@
                                             <div className="flex justify-between items-center mb-4 shrink-0">
                                                 <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center"><i className="fa-solid fa-file-lines text-slate-400 mr-2"></i> 報表預覽</h2>
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => setIsQRCodeModalOpen(true)} className="px-3 md:px-4 py-2 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/30 transition-colors flex items-center text-sm font-medium shadow-sm border border-indigo-100 dark:border-indigo-500/20"><i className="fa-solid fa-qrcode mr-2"></i> <span className="hidden md:inline">產生條碼</span><span className="md:hidden">條碼</span></button>
+                                                    <button onClick={() => setIsQRCodeModalOpen(true)} className="px-3 md:px-4 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-colors flex items-center text-sm font-medium shadow-sm border border-blue-100 dark:border-blue-500/20"><i className="fa-solid fa-qrcode mr-2"></i> <span className="hidden md:inline">產生條碼</span><span className="md:hidden">條碼</span></button>
                                                     <button onClick={() => navigator.clipboard.writeText(reportContent).then(() => showToast('報表已複製！'))} className="px-3 md:px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-slate-600 transition-colors flex items-center text-sm font-medium shadow-sm"><i className="fa-solid fa-copy md:mr-2"></i> <span className="hidden md:inline">複製</span></button>
                                                 </div>
                                             </div>
@@ -1165,14 +1260,14 @@
                                                 </div>
                                                 <input
                                                     ref={damagedInputRef} type="text" value={barcodeInput} onChange={(e) => setBarcodeInput(e.target.value)}
-                                                    className="block w-full pl-12 pr-4 py-3 md:py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white text-base transition-all outline-none shadow-inner font-mono"
+                                                    className="block w-full pl-12 pr-4 py-3 md:py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 dark:text-white text-base transition-all outline-none shadow-inner font-mono"
                                                     placeholder="請輸入或掃描條碼..." autoFocus
                                                 />
                                             </div>
-                                            <button type="button" onClick={() => { setScannerTarget('damaged'); setScannerOpen(true); }} className="px-5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-colors shadow-sm flex items-center justify-center">
+                                            <button type="button" onClick={() => { setScannerTarget('damaged'); setScannerOpen(true); }} className="px-5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-colors shadow-sm flex items-center justify-center">
                                                 <i className="fa-solid fa-camera text-xl"></i>
                                             </button>
-                                            <button type="submit" className="px-6 bg-slate-800 dark:bg-indigo-600 text-white hover:bg-slate-900 dark:hover:bg-indigo-700 rounded-xl font-bold transition-colors shadow-sm">
+                                            <button type="submit" className="px-6 bg-slate-800 dark:bg-blue-600 text-white hover:bg-slate-900 dark:hover:bg-blue-700 rounded-xl font-bold transition-colors shadow-sm">
                                                 加入
                                             </button>
                                         </form>
@@ -1198,7 +1293,7 @@
                                                     >
                                                         <div className="flex items-center justify-between lg:mb-3">
                                                             <div className="flex items-center">
-                                                                <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mr-3 shadow-inner">
+                                                                <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mr-3 shadow-inner">
                                                                     <i className="fa-solid fa-list-check text-base"></i>
                                                                 </div>
                                                                 <div>
@@ -1215,7 +1310,7 @@
                                                         {/* 操作按鈕：大螢幕永遠顯示，小螢幕展開時才顯示 */}
                                                         <div className={`items-center gap-2 mt-3 lg:mt-0 ${isDamagedOverviewExpanded ? 'flex' : 'hidden lg:flex'}`}>
                                                             {/* ✨ 補回列印按鈕 */}
-                                                            <button onClick={(e) => { e.stopPropagation(); executePrint('damaged'); }} className="flex-1 text-xs px-2 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-400 rounded-lg transition-colors font-bold border border-indigo-200 dark:border-indigo-500/30 shadow-sm flex justify-center items-center">
+                                                            <button onClick={(e) => { e.stopPropagation(); executePrint('damaged'); }} className="flex-1 text-xs px-2 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-400 rounded-lg transition-colors font-bold border border-blue-200 dark:border-blue-500/30 shadow-sm flex justify-center items-center">
                                                                 <i className="fa-solid fa-print mr-1.5"></i>列印
                                                             </button>
                                                             <button onClick={(e) => { e.stopPropagation(); exportToExcel(damagedItems, '盒損盤點清單'); }} className="flex-1 text-xs px-2 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg transition-colors font-bold border border-emerald-200 dark:border-emerald-500/30 shadow-sm flex justify-center items-center">
@@ -1237,7 +1332,7 @@
                                                                     <div key={`overview-${category}`} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm animate-scale-in">
                                                                         <h5 className="font-bold text-slate-700 dark:text-slate-300 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 flex justify-between items-end">
                                                                             <span className="text-sm">{category}</span>
-                                                                            <span className="text-indigo-600 dark:text-indigo-400 font-black text-sm">{items.reduce((s, i) => s + i.quantity, 0)} 件</span>
+                                                                            <span className="text-blue-600 dark:text-blue-400 font-black text-sm">{items.reduce((s, i) => s + i.quantity, 0)} 件</span>
                                                                         </h5>
                                                                         <ul className="space-y-2">
                                                                             {items.map(item => (
@@ -1285,7 +1380,7 @@
                                                         >
                                                             <button
                                                                 onClick={() => setActiveDamagedCategory('全部')}
-                                                                className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${activeDamagedCategory === '全部' ? 'bg-slate-800 text-white dark:bg-indigo-500 shadow-md shadow-slate-400/30 dark:shadow-indigo-500/20 transform scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                                                                className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${activeDamagedCategory === '全部' ? 'bg-slate-800 text-white dark:bg-blue-500 shadow-md shadow-slate-400/30 dark:shadow-blue-500/20 transform scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                                                             >
                                                                 全部顯示
                                                             </button>
@@ -1293,7 +1388,7 @@
                                                                 <button
                                                                     key={`tab-${category}`}
                                                                     onClick={() => setActiveDamagedCategory(category)}
-                                                                    className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${activeDamagedCategory === category ? 'bg-slate-800 text-white dark:bg-indigo-500 shadow-md shadow-slate-400/30 dark:shadow-indigo-500/20 transform scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                                                                    className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${activeDamagedCategory === category ? 'bg-slate-800 text-white dark:bg-blue-500 shadow-md shadow-slate-400/30 dark:shadow-blue-500/20 transform scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
                                                                 >
                                                                     {category}
                                                                 </button>
@@ -1303,11 +1398,11 @@
                                                         {/* 搜尋過濾框 (改為滿版) */}
                                                         <div className="relative w-full group">
                                                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors">
-                                                                <i className="fa-solid fa-filter text-slate-400 text-sm group-focus-within:text-indigo-500 transition-colors"></i>
+                                                                <i className="fa-solid fa-filter text-slate-400 text-sm group-focus-within:text-blue-500 transition-colors"></i>
                                                             </div>
                                                             <input
                                                                 type="text" value={damagedSearch} onChange={(e) => setDamagedSearch(e.target.value)}
-                                                                className="w-full pl-10 pr-4 py-3 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all shadow-sm dark:text-white"
+                                                                className="w-full pl-10 pr-4 py-3 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm dark:text-white"
                                                                 placeholder="過濾條碼或品名..."
                                                             />
                                                         </div>
@@ -1328,7 +1423,7 @@
 
                                                                     <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
                                                                         {items.map((item) => (
-                                                                            <div key={item.id} className="p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between hover:bg-indigo-50/30 dark:hover:bg-slate-700/30 transition-colors gap-3 md:gap-4 group">
+                                                                            <div key={item.id} className="p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between hover:bg-blue-50/30 dark:hover:bg-slate-700/30 transition-colors gap-3 md:gap-4 group">
 
                                                                                 {/* 品名區塊 (永遠在最上/最左) */}
                                                                                 <div className="flex-1 w-full min-w-0">
@@ -1368,9 +1463,9 @@
                                                             {/* 防呆：空狀態 */}
                                                             {groupedDamagedItems.filter(([cat]) => activeDamagedCategory === '全部' || cat === activeDamagedCategory).length === 0 && (
                                                                 <div className="p-10 text-center text-slate-400 font-medium flex flex-col items-center justify-center h-48 animate-scale-in">
-                                                                    <i className={`fa-solid ${damagedSearch ? 'fa-magnifying-glass-minus text-indigo-200 dark:text-indigo-900' : 'fa-folder-open'} text-4xl mb-4`}></i>
+                                                                    <i className={`fa-solid ${damagedSearch ? 'fa-magnifying-glass-minus text-blue-200 dark:text-blue-900' : 'fa-folder-open'} text-4xl mb-4`}></i>
                                                                     {damagedSearch ? (
-                                                                        <span>找不到包含 <span className="text-indigo-500 mx-1">{damagedSearch}</span> 的商品</span>
+                                                                        <span>找不到包含 <span className="text-blue-500 mx-1">{damagedSearch}</span> 的商品</span>
                                                                     ) : (
                                                                         '此分類目前沒有商品'
                                                                     )}
@@ -1453,21 +1548,21 @@
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                                             {displayItems.filter(item => item.status === displayFilter).map((item) => (
-                                                <div key={item.id} className={`group relative bg-white dark:bg-slate-800 rounded-2xl p-5 border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${item.status === 'displayed' ? 'border-amber-200 dark:border-amber-500/30 shadow-amber-500/5' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500/50'}`}>
+                                                <div key={item.id} className={`group relative bg-white dark:bg-slate-800 rounded-2xl p-5 border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${item.status === 'displayed' ? 'border-amber-200 dark:border-amber-500/30 shadow-amber-500/5' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500/50'}`}>
 
-                                                    <button onClick={() => toggleDisplayStatus(item.id, item.status)} className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm ${item.status === 'displayed' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-400 hover:bg-indigo-100 hover:text-indigo-600'}`} title={item.status === 'displayed' ? '收回典藏' : '轉為陳列'}>
+                                                    <button onClick={() => toggleDisplayStatus(item.id, item.status)} className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm ${item.status === 'displayed' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-400 hover:bg-blue-100 hover:text-blue-600'}`} title={item.status === 'displayed' ? '收回典藏' : '轉為陳列'}>
                                                         <i className={`fa-solid ${item.status === 'displayed' ? 'fa-boxes-packing' : 'fa-lightbulb'} text-xs`}></i>
                                                     </button>
 
                                                     <div className="pr-10 mb-4">
                                                         <div className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1 flex items-center gap-1.5">
                                                             <i className="fa-solid fa-tag"></i>
-                                                            <span>數量: <strong className={`text-base ${item.status === 'displayed' ? 'text-amber-500' : 'text-indigo-500'}`}>{item.quantity}</strong></span>
+                                                            <span>數量: <strong className={`text-base ${item.status === 'displayed' ? 'text-amber-500' : 'text-blue-500'}`}>{item.quantity}</strong></span>
                                                         </div>
                                                         <div className="mb-2"><EditableItemName item={item} onSave={(id, bc, name) => handleUpdateItemName('display', id, bc, name)} /></div>
 
                                                         <div className="mt-1.5">
-                                                            <button onClick={() => toggleBarcodeVisibility(item.id)} className="text-xs font-mono text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 flex items-center transition-colors bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">
+                                                            <button onClick={() => toggleBarcodeVisibility(item.id)} className="text-xs font-mono text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 flex items-center transition-colors bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">
                                                                 <i className={`fa-solid ${revealedBarcodes[item.id] ? 'fa-eye-slash' : 'fa-barcode'} mr-1.5`}></i>
                                                                 {revealedBarcodes[item.id] ? item.barcode : '顯示條碼'}
                                                             </button>
@@ -1486,7 +1581,7 @@
                                                                 const textToCopy = `${item.barcode}\t${item.name}`;
                                                                 if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製條碼與品名！')).catch(fallbackCopy); } else { fallbackCopy(); }
                                                                 function fallbackCopy() { const textArea = document.createElement("textarea"); textArea.value = textToCopy; textArea.style.position = "fixed"; textArea.style.opacity = "0"; document.body.appendChild(textArea); textArea.focus(); textArea.select(); try { document.execCommand('copy'); showToast('📋 已複製條碼與品名！'); } catch (err) { showToast('❌ 複製失敗，請手動複製'); } document.body.removeChild(textArea); }
-                                                            }} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-colors" title="複製條碼與品名">
+                                                            }} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors" title="複製條碼與品名">
                                                                 <i className="fa-solid fa-copy"></i>
                                                             </button>
 
@@ -1512,7 +1607,7 @@
                                     <div className="lg:col-span-4 space-y-6">
                                         <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
                                             <div className="mb-5">
-                                                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400 rounded-lg flex items-center justify-center mb-3">
+                                                <div className="w-10 h-10 bg-blue-50 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400 rounded-lg flex items-center justify-center mb-3">
                                                     <i className="fa-solid fa-barcode text-xl"></i>
                                                 </div>
                                                 <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">連續條碼掃描</h3>
@@ -1524,14 +1619,14 @@
                                                     </div>
                                                     <input
                                                         ref={barcodeInputRef} type="text" value={barcodePrintInput} onChange={(e) => setBarcodePrintInput(e.target.value)}
-                                                        className="block w-full pl-11 pr-4 py-3 md:py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white transition-all font-mono text-base outline-none"
+                                                        className="block w-full pl-11 pr-4 py-3 md:py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:text-white transition-all font-mono text-base outline-none"
                                                         placeholder="掃描或輸入..." autoFocus
                                                     />
                                                 </div>
-                                                <button type="button" onClick={() => { setScannerTarget('print'); setScannerOpen(true); }} className="px-4 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl transition-colors shadow-sm flex items-center justify-center">
+                                                <button type="button" onClick={() => { setScannerTarget('print'); setScannerOpen(true); }} className="px-4 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-colors shadow-sm flex items-center justify-center">
                                                     <i className="fa-solid fa-camera text-xl"></i>
                                                 </button>
-                                                <button type="submit" className="px-5 bg-slate-800 dark:bg-indigo-600 text-white hover:bg-slate-900 dark:hover:bg-indigo-700 rounded-xl font-bold transition-colors shadow-sm">
+                                                <button type="submit" className="px-5 bg-slate-800 dark:bg-blue-600 text-white hover:bg-slate-900 dark:hover:bg-blue-700 rounded-xl font-bold transition-colors shadow-sm">
                                                     加入
                                                 </button>
                                             </form>
@@ -1543,19 +1638,19 @@
                                         <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 flex flex-col h-full transition-colors">
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 shrink-0 gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
                                                 <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center whitespace-nowrap">
-                                                    <i className="fa-solid fa-list-check text-indigo-400 mr-2"></i>待印清單
+                                                    <i className="fa-solid fa-list-check text-blue-400 mr-2"></i>待印清單
                                                     <span className="ml-3 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs px-2 py-0.5 rounded font-medium">{barcodeItems.length} 筆</span>
                                                 </h2>
                                                 <div className="flex items-center gap-2.5 w-full sm:w-auto">
                                                     {barcodeItems.length > 0 && (
-                                                        <button onClick={() => executePrint('barcode-all')} className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm flex items-center whitespace-nowrap">
+                                                        <button onClick={() => executePrint('barcode-all')} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center whitespace-nowrap">
                                                             <i className="fa-solid fa-print mr-1.5"></i>全部列印
                                                         </button>
                                                     )}
                                                     {barcodeItems.length > 0 && (
                                                         <div className="relative flex-1 sm:w-48 group">
-                                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i className="fa-solid fa-filter text-slate-400 text-xs group-focus-within:text-indigo-500"></i></div>
-                                                            <input type="text" value={barcodeSearch} onChange={e => setBarcodeSearch(e.target.value)} className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-indigo-500 transition-shadow" placeholder="過濾清單..." />
+                                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i className="fa-solid fa-filter text-slate-400 text-xs group-focus-within:text-blue-500"></i></div>
+                                                            <input type="text" value={barcodeSearch} onChange={e => setBarcodeSearch(e.target.value)} className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 transition-shadow" placeholder="過濾清單..." />
                                                         </div>
                                                     )}
                                                 </div>
@@ -1572,7 +1667,7 @@
                                                 ) : (
                                                     <div className="flex flex-col gap-3">
                                                         {filteredBarcodeItems.map(item => (
-                                                            <div key={item.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:border-indigo-200 dark:hover:border-indigo-500/50 transition-colors">
+                                                            <div key={item.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:border-blue-200 dark:hover:border-blue-500/50 transition-colors">
                                                                 <div className="flex-1 flex items-center gap-4 w-full">
                                                                     <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-700 hidden md:block shrink-0">
                                                                         <BarcodeImage value={item.barcode} printMode={false} mini={true} />
@@ -1589,7 +1684,7 @@
                                                                         <button onClick={() => updateBarcodeItemQuantity(item.id, 1)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 rounded"><i className="fa-solid fa-plus w-3"></i></button>
                                                                     </div>
                                                                     <div className="flex gap-1.5">
-                                                                        <button onClick={() => executePrint({ type: 'barcode-single', item })} className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 rounded-lg text-xs font-bold transition-colors">單獨印</button>
+                                                                        <button onClick={() => executePrint({ type: 'barcode-single', item })} className="px-3 py-1.5 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors">單獨印</button>
                                                                         <button onClick={() => removeBarcodeItem(item.id)} className="w-8 h-8 flex items-center justify-center bg-slate-50 dark:bg-slate-700 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"><i className="fa-solid fa-xmark"></i></button>
                                                                     </div>
                                                                 </div>
@@ -1612,7 +1707,7 @@
                                     {/* 區塊 1：系統資料備份與還原 */}
                                     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
                                         <div className="flex items-center gap-3 mb-6 border-b border-slate-100 dark:border-slate-700 pb-6">
-                                            <div className="p-3 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl flex-shrink-0">
+                                            <div className="p-3 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl flex-shrink-0">
                                                 <i className="fa-solid fa-cloud-arrow-down text-2xl"></i>
                                             </div>
                                             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">系統資料備份與還原</h3>
@@ -1620,7 +1715,7 @@
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-start">
-                                                <button onClick={handleExportData} className="w-full px-4 py-2 bg-slate-800 dark:bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-slate-900 dark:hover:bg-indigo-700 transition-colors shadow-sm">
+                                                <button onClick={handleExportData} className="w-full px-4 py-2 bg-slate-800 dark:bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-slate-900 dark:hover:bg-blue-700 transition-colors shadow-sm">
                                                     <i className="fa-solid fa-box-archive mr-2"></i> 下載備份檔
                                                 </button>
                                             </div>
@@ -1633,23 +1728,39 @@
                                         </div>
                                     </div>
 
-                                    {/* 區塊 2：自動分類規則 */}
+                                    {/* 區塊 2：自動分類規則 (支援點擊編輯與大小寫脫勾) */}
                                     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
                                         <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2 flex items-center"><i className="fa-solid fa-layer-group text-blue-500 mr-2"></i>自動分類規則</h3>
-                                        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                                            <input type="text" className="w-full sm:w-1/3 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" placeholder="分類名稱" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} />
-                                            <input type="text" className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" placeholder="關鍵字" value={newCatKeys} onChange={(e) => setNewCatKeys(e.target.value)} />
-                                            <button onClick={handleAddCategory} className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 shadow-sm font-medium">建立</button>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
+                                            系統會自動忽略大小寫。點擊下方已有規則可直接<strong className="text-blue-500 ml-1">修改名稱或關鍵字</strong>。
+                                        </p>
+
+                                        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-blue-50/50 dark:bg-blue-500/5 p-4 rounded-xl border border-blue-100 dark:border-blue-500/20">
+                                            <input type="text" className="w-full sm:w-1/3 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-bold" placeholder="新分類名稱" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} />
+                                            <input type="text" className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" placeholder="關鍵字 (請用半形逗號 , 分隔)" value={newCatKeys} onChange={(e) => setNewCatKeys(e.target.value)} />
+                                            <button onClick={handleAddCategory} className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 shadow-sm font-bold flex items-center justify-center"><i className="fa-solid fa-plus mr-2"></i>新增</button>
                                         </div>
+
                                         <div className="space-y-3">
                                             {settings.customCategories.map(cat => (
-                                                <div key={cat.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900 px-4 py-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                                                    <div>
-                                                        <div className="font-bold text-slate-700 dark:text-slate-200">{cat.name}</div>
-                                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">關鍵字：{cat.keywords}</div>
-                                                    </div>
-                                                    <button onClick={() => handleRemoveCategory(cat.id)} className="text-slate-400 hover:text-red-500 p-2"><i className="fa-solid fa-trash-can"></i></button>
-                                                </div>
+                                                <EditableCategoryItem
+                                                    key={cat.id}
+                                                    cat={cat}
+                                                    onSave={(id, newName, newKeywords) => {
+                                                        const updatedCategories = settings.customCategories.map(c =>
+                                                            c.id === id ? { ...c, name: newName, keywords: newKeywords } : c
+                                                        );
+                                                        updateCloudData('settings', { ...settings, customCategories: updatedCategories }, `已更新分類：${newName}`);
+                                                    }}
+                                                    onDelete={(id) => {
+                                                        const catToDelete = settings.customCategories.find(c => c.id === id);
+                                                        const newCategories = settings.customCategories.filter(c => c.id !== id);
+                                                        updateCloudData('settings', { ...settings, customCategories: newCategories });
+                                                        if (catToDelete) triggerUndo(`已刪除分類規則：${catToDelete.name}`, () => {
+                                                            updateCloudData('settings', { ...settings, customCategories: [...newCategories, catToDelete] });
+                                                        });
+                                                    }}
+                                                />
                                             ))}
                                         </div>
                                     </div>
@@ -1720,13 +1831,16 @@
                                                                             <div className="text-xs font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 inline-block px-1.5 py-0.5 rounded">{bc}</div>
                                                                         </div>
                                                                         <button onClick={() => {
-                                                                            if (window.confirm(`確定要刪除「${name}」的字典紀錄嗎？`)) {
-                                                                                const newMap = { ...settings.customNameMap };
-                                                                                delete newMap[bc];
-                                                                                updateCloudData('settings', { ...settings, customNameMap: newMap });
-                                                                                // 若刪除後該頁空了，自動往前翻頁
-                                                                                if (paginatedDict.length === 1 && dictCurrentPage > 1) setDictCurrentPage(p => p - 1);
-                                                                            }
+                                                                            const backupMap = { ...settings.customNameMap };
+                                                                            const newMap = { ...settings.customNameMap };
+                                                                            delete newMap[bc];
+                                                                            updateCloudData('settings', { ...settings, customNameMap: newMap });
+                                                                            if (paginatedDict.length === 1 && dictCurrentPage > 1) setDictCurrentPage(p => p - 1);
+
+                                                                            // ✨ 觸發復原
+                                                                            triggerUndo(`已刪除字典：${name}`, () => {
+                                                                                updateCloudData('settings', { ...settings, customNameMap: backupMap });
+                                                                            });
                                                                         }} className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 lg:opacity-0 group-hover:opacity-100 transition-all shadow-sm">
                                                                             <i className="fa-solid fa-trash-can"></i>
                                                                         </button>
@@ -1779,7 +1893,16 @@
                                                         <textarea className="w-full flex-1 px-4 py-4 border border-teal-200/60 dark:border-teal-500/30 rounded-xl outline-none min-h-[140px] text-sm font-mono whitespace-pre dark:bg-slate-900/80 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 transition-shadow resize-none" placeholder="6941313089877	DIMOO 隱藏版&#10;6941313071988	SKULLPANDA 盒玩..." value={dictInput} onChange={(e) => setDictInput(e.target.value)}></textarea>
 
                                                         <div className="flex flex-wrap justify-end mt-5 gap-3">
-                                                            <button onClick={() => { if (window.confirm('確定清空所有手動匯入的翻譯字典？')) { updateCloudData('settings', { ...settings, customNameMap: {} }, '已清空翻譯字典！'); setDictCurrentPage(1); } }} className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
+                                                            <button onClick={() => {
+                                                                const backupMap = { ...settings.customNameMap };
+                                                                updateCloudData('settings', { ...settings, customNameMap: {} });
+                                                                setDictCurrentPage(1);
+
+                                                                // ✨ 觸發復原
+                                                                triggerUndo('已清空翻譯字典', () => {
+                                                                    updateCloudData('settings', { ...settings, customNameMap: backupMap });
+                                                                });
+                                                            }} className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
                                                                 清空字典
                                                             </button>
                                                             <button onClick={handleImportDict} className="flex-1 sm:flex-none px-6 py-2.5 bg-teal-500 text-white text-sm font-bold rounded-xl hover:bg-teal-600 shadow-lg shadow-teal-500/20 transition-all active:scale-95 flex items-center justify-center">
@@ -1803,11 +1926,11 @@
 
                         {/* 左側：主要分頁按鈕 */}
                         <div className="flex items-center gap-2 sm:gap-3 px-2">
-                            <button onClick={() => { setActiveTab('daily-report'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'daily-report' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="銷售日報"><i className="fa-solid fa-file-invoice text-lg"></i></button>
-                            <button onClick={() => { setActiveTab('damaged-box'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'damaged-box' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="盒損登記"><i className="fa-solid fa-box-open text-lg"></i></button>
+                            <button onClick={() => { setActiveTab('daily-report'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'daily-report' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="銷售日報"><i className="fa-solid fa-file-invoice text-lg"></i></button>
+                            <button onClick={() => { setActiveTab('damaged-box'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'damaged-box' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="盒損登記"><i className="fa-solid fa-box-open text-lg"></i></button>
                             <button onClick={() => { setActiveTab('display-items'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'display-items' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="陳列品管理"><i className="fa-solid fa-gem text-lg"></i></button>
-                            <button onClick={() => { setActiveTab('barcode-print'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'barcode-print' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="條碼列印"><i className="fa-solid fa-barcode text-lg"></i></button>
-                            <button onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'settings' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="系統設定"><i className="fa-solid fa-gear text-lg"></i></button>
+                            <button onClick={() => { setActiveTab('barcode-print'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'barcode-print' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="條碼列印"><i className="fa-solid fa-barcode text-lg"></i></button>
+                            <button onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }} className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'settings' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="系統設定"><i className="fa-solid fa-gear text-lg"></i></button>
                         </div>
 
                         {/* 中間：分隔線 (僅桌機/平板顯示) */}
@@ -1853,7 +1976,7 @@
                         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 no-print animate-scale-in">
                             <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
                                 <div className="p-6 text-center border-b border-slate-100 dark:border-slate-700 relative">
-                                    <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3"><i className="fa-solid fa-qrcode text-2xl"></i></div>
+                                    <div className="w-12 h-12 bg-blue-50 dark:bg-blue-500/20 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3"><i className="fa-solid fa-qrcode text-2xl"></i></div>
                                     <h3 className="text-xl font-bold dark:text-white mb-1">掃碼複製文字</h3>
                                     <p className="text-sm text-slate-500 dark:text-slate-400">請掃描下方條碼，即可直接複製報表文字！</p>
                                     <button onClick={() => setIsQRCodeModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i className="fa-solid fa-xmark"></i></button>
@@ -1889,7 +2012,7 @@
                             {/* 頂部標題列 (懸浮) */}
                             <div className="absolute top-0 inset-x-0 p-6 flex justify-between items-center z-10 max-w-md mx-auto">
                                 <div className="text-white font-bold text-sm flex items-center bg-white/10 px-4 py-2 rounded-full backdrop-blur-lg border border-white/10 shadow-lg">
-                                    <i className="fa-solid fa-barcode text-indigo-400 mr-2"></i>
+                                    <i className="fa-solid fa-barcode text-blue-400 mr-2"></i>
                                     {scannerTarget === 'damaged' ? '自動登錄：盒損品' : scannerTarget === 'display' ? '自動登錄：陳列品' : '自動登錄：列印清單'}
                                 </div>
                                 <button onClick={() => setScannerOpen(false)} className="w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-lg border border-white/10">
@@ -1907,13 +2030,37 @@
                                     <div className="absolute inset-0 border-[40px] border-black/40 rounded-[1.5rem] pointer-events-none mix-blend-multiply"></div>
 
                                     {/* 掃描線特效 */}
-                                    <div className="absolute inset-x-0 top-1/2 h-0.5 bg-indigo-500 shadow-[0_0_15px_2px_rgba(99,102,241,0.8)] animate-scanline pointer-events-none z-10"></div>
+                                    <div className="absolute inset-x-0 top-1/2 h-0.5 bg-blue-500 shadow-[0_0_15px_2px_rgba(99,102,241,0.8)] animate-scanline pointer-events-none z-10"></div>
                                 </div>
 
                                 <p className="text-center text-slate-400 text-sm mt-8 font-medium tracking-wide">
-                                    將條碼對準畫面中央<br />系統掃描後將<strong className="text-indigo-400 font-bold ml-1">自動送出</strong>
+                                    將條碼對準畫面中央<br />系統掃描後將<strong className="text-blue-400 font-bold ml-1">自動送出</strong>
                                 </p>
                             </div>
+                        </div>
+                    )}
+
+
+
+                    {/* ✨ 質感底色 ＋ 紅色進度條 Undo 復原介面 */}
+                    {undoData && (
+                        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 px-6 py-3.5 rounded-2xl shadow-2xl flex items-center gap-5 z-[80] overflow-hidden animate-slide-up-fade border border-red-200 dark:border-red-700 no-print transition-colors">
+                            <span className="text-sm font-bold tracking-wide flex items-center">
+                                <i className="fa-solid fa-circle-exclamation text-rose-500 mr-2"></i>
+                                {undoData.message}
+                            </span>
+                            <button onClick={handleUndoAction} className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-1.5 rounded-lg font-bold text-sm active:scale-95 flex items-center gap-2 transition-all cursor-pointer shadow-sm border border-slate-200 dark:border-slate-600">
+                                <i className="fa-solid fa-rotate-left"></i> 復原
+                            </button>
+                            {/* 5 秒直線倒數進度條 (警戒紅) */}
+                            <div className="absolute bottom-0 left-0 h-1.5 bg-rose-500 animate-shrink-x origin-left w-full shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
+                        </div>
+                    )}
+
+                    {/* 這裡是你原本用來顯示成功/錯誤訊息的綠色小彈窗 */}
+                    {toast && (
+                        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] bg-emerald-500 text-white px-6 py-2 rounded-full shadow-lg font-bold animate-slide-up-fade no-print">
+                            {toast}
                         </div>
                     )}
 
