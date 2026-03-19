@@ -950,49 +950,57 @@
                 report += `目標：${settings.targetAmount}萬\n達成率：${achievement}%\n\n銷售狀況分享：\n`;
 
                 const isTodaySelected = todayStats && (formatDateStr(todayStats.dateStr).split('/')[0] === selectedMonth);
-        if (isTodaySelected && todayStats.itemStats) {
-            // 1. 抓取有銷售額的原始資料
-            const rawArray = Object.values(todayStats.itemStats).filter(item => item.desc && item.top5Amt > 0);
-            
-            // ✨ 2. 動態翻譯層：用 item.desc 去字典找中文
-            const translatedArray = rawArray.map(item => {
-                const rawName = item.desc || '';
-                const cleanRawName = rawName.trim().toLowerCase();
-                
-                // 反向查找條碼
-                let barcode = item.barcode;
-                if (!barcode && settings.barcodeMap) {
-                    barcode = Object.keys(settings.barcodeMap).find(key => 
-                        settings.barcodeMap[key] && settings.barcodeMap[key].trim().toLowerCase() === cleanRawName
-                    );
-                }
-                
-                // 拿條碼去抓中文神仙字典
-                const finalName = (barcode && settings.customNameMap && settings.customNameMap[barcode]) 
-                    ? settings.customNameMap[barcode] 
-                    : rawName;
-                
-                return { ...item, translatedName: finalName };
-            });
-
-            // 3. 排序並取前 5 名
-            const top5 = translatedArray.sort((a, b) => b.top5Amt - a.top5Amt).slice(0, 5);
-
-            if (top5.length > 0) {
-                top5.forEach((item, idx) => {
-                    // 抓取數量 (相容不同命名)，並計算佔比
-                    const qty = item.qty || item.quantity || item.count || 0;
-                    const percent = todayStats.sales > 0 ? ((item.top5Amt / todayStats.sales) * 100).toFixed(1) : 0;
+                if (isTodaySelected && todayStats.itemStats) {
+                    // 1. 抓取有銷售額的原始資料
+                    const rawArray = Object.values(todayStats.itemStats).filter(item => item.desc && item.top5Amt > 0);
                     
-                    // 輸出完美格式：1. 中文名稱 (數量件 / $金額 / 佔比%)
-                    report += `${idx + 1}. ${item.translatedName} (${qty}件 / $${item.top5Amt.toLocaleString()} / ${percent}%)\n`;
-                });
-            } else {
-                report += `(今日無Top 5)\n`;
-            }
-        } else {
-            report += `(請上傳該日資料以產生 Top 5)\n`;
-        }
+                    // ✨ 2. 動態翻譯層：加入「去除開頭 0」的終極容錯比對
+                    const translatedArray = rawArray.map(item => {
+                        const safeBarcode = String(item.barcode || '').trim();
+                        
+                        // (1) 先嘗試精準比對
+                        let finalName = settings.customNameMap?.[safeBarcode];
+                        
+                        // (2) 容錯比對：解決 Excel 自動吃掉「開頭 0」的致命痛點
+                        if (!finalName && safeBarcode) {
+                            const strippedBarcode = safeBarcode.replace(/^0+/, '');
+                            const dictKey = Object.keys(settings.customNameMap || {}).find(k => k.replace(/^0+/, '') === strippedBarcode);
+                            if (dictKey) finalName = settings.customNameMap[dictKey];
+                        }
+                        
+                        // (3) 英文反查：如果條碼爛掉，拿原本的英文名反查字典
+                        if (!finalName) {
+                            const cleanRawName = (item.desc || '').trim().toLowerCase();
+                            const foundBarcode = Object.keys(settings.barcodeMap || {}).find(key => 
+                                settings.barcodeMap[key] && settings.barcodeMap[key].trim().toLowerCase() === cleanRawName
+                            );
+                            if (foundBarcode) finalName = settings.customNameMap?.[foundBarcode];
+                        }
+                        
+                        // 最後退路
+                        finalName = finalName || settings.barcodeMap?.[safeBarcode] || item.desc || '';
+                        
+                        return { ...item, translatedName: finalName };
+                    });
+
+                    // 3. 排序並取前 5 名
+                    const top5 = translatedArray.sort((a, b) => b.top5Amt - a.top5Amt).slice(0, 5);
+
+                    if (top5.length > 0) {
+                        top5.forEach((item, idx) => {
+                            // ✨ 抓取數量：精準對齊 Excel 解析器存的 'top5Qty'
+                            const qty = item.top5Qty || item.qty || item.quantity || item.count || 0;
+                            const percent = todayStats.sales > 0 ? ((item.top5Amt / todayStats.sales) * 100).toFixed(1) : 0;
+                            
+                            // 輸出完美格式：1. 中文名稱 (數量件 / $金額 / 佔比%)
+                            report += `${idx + 1}. ${item.translatedName} (${qty}件 / $${item.top5Amt.toLocaleString()} / ${percent}%)\n`;
+                        });
+                    } else {
+                        report += `(今日無Top 5)\n`;
+                    }
+                } else {
+                    report += `(請上傳該日資料以產生 Top 5)\n`;
+                }
 
                 report += `\n（2）新品分享\n`;
                 if (settings.newBarcodes.length > 0) {
@@ -1302,35 +1310,42 @@
 
                             <div className="lg:col-span-5 relative">
                                 
-                               {/* ✨ 新增：今日熱銷 Top 5 儀表板 (已對齊 desc 與 top5Amt) */}
+                               {/* ✨ 新增：今日熱銷 Top 5 儀表板 (對齊 top5Qty 並加入開頭 0 容錯) */}
                                 {todayStats && todayStats.itemStats && (
                                     (() => {
-                                        // 1. 取得陣列格式的原始報表資料
                                         const rawArray = Object.values(todayStats.itemStats).filter(item => item.desc && item.top5Amt > 0);
                                             
-                                        // 2. 動態翻譯層
                                         const statsArray = rawArray.map(item => {
-                                            const rawName = item.desc || '';
-                                            const cleanRawName = rawName.trim().toLowerCase();
+                                            const safeBarcode = String(item.barcode || '').trim();
                                             
-                                            let barcode = item.barcode;
-                                            if (!barcode && settings.barcodeMap) {
-                                                barcode = Object.keys(settings.barcodeMap).find(key => 
+                                            let finalName = settings.customNameMap?.[safeBarcode];
+                                            
+                                            // Excel 吃 0 容錯
+                                            if (!finalName && safeBarcode) {
+                                                const strippedBarcode = safeBarcode.replace(/^0+/, '');
+                                                const dictKey = Object.keys(settings.customNameMap || {}).find(k => k.replace(/^0+/, '') === strippedBarcode);
+                                                if (dictKey) finalName = settings.customNameMap[dictKey];
+                                            }
+                                            
+                                            // 英文原名反查
+                                            if (!finalName) {
+                                                const cleanRawName = (item.desc || '').trim().toLowerCase();
+                                                const foundBarcode = Object.keys(settings.barcodeMap || {}).find(key => 
                                                     settings.barcodeMap[key] && settings.barcodeMap[key].trim().toLowerCase() === cleanRawName
                                                 );
+                                                if (foundBarcode) finalName = settings.customNameMap?.[foundBarcode];
                                             }
-                                            const finalName = (barcode && settings.customNameMap && settings.customNameMap[barcode]) 
-                                                ? settings.customNameMap[barcode] 
-                                                : rawName;
+                                            
+                                            finalName = finalName || settings.barcodeMap?.[safeBarcode] || item.desc || '';
                                             
                                             return {
                                                 name: finalName,
-                                                quantity: item.qty || item.quantity || item.count || 0,
+                                                // ✨ 關鍵修正：抓取正確的件數變數 top5Qty
+                                                quantity: item.top5Qty || item.qty || item.quantity || item.count || 0,
                                                 sales: item.top5Amt || 0
                                             };
                                         });
 
-                                        // 3. 排序並取 Top 5
                                         const top5Items = statsArray.sort((a, b) => b.sales - a.sales).slice(0, 5);
 
                                         if (top5Items.length === 0) return null;
