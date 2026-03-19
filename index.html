@@ -447,30 +447,6 @@
             const [toast, setToast] = useState('');
             const [printContext, setPrintContext] = useState(null);
 
-            // ✨ 全局高容錯翻譯引擎：專治 Excel 吃零、科學記號與隱形空白
-            const getTranslatedName = (barcode, rawDesc, customNameMap) => {
-                if (!customNameMap) return rawDesc;
-                const safeBarcode = String(barcode || '').trim();
-                
-                // 1. 處理 Excel 科學記號 (例如 6.94E+12 -> 6940000000000)
-                const finalBarcode = (safeBarcode.includes('E') || safeBarcode.includes('e')) 
-                    ? Number(safeBarcode).toLocaleString('fullwide', { useGrouping: false }) 
-                    : safeBarcode;
-
-                // 2. 精準比對
-                if (customNameMap[finalBarcode]) return customNameMap[finalBarcode];
-
-                // 3. 容錯比對 (無視開頭的 0)
-                const stripped = finalBarcode.replace(/^0+/, '');
-                for (const key in customNameMap) {
-                    const safeKey = String(key).trim().replace(/^0+/, '');
-                    if (safeKey === stripped && stripped !== '') return customNameMap[key];
-                }
-
-                // 4. 比對失敗，退回原本的描述
-                return rawDesc;
-            };
-
             // ✨ 復原並升級：列印執行大腦
             const executePrint = (context) => {
                 setPrintContext(context);
@@ -1013,17 +989,22 @@
 
                 const isTodaySelected = todayStats && (formatDateStr(todayStats.dateStr).split('/')[0] === selectedMonth);
                 if (isTodaySelected && todayStats.itemStats) {
-                    // 1. 抓取有銷售額的資料
+                    // 1. 抓取有銷售額的原始資料
                     const rawArray = Object.values(todayStats.itemStats).filter(item => item.desc && item.top5Amt > 0);
                     
-                    // 2. 依照銷售額遞減排序並取前 5
-                    const top5 = rawArray.sort((a, b) => b.top5Amt - a.top5Amt).slice(0, 5);
+                    // ✨ 2. 動態翻譯層：呼叫神級淨化翻譯器
+                    const translatedArray = rawArray.map(item => ({
+                        ...item,
+                        translatedName: getTranslatedName(item, settings)
+                    }));
+
+                    // 3. 排序並取前 5 名
+                    const top5 = translatedArray.sort((a, b) => b.top5Amt - a.top5Amt).slice(0, 5);
 
                     if (top5.length > 0) {
                         top5.forEach((item, idx) => {
-                            // ✨ 3. 即時呼叫翻譯引擎，並只輸出乾淨的品名
-                            const finalName = getTranslatedName(item.barcode, item.desc, settings.customNameMap);
-                            report += `${idx + 1}. ${finalName}\n`;
+                            // ✨ 照你要求的：還原原本只有品名的乾淨格式，不加金額與數量！
+                            report += `${idx + 1}.${item.translatedName}\n`;
                         });
                     } else {
                         report += `(今日無Top 5)\n`;
@@ -1340,17 +1321,19 @@
 
                             <div className="lg:col-span-5 relative">
                                 
-                              {/* ✨ 今日熱銷 Top 5 儀表板 */}
+                               {/* ✨ 新增：今日熱銷 Top 5 儀表板 (使用神級淨化翻譯器) */}
                                 {todayStats && todayStats.itemStats && (
                                     (() => {
                                         const rawArray = Object.values(todayStats.itemStats).filter(item => item.desc && item.top5Amt > 0);
-                                        
-                                        // ✨ 直接使用高階函數整理前 5 名資料
-                                        const top5Items = rawArray.sort((a, b) => b.top5Amt - a.top5Amt).slice(0, 5).map(item => ({
-                                            name: getTranslatedName(item.barcode, item.desc, settings.customNameMap),
-                                            quantity: item.top5Qty || item.qty || item.quantity || item.count || 0, // 精準抓取件數
+                                            
+                                        // ✨ 呼叫神級翻譯器，確保彩色面板也能顯示中文
+                                        const statsArray = rawArray.map(item => ({
+                                            name: getTranslatedName(item, settings),
+                                            quantity: item.top5Qty || item.qty || item.quantity || item.count || 0,
                                             sales: item.top5Amt || 0
                                         }));
+
+                                        const top5Items = statsArray.sort((a, b) => b.sales - a.sales).slice(0, 5);
 
                                         if (top5Items.length === 0) return null;
 
