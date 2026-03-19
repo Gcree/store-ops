@@ -950,10 +950,49 @@
                 report += `目標：${settings.targetAmount}萬\n達成率：${achievement}%\n\n銷售狀況分享：\n`;
 
                 const isTodaySelected = todayStats && (formatDateStr(todayStats.dateStr).split('/')[0] === selectedMonth);
-                if (isTodaySelected && todayStats.itemStats) {
-                    const top5 = Object.values(todayStats.itemStats).filter(item => item.desc && item.top5Amt > 0).sort((a, b) => b.top5Qty - a.top5Qty || b.top5Amt - a.top5Amt).slice(0, 5);
-                    top5.length > 0 ? top5.forEach((item, idx) => report += `${idx + 1}.${item.desc}\n`) : report += `(今日無Top 5)\n`;
-                } else report += `(請上傳該日資料以產生 Top 5)\n`;
+        if (isTodaySelected && todayStats.itemStats) {
+            // 1. 抓取有銷售額的原始資料
+            const rawArray = Object.values(todayStats.itemStats).filter(item => item.desc && item.top5Amt > 0);
+            
+            // ✨ 2. 動態翻譯層：用 item.desc 去字典找中文
+            const translatedArray = rawArray.map(item => {
+                const rawName = item.desc || '';
+                const cleanRawName = rawName.trim().toLowerCase();
+                
+                // 反向查找條碼
+                let barcode = item.barcode;
+                if (!barcode && settings.barcodeMap) {
+                    barcode = Object.keys(settings.barcodeMap).find(key => 
+                        settings.barcodeMap[key] && settings.barcodeMap[key].trim().toLowerCase() === cleanRawName
+                    );
+                }
+                
+                // 拿條碼去抓中文神仙字典
+                const finalName = (barcode && settings.customNameMap && settings.customNameMap[barcode]) 
+                    ? settings.customNameMap[barcode] 
+                    : rawName;
+                
+                return { ...item, translatedName: finalName };
+            });
+
+            // 3. 排序並取前 5 名
+            const top5 = translatedArray.sort((a, b) => b.top5Amt - a.top5Amt).slice(0, 5);
+
+            if (top5.length > 0) {
+                top5.forEach((item, idx) => {
+                    // 抓取數量 (相容不同命名)，並計算佔比
+                    const qty = item.qty || item.quantity || item.count || 0;
+                    const percent = todayStats.sales > 0 ? ((item.top5Amt / todayStats.sales) * 100).toFixed(1) : 0;
+                    
+                    // 輸出完美格式：1. 中文名稱 (數量件 / $金額 / 佔比%)
+                    report += `${idx + 1}. ${item.translatedName} (${qty}件 / $${item.top5Amt.toLocaleString()} / ${percent}%)\n`;
+                });
+            } else {
+                report += `(今日無Top 5)\n`;
+            }
+        } else {
+            report += `(請上傳該日資料以產生 Top 5)\n`;
+        }
 
                 report += `\n（2）新品分享\n`;
                 if (settings.newBarcodes.length > 0) {
@@ -1263,38 +1302,37 @@
 
                             <div className="lg:col-span-5 relative">
                                 
-                                {/* ✨ 新增：今日熱銷 Top 5 儀表板 (含動態翻譯層) */}
+                               {/* ✨ 新增：今日熱銷 Top 5 儀表板 (已對齊 desc 與 top5Amt) */}
                                 {todayStats && todayStats.itemStats && (
                                     (() => {
-                                        // 1. 取得陣列格式的原始報表資料 (英文原名)
-                                        const rawArray = Array.isArray(todayStats.itemStats) 
-                                            ? todayStats.itemStats 
-                                            : Object.entries(todayStats.itemStats).map(([name, data]) => ({ name, ...data }));
+                                        // 1. 取得陣列格式的原始報表資料
+                                        const rawArray = Object.values(todayStats.itemStats).filter(item => item.desc && item.top5Amt > 0);
                                             
-                                        // 2. 動態翻譯層：將英文名稱轉為最新的中文名稱
+                                        // 2. 動態翻譯層
                                         const statsArray = rawArray.map(item => {
-                                            const rawName = item.name;
-                                            // 反向查找：透過英文原名，去基礎字典 (barcodeMap) 找出對應的條碼
-                                            const barcode = item.barcode || Object.keys(settings.barcodeMap || {}).find(key => settings.barcodeMap[key] === rawName);
-                                            // 翻譯：有了條碼，就去手動上傳的中文神仙字典 (customNameMap) 抓取中文名
+                                            const rawName = item.desc || '';
+                                            const cleanRawName = rawName.trim().toLowerCase();
+                                            
+                                            let barcode = item.barcode;
+                                            if (!barcode && settings.barcodeMap) {
+                                                barcode = Object.keys(settings.barcodeMap).find(key => 
+                                                    settings.barcodeMap[key] && settings.barcodeMap[key].trim().toLowerCase() === cleanRawName
+                                                );
+                                            }
                                             const finalName = (barcode && settings.customNameMap && settings.customNameMap[barcode]) 
                                                 ? settings.customNameMap[barcode] 
                                                 : rawName;
                                             
                                             return {
                                                 name: finalName,
-                                                quantity: item.quantity || 0,
-                                                sales: item.sales || 0
+                                                quantity: item.qty || item.quantity || item.count || 0,
+                                                sales: item.top5Amt || 0
                                             };
                                         });
 
-                                        // 3. 依照銷售額 (sales) 遞減排序，並取前 5 名
-                                        const top5Items = statsArray
-                                            .filter(i => i.sales > 0)
-                                            .sort((a, b) => b.sales - a.sales)
-                                            .slice(0, 5);
+                                        // 3. 排序並取 Top 5
+                                        const top5Items = statsArray.sort((a, b) => b.sales - a.sales).slice(0, 5);
 
-                                        // 如果今天還沒有賣出任何東西，就不顯示
                                         if (top5Items.length === 0) return null;
 
                                         return (
@@ -1304,21 +1342,17 @@
                                                 </h3>
                                                 <div className="space-y-2.5">
                                                     {top5Items.map((item, index) => {
-                                                        // 計算佔比 (避免分母為 0 的錯誤)
                                                         const percent = todayStats.sales > 0 ? ((item.sales / todayStats.sales) * 100).toFixed(1) : 0;
                                                         
-                                                        // 前三名給予特殊皇冠顏色，後兩名為一般灰色
                                                         const rankColors = [
-                                                            'bg-amber-100 text-amber-600 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30', // 第 1 名: 金
-                                                            'bg-slate-200 text-slate-600 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600',       // 第 2 名: 銀
-                                                            'bg-orange-100 text-orange-600 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30' // 第 3 名: 銅
+                                                            'bg-amber-100 text-amber-600 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30',
+                                                            'bg-slate-200 text-slate-600 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600',
+                                                            'bg-orange-100 text-orange-600 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30'
                                                         ];
                                                         const currentRankColor = index < 3 ? rankColors[index] : 'bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700';
 
                                                         return (
                                                             <div key={`top-${index}`} className="flex items-center justify-between p-3 md:p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700/50 hover:border-blue-200 dark:hover:border-blue-500/30 transition-colors group">
-                                                                
-                                                                {/* 左側：名次與品名 */}
                                                                 <div className="flex items-center gap-3 overflow-hidden pr-3">
                                                                     <div className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-black border ${currentRankColor} shadow-sm`}>
                                                                         {index + 1}
@@ -1327,8 +1361,6 @@
                                                                         {item.name}
                                                                     </div>
                                                                 </div>
-                                                                
-                                                                {/* 右側：金額、數量與佔比 */}
                                                                 <div className="flex flex-col items-end shrink-0">
                                                                     <div className="text-sm md:text-base font-black text-slate-800 dark:text-slate-100">
                                                                         ${item.sales.toLocaleString()}
@@ -1342,7 +1374,6 @@
                                                                         </span>
                                                                     </div>
                                                                 </div>
-
                                                             </div>
                                                         );
                                                     })}
