@@ -18,6 +18,11 @@
                     mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', '"Liberation Mono"', '"Courier New"', 'monospace'],
                 },
                 extend: {
+                    // 1. 覆寫 Tailwind 預設的 transition (讓所有 hover, active 也具備彈簧感)
+                    transitionTimingFunction: {
+                        DEFAULT: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    },
                     fontSize: {
                         'xs': ['12px', { lineHeight: '16px', letterSpacing: '0em' }],
                         'sm': ['14px', { lineHeight: '18px', letterSpacing: '-0.006em' }],
@@ -29,15 +34,17 @@
                         '4xl': ['34px', { lineHeight: '41px', letterSpacing: '-0.041em' }],
                     },
                     animation: {
-                        'shrink-x': 'shrinkX 5s linear forwards',
-                        'slide-up-fade': 'slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-                        'scale-in': 'scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'shrink-x': 'shrinkX 5s linear forwards', // 計時進度條維持等速
+                        // 2. 將彈出動畫改為 Spring 曲線，並稍微拉長時間展現回彈細節
+                        'slide-up-fade': 'slideUpFade 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                        'scale-in': 'scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
                         'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
                     },
                     keyframes: {
                         shrinkX: { '0%': { width: '100%' }, '100%': { width: '0%' } },
                         slideUpFade: { '0%': { transform: 'translate(-50%, 100%)', opacity: 0 }, '100%': { transform: 'translate(-50%, 0)', opacity: 1 } },
-                        scaleIn: { '0%': { transform: 'scale(0.95)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
+                        // 為了讓彈簧感更好，初始縮放從 0.95 改為 0.8，讓 Q 彈的對比度更大
+                        scaleIn: { '0%': { transform: 'scale(0.8)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
                         shake: {
                             '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
                             '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
@@ -49,7 +56,8 @@
             }
         }
     </script>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧸</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧸</text></svg>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -66,19 +74,29 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
-        html.dark ::-webkit-scrollbar-thumb { background: #475569; }
-        html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        html.dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+
+        html.dark ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
 
         body {
             padding-bottom: env(safe-area-inset-bottom);
-            -webkit-tap-highlight-color: transparent; 
+            -webkit-tap-highlight-color: transparent;
         }
 
         button {
-            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            touch-action: manipulation; 
+            /* 把時間從 0.15s 拉長到 0.4s，並換上 Spring 貝茲曲線 */
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+            touch-action: manipulation;
         }
-        button:active { transform: scale(0.95) !important; }
+
+        button:active {
+            /* 點擊時縮得更小一點點，回彈時視覺張力更強 */
+            transform: scale(0.92) !important;
+        }
 
         .sticky.top-0 {
             backdrop-filter: blur(12px) !important;
@@ -88,7 +106,7 @@
             border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
             z-index: 20;
         }
-        
+
         .dark .sticky.top-0 {
             background-color: rgba(30, 41, 59, 0.85) !important;
             border-bottom: 1px solid rgba(51, 65, 85, 0.8) !important;
@@ -96,34 +114,161 @@
         }
 
         @media print {
-            html, body, html.dark, html.dark body { height: auto !important; min-height: auto !important; overflow: visible !important; background: white !important; color: black !important; margin: 0; padding: 0 !important; -webkit-print-color-adjust: exact; }
-            .h-screen, .h-full { height: auto !important; min-height: auto !important; }
-            .overflow-hidden, .overflow-auto, .overflow-y-auto { overflow: visible !important; }
-            .no-print { display: none !important; }
-            .print-only { display: block !important; position: static !important; width: 100%; height: auto !important; overflow: visible !important; }
-            #print-area-barcode { border: none; width: 80mm !important; max-width: 80mm !important; margin: 0 auto; box-sizing: border-box; overflow: hidden; }
-            .label-item { width: 80mm; padding: 6mm 4mm; display: flex; flex-direction: column; align-items: center; justify-content: center; page-break-inside: avoid; page-break-after: auto; border-bottom: 1px dashed #ccc; margin-bottom: 4mm; box-sizing: border-box; background: white !important; color: black !important; }
-            .label-item:last-child { border-bottom: none; margin-bottom: 0; }
-            .label-item svg { max-width: 100%; height: auto; }
-            #print-area-damaged { width: 80mm !important; max-width: 80mm !important; padding: 4mm !important; color: black !important; font-size: 12px !important; font-family: sans-serif; background: white !important; box-sizing: border-box; overflow: hidden; }
-            .damaged-print-item { margin-bottom: 5mm; padding-bottom: 5mm; border-bottom: 1px dashed #ccc; page-break-inside: avoid; }
-            @page { size: 80mm auto; margin: 0; }
+
+            html,
+            body,
+            html.dark,
+            html.dark body {
+                height: auto !important;
+                min-height: auto !important;
+                overflow: visible !important;
+                background: white !important;
+                color: black !important;
+                margin: 0;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact;
+            }
+
+            .h-screen,
+            .h-full {
+                height: auto !important;
+                min-height: auto !important;
+            }
+
+            .overflow-hidden,
+            .overflow-auto,
+            .overflow-y-auto {
+                overflow: visible !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-only {
+                display: block !important;
+                position: static !important;
+                width: 100%;
+                height: auto !important;
+                overflow: visible !important;
+            }
+
+            #print-area-barcode {
+                border: none;
+                width: 80mm !important;
+                max-width: 80mm !important;
+                margin: 0 auto;
+                box-sizing: border-box;
+                overflow: hidden;
+            }
+
+            .label-item {
+                width: 80mm;
+                padding: 6mm 4mm;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                page-break-inside: avoid;
+                page-break-after: auto;
+                border-bottom: 1px dashed #ccc;
+                margin-bottom: 4mm;
+                box-sizing: border-box;
+                background: white !important;
+                color: black !important;
+            }
+
+            .label-item:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+            }
+
+            .label-item svg {
+                max-width: 100%;
+                height: auto;
+            }
+
+            #print-area-damaged {
+                width: 80mm !important;
+                max-width: 80mm !important;
+                padding: 4mm !important;
+                color: black !important;
+                font-size: 12px !important;
+                font-family: sans-serif;
+                background: white !important;
+                box-sizing: border-box;
+                overflow: hidden;
+            }
+
+            .damaged-print-item {
+                margin-bottom: 5mm;
+                padding-bottom: 5mm;
+                border-bottom: 1px dashed #ccc;
+                page-break-inside: avoid;
+            }
+
+            @page {
+                size: 80mm auto;
+                margin: 0;
+            }
         }
 
-        .print-only { display: none; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        body { padding-bottom: 80px; transition: background-color 0.3s ease, color 0.3s ease; }
-        #reader { border: none !important; border-radius: 1rem; overflow: hidden; background: #000; }
-        #reader button { background-color: #6366f1 !important; color: white !important; padding: 0.5rem 1rem !important; border-radius: 0.75rem !important; margin: 0.5rem !important; cursor: pointer; font-weight: bold; border: none; }
-        #reader select { padding: 0.5rem; border-radius: 0.5rem; margin-bottom: 1rem; }
+        .print-only {
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        body {
+            padding-bottom: 80px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        #reader {
+            border: none !important;
+            border-radius: 1rem;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #reader button {
+            background-color: #6366f1 !important;
+            color: white !important;
+            padding: 0.5rem 1rem !important;
+            border-radius: 0.75rem !important;
+            margin: 0.5rem !important;
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+        }
+
+        #reader select {
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
     </style>
 
 </head>
 
-<body class="antialiased text-base bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 min-h-screen flex flex-col">
+<body
+    class="antialiased text-base bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 min-h-screen flex flex-col">
     <div id="root" class="flex-1 flex flex-col"></div>
 
     <script type="text/babel">
@@ -338,7 +483,7 @@
             const [dailyRecords, setDailyRecords] = useState([]);
             const [settings, setSettings] = useState(defaultSettings);
             const [damagedItems, setDamagedItems] = useState([]);
-            const [displayItems, setDisplayItems] = useState([]); 
+            const [displayItems, setDisplayItems] = useState([]);
             const [dbStatus, setDbStatus] = useState('連線中...');
             const [dataLoaded, setDataLoaded] = useState({ records: false, settings: false, damaged: false, display: false });
             const isDataReady = dataLoaded.records && dataLoaded.settings && dataLoaded.damaged && dataLoaded.display;
@@ -392,7 +537,7 @@
 
             const triggerUndo = (message, onUndoCallback) => {
                 if (undoData && undoData.timerId) clearTimeout(undoData.timerId);
-                const timerId = setTimeout(() => setUndoData(null), 5000); 
+                const timerId = setTimeout(() => setUndoData(null), 5000);
                 setUndoData({ message, onUndo: onUndoCallback, timerId });
             };
 
@@ -413,7 +558,7 @@
 
             const handleScanSubmit = (e) => {
                 e.preventDefault(); const barcode = barcodeInput.trim(); if (!barcode) return;
-                
+
                 let dictName = findNameInDict(barcode, settings.customNameMap);
                 let productName = dictName || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
 
@@ -453,7 +598,7 @@
                     return newData;
                 });
             };
-            
+
             const clearAllDamagedItems = () => {
                 const backup = [...damagedItems];
                 setDamagedItems([]);
@@ -486,7 +631,7 @@
 
             const handleDisplayScanSubmit = (e) => {
                 e.preventDefault(); const barcode = displayBarcodeInput.trim(); if (!barcode) return;
-                
+
                 let dictName = findNameInDict(barcode, settings.customNameMap);
                 let productName = dictName || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
 
@@ -573,7 +718,7 @@
                 e.preventDefault(); const barcode = barcodePrintInput.trim(); if (!barcode) return;
                 let dictName = findNameInDict(barcode, settings.customNameMap);
                 let name = dictName || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
-                
+
                 setBarcodeItems(prev => {
                     const ex = prev.find(i => i.barcode === barcode);
                     if (ex) { showToast(`增加數量：${name}`); return prev.map(i => i.barcode === barcode ? { ...i, quantity: i.quantity + 1 } : i); }
@@ -753,14 +898,14 @@
             // ==========================================
             const handleImportDict = () => {
                 if (!dictInput.trim()) return;
-                
-                let newDict = { ...settings.customNameMap }; 
+
+                let newDict = { ...settings.customNameMap };
                 let newCount = 0;    // 全新加入的數量
                 let updateCount = 0; // 條碼一樣，但名字被更新的數量
                 let skipCount = 0;   // 條碼跟名字都一模一樣，或是無效資料(品名=條碼)的數量
 
-                dictInput.split('\n').forEach(line => { 
-                    const parts = line.trim().split(/\t|,/); 
+                dictInput.split('\n').forEach(line => {
+                    const parts = line.trim().split(/\t|,/);
                     let bc = '', name = '';
 
                     // 支援 Tab、逗號、或是空格分隔
@@ -800,7 +945,7 @@
                 if (updateCount > 0) toastMsg += `，更新 ${updateCount} 筆`;
                 if (skipCount > 0) toastMsg += ` (略過 ${skipCount} 筆重複)`;
 
-                updateCloudData('settings', { ...settings, customNameMap: newDict }, toastMsg); 
+                updateCloudData('settings', { ...settings, customNameMap: newDict }, toastMsg);
                 setDictInput('');
             };
 
@@ -811,7 +956,7 @@
                 // 加入 || {} 防止 undefined 報錯
                 const memoryMap = settings.barcodeMap || {};
                 const currentMemoryKeys = Object.keys(memoryMap);
-                
+
                 if (currentMemoryKeys.length === 0) {
                     return showToast('目前系統沒有暫存的學習記憶喔！');
                 }
@@ -834,10 +979,10 @@
                 const backupCustomMap = { ...settings.customNameMap };
 
                 // 直接強制執行並顯示 Toast，跳過容易被手機阻擋的 window.confirm
-                updateCloudData('settings', { 
-                    ...settings, 
+                updateCloudData('settings', {
+                    ...settings,
                     customNameMap: newDict,
-                    barcodeMap: {} 
+                    barcodeMap: {}
                 }, `🎉 成功收編 ${count} 筆資料至正式字典！`);
 
                 // 觸發防呆復原
@@ -959,7 +1104,7 @@
 
             useEffect(() => {
                 if (!scannerOpen) {
-                    scanLockRef.current = false; 
+                    scanLockRef.current = false;
                     return;
                 }
 
@@ -970,7 +1115,7 @@
                     { fps: 15, qrbox: { width: 250, height: 120 } },
                     (decodedText) => {
                         if (scanLockRef.current) return;
-                        scanLockRef.current = true; 
+                        scanLockRef.current = true;
 
                         if (typeof navigator.vibrate === 'function') navigator.vibrate(100);
 
@@ -1086,204 +1231,204 @@
                         </div>
                     )}
 
-              <div className="pt-8 pb-32 px-6 md:px-8 lg:px-12 max-w-7xl mx-auto min-h-screen w-full no-print">
-                <div className="space-y-6 md:space-y-8">
+                    <div className="pt-8 pb-32 px-6 md:px-8 lg:px-12 max-w-7xl mx-auto min-h-screen w-full no-print">
+                        <div className="space-y-6 md:space-y-8">
 
-                           {/* =========================================
+                            {/* =========================================
                         分頁 1: 銷售日報表
                     ========================================= */}
-                    {activeTab === 'daily-report' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full pb-10 animate-scale-in">
-                            <div className="lg:col-span-7 space-y-6">
-                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
-                                    <h2 className="text-xl font-semibold mb-4 flex items-center dark:text-slate-100"><i className="fa-solid fa-cloud-arrow-up text-blue-500 mr-2"></i>上傳今日報表</h2>
-                                    <div className="flex items-center justify-center w-full">
-                                        <label className={`flex flex-col items-center justify-center w-full h-32 border-2 ${isProcessing ? 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800' : 'border-blue-200 dark:border-blue-500/30 border-dashed bg-blue-50 dark:bg-blue-500/5 hover:bg-blue-100 dark:hover:bg-blue-500/10 cursor-pointer'} rounded-xl transition-colors`}>
-                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                <i className={`fa-solid fa-cloud-arrow-up text-3xl ${isProcessing ? 'text-slate-400' : 'text-blue-500'} mb-2`}></i>
-                                                <p className="mb-2 text-sm text-slate-600 dark:text-slate-300">{isProcessing ? '處理檔案中...' : <><span className="font-semibold">點擊上傳</span> 或拖曳 Excel 檔案至此</>}</p>
+                            {activeTab === 'daily-report' && (
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full pb-10 animate-scale-in">
+                                    <div className="lg:col-span-7 space-y-6">
+                                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
+                                            <h2 className="text-xl font-semibold mb-4 flex items-center dark:text-slate-100"><i className="fa-solid fa-cloud-arrow-up text-blue-500 mr-2"></i>上傳今日報表</h2>
+                                            <div className="flex items-center justify-center w-full">
+                                                <label className={`flex flex-col items-center justify-center w-full h-32 border-2 ${isProcessing ? 'border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800' : 'border-blue-200 dark:border-blue-500/30 border-dashed bg-blue-50 dark:bg-blue-500/5 hover:bg-blue-100 dark:hover:bg-blue-500/10 cursor-pointer'} rounded-xl transition-colors`}>
+                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                        <i className={`fa-solid fa-cloud-arrow-up text-3xl ${isProcessing ? 'text-slate-400' : 'text-blue-500'} mb-2`}></i>
+                                                        <p className="mb-2 text-sm text-slate-600 dark:text-slate-300">{isProcessing ? '處理檔案中...' : <><span className="font-semibold">點擊上傳</span> 或拖曳 Excel 檔案至此</>}</p>
+                                                    </div>
+                                                    <input type="file" className="hidden" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} disabled={isProcessing} />
+                                                </label>
                                             </div>
-                                            <input type="file" className="hidden" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} disabled={isProcessing} />
-                                        </label>
-                                    </div>
-                                    {todayStats && (
-                                        <div className="mt-4 p-5 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex justify-between items-center transition-colors border border-emerald-200 dark:border-emerald-500/30 shadow-sm">
-                                            <div>
-                                                <span className="block text-sm text-emerald-600 dark:text-emerald-400 font-bold mb-1">
-                                                    <i className="fa-solid fa-check-circle mr-1.5"></i>今日報表已自動同步 ({todayStats.dateStr})
-                                                </span>
-                                                <span className="block text-3xl font-black text-emerald-700 dark:text-emerald-100">${formatMoney(todayStats.sales)}</span>
-                                            </div>
+                                            {todayStats && (
+                                                <div className="mt-4 p-5 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex justify-between items-center transition-colors border border-emerald-200 dark:border-emerald-500/30 shadow-sm">
+                                                    <div>
+                                                        <span className="block text-sm text-emerald-600 dark:text-emerald-400 font-bold mb-1">
+                                                            <i className="fa-solid fa-check-circle mr-1.5"></i>今日報表已自動同步 ({todayStats.dateStr})
+                                                        </span>
+                                                        <span className="block text-3xl font-black text-emerald-700 dark:text-emerald-100">${formatMoney(todayStats.sales)}</span>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
 
-                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
-                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-                                        <div className="flex items-center">
-                                            <h2 className="text-xl font-semibold flex items-center whitespace-nowrap dark:text-slate-100"><i className="fa-solid fa-cloud text-blue-500 mr-2"></i> 歷史業績</h2>
-                                            {availableMonths.length > 0 && (
-                                                <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="ml-3 px-2 py-1 text-sm bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-medium border border-blue-100 dark:border-blue-500/30 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                                                    {availableMonths.map(m => <option key={m} value={m}>{parseInt(m, 10)} 月份</option>)}
-                                                </select>
+                                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                                                <div className="flex items-center">
+                                                    <h2 className="text-xl font-semibold flex items-center whitespace-nowrap dark:text-slate-100"><i className="fa-solid fa-cloud text-blue-500 mr-2"></i> 歷史業績</h2>
+                                                    {availableMonths.length > 0 && (
+                                                        <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="ml-3 px-2 py-1 text-sm bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-medium border border-blue-100 dark:border-blue-500/30 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                                                            {availableMonths.map(m => <option key={m} value={m}>{parseInt(m, 10)} 月份</option>)}
+                                                        </select>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                                                    {currentMonthRecords.length > 3 && (
+                                                        <button onClick={() => setIsHistoryExpanded(!isHistoryExpanded)} className={`flex-1 sm:flex-none justify-center text-sm px-3 py-1.5 rounded-lg flex items-center transition-colors ${isHistoryExpanded ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300'}`}><i className={`fa-solid ${isHistoryExpanded ? 'fa-compress' : 'fa-expand'} mr-1`}></i> {isHistoryExpanded ? '收起' : `展開全部(${currentMonthRecords.length})`}</button>
+                                                    )}
+                                                    <button onClick={() => { setIsBulkImportOpen(!isBulkImportOpen); }} className={`flex-1 sm:flex-none justify-center text-sm px-3 py-1.5 rounded-lg flex items-center transition-colors ${isBulkImportOpen ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/30'}`}><i className={`fa-solid ${isBulkImportOpen ? 'fa-xmark' : 'fa-table'} mr-1`}></i> {isBulkImportOpen ? '取消' : '批量匯入'}</button>
+                                                </div>
+                                            </div>
+                                            {isBulkImportOpen && (
+                                                <div className="mb-6 p-4 bg-emerald-50/50 dark:bg-emerald-500/10 rounded-xl border border-emerald-100 dark:border-emerald-500/20">
+                                                    <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 leading-relaxed">請在 Excel 總表中依序選取並複製以下欄位：<br />日期、總業績、點數兌換、1000%數量、1000%金額、400%數量、400%金額</p>
+                                                    <textarea className="w-full px-4 py-3 border border-emerald-200 dark:border-emerald-500/30 rounded-lg outline-none h-32 text-sm font-mono whitespace-pre dark:bg-slate-800 dark:text-slate-200" placeholder="貼上 Excel 內容..." value={bulkInput} onChange={(e) => setBulkInput(e.target.value)}></textarea>
+                                                    <div className="flex justify-end mt-3"><button onClick={handleBulkImport} className="px-4 py-1.5 bg-emerald-500 text-white text-sm font-medium rounded-lg hover:bg-emerald-600"><i className="fa-solid fa-cloud-arrow-up mr-2"></i> 同步至雲端</button></div>
+                                                </div>
+                                            )}
+                                            {visibleRecords.length === 0 ? (
+                                                <p className="text-slate-400 dark:text-slate-500 text-sm">雲端無此月份紀錄，請上傳檔案或匯入。</p>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {visibleRecords.map(record => (
+                                                        <div key={record.date} className="flex justify-between items-start p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-blue-100 dark:hover:border-blue-500/50 transition-colors">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center mb-2">
+                                                                    <span className="font-bold text-slate-800 dark:text-slate-200 mr-3">{record.date} ({record.weekday})</span>
+                                                                    <span className="text-blue-600 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-500/20 px-2 py-0.5 rounded text-sm">業績: ${formatMoney(record.sales)}</span>
+                                                                </div>
+                                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-slate-500 dark:text-slate-400 mt-3">
+                                                                    <div className="bg-white dark:bg-slate-700 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-600">
+                                                                        <span className="block text-xs text-slate-400 dark:text-slate-400 mb-1">點數兌換</span>
+                                                                        <span className="font-medium text-slate-700 dark:text-slate-200">${formatMoney(record.points || 0)}</span>
+                                                                    </div>
+                                                                    <div className="bg-white dark:bg-slate-700 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-600">
+                                                                        <span className="block text-xs text-slate-400 dark:text-slate-400 mb-1">400% MEGA</span>
+                                                                        <span className="font-medium text-slate-700 dark:text-slate-200">{record.bigToys?.['400']?.qty || 0}隻 / ${formatMoney(record.bigToys?.['400']?.amt || 0)}</span>
+                                                                    </div>
+                                                                    <div className="bg-white dark:bg-slate-700 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-600">
+                                                                        <span className="block text-xs text-slate-400 dark:text-slate-400 mb-1">1000% MEGA</span>
+                                                                        <span className="font-medium text-slate-700 dark:text-slate-200">{record.bigToys?.['1000']?.qty || 0}隻 / ${formatMoney(record.bigToys?.['1000']?.amt || 0)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <button onClick={() => deleteRecord(record.date)} className="p-2 ml-4 mt-1 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/20"><i className="fa-solid fa-trash-can"></i></button>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             )}
                                         </div>
-                                        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                                            {currentMonthRecords.length > 3 && (
-                                                <button onClick={() => setIsHistoryExpanded(!isHistoryExpanded)} className={`flex-1 sm:flex-none justify-center text-sm px-3 py-1.5 rounded-lg flex items-center transition-colors ${isHistoryExpanded ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300'}`}><i className={`fa-solid ${isHistoryExpanded ? 'fa-compress' : 'fa-expand'} mr-1`}></i> {isHistoryExpanded ? '收起' : `展開全部(${currentMonthRecords.length})`}</button>
-                                            )}
-                                            <button onClick={() => { setIsBulkImportOpen(!isBulkImportOpen); }} className={`flex-1 sm:flex-none justify-center text-sm px-3 py-1.5 rounded-lg flex items-center transition-colors ${isBulkImportOpen ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/30'}`}><i className={`fa-solid ${isBulkImportOpen ? 'fa-xmark' : 'fa-table'} mr-1`}></i> {isBulkImportOpen ? '取消' : '批量匯入'}</button>
+
+                                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
+                                            <h2 className="text-xl font-semibold mb-4 flex items-center dark:text-slate-100"><i className="fa-solid fa-sliders text-emerald-500 mr-2"></i>月目標/新品/小作文</h2>
+                                            <div className="mb-6 w-full md:w-1/2">
+                                                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">選定月份業績目標 (萬)</label>
+                                                <div className="relative">
+                                                    <input type="number" className="w-full pl-4 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-900 dark:text-white" value={settings.targetAmount} onChange={(e) => updateCloudData('settings', { ...settings, targetAmount: Number(e.target.value) })} />
+                                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-slate-500">萬</span></div>
+                                                </div>
+                                            </div>
+                                            <div className="mb-6 pt-6 border-t border-slate-100 dark:border-slate-700/50">
+                                                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">追蹤的新品 Barcode</label>
+                                                <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                                                    <input type="text" className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="輸入條碼..." value={newBarcodeStr} onChange={(e) => setNewBarcodeStr(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addNewBarcode()} />
+                                                    <div className="relative w-full sm:w-32"><input type="number" className="w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="端盒數量" value={newBoxSize} onChange={(e) => setNewBoxSize(Number(e.target.value))} min="1" /><div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-slate-500 text-xs">入/盒</span></div></div>
+                                                    <button onClick={addNewBarcode} className="px-4 py-2 bg-slate-800 dark:bg-blue-600 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-blue-700 transition-colors"><i className="fa-solid fa-plus mr-1"></i> 新增</button>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {settings.newBarcodes.map(code => (
+                                                        <span key={code} className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-sm font-medium">{code} <span className="text-xs ml-1 opacity-60 font-normal">({settings.boxSizeMap[code] || 6}入)</span><button onClick={() => removeBarcode(code)} className="ml-2 hover:text-red-500"><i className="fa-solid fa-xmark"></i></button></span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="pt-6 border-t border-slate-100 dark:border-slate-700/50">
+                                                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">賣場狀況分享（小作文）</label>
+                                                <textarea className="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-lg outline-none h-24 resize-none dark:bg-slate-900 dark:text-white" placeholder="例如：今天是週五，人潮明顯增加..." value={story} onChange={(e) => setStory(e.target.value)}></textarea>
+                                            </div>
                                         </div>
                                     </div>
-                                    {isBulkImportOpen && (
-                                        <div className="mb-6 p-4 bg-emerald-50/50 dark:bg-emerald-500/10 rounded-xl border border-emerald-100 dark:border-emerald-500/20">
-                                            <p className="text-xs text-slate-600 dark:text-slate-400 mb-3 leading-relaxed">請在 Excel 總表中依序選取並複製以下欄位：<br />日期、總業績、點數兌換、1000%數量、1000%金額、400%數量、400%金額</p>
-                                            <textarea className="w-full px-4 py-3 border border-emerald-200 dark:border-emerald-500/30 rounded-lg outline-none h-32 text-sm font-mono whitespace-pre dark:bg-slate-800 dark:text-slate-200" placeholder="貼上 Excel 內容..." value={bulkInput} onChange={(e) => setBulkInput(e.target.value)}></textarea>
-                                            <div className="flex justify-end mt-3"><button onClick={handleBulkImport} className="px-4 py-1.5 bg-emerald-500 text-white text-sm font-medium rounded-lg hover:bg-emerald-600"><i className="fa-solid fa-cloud-arrow-up mr-2"></i> 同步至雲端</button></div>
-                                        </div>
-                                    )}
-                                    {visibleRecords.length === 0 ? (
-                                        <p className="text-slate-400 dark:text-slate-500 text-sm">雲端無此月份紀錄，請上傳檔案或匯入。</p>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            {visibleRecords.map(record => (
-                                                <div key={record.date} className="flex justify-between items-start p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-blue-100 dark:hover:border-blue-500/50 transition-colors">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center mb-2">
-                                                            <span className="font-bold text-slate-800 dark:text-slate-200 mr-3">{record.date} ({record.weekday})</span>
-                                                            <span className="text-blue-600 dark:text-blue-300 font-bold bg-blue-50 dark:bg-blue-500/20 px-2 py-0.5 rounded text-sm">業績: ${formatMoney(record.sales)}</span>
-                                                        </div>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-slate-500 dark:text-slate-400 mt-3">
-                                                            <div className="bg-white dark:bg-slate-700 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-600">
-                                                                <span className="block text-xs text-slate-400 dark:text-slate-400 mb-1">點數兌換</span>
-                                                                <span className="font-medium text-slate-700 dark:text-slate-200">${formatMoney(record.points || 0)}</span>
-                                                            </div>
-                                                            <div className="bg-white dark:bg-slate-700 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-600">
-                                                                <span className="block text-xs text-slate-400 dark:text-slate-400 mb-1">400% MEGA</span>
-                                                                <span className="font-medium text-slate-700 dark:text-slate-200">{record.bigToys?.['400']?.qty || 0}隻 / ${formatMoney(record.bigToys?.['400']?.amt || 0)}</span>
-                                                            </div>
-                                                            <div className="bg-white dark:bg-slate-700 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-600">
-                                                                <span className="block text-xs text-slate-400 dark:text-slate-400 mb-1">1000% MEGA</span>
-                                                                <span className="font-medium text-slate-700 dark:text-slate-200">{record.bigToys?.['1000']?.qty || 0}隻 / ${formatMoney(record.bigToys?.['1000']?.amt || 0)}</span>
-                                                            </div>
+
+                                    <div className="lg:col-span-5 relative">
+
+                                        {/* ✨ 新增：今日熱銷 Top 5 儀表板 (直接從 itemStats 讀取乾淨資料) */}
+                                        {todayStats && todayStats.itemStats && (
+                                            (() => {
+                                                const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0);
+
+                                                // 統一使用：數量優先，業績次之
+                                                const statsArray = rawArray.map(item => ({
+                                                    name: item.desc,
+                                                    quantity: item.top5Qty || item.qty || item.quantity || item.count || 0,
+                                                    sales: item.top5Amt || 0
+                                                }));
+
+                                                const top5Items = statsArray.sort((a, b) => b.quantity - a.quantity || b.sales - a.sales).slice(0, 5);
+
+                                                if (top5Items.length === 0) return null;
+
+                                                return (
+                                                    <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors animate-scale-in mb-6">
+                                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center">
+                                                            <i className="fa-solid fa-trophy text-amber-500 mr-2.5"></i> 今日熱銷 Top 5
+                                                        </h3>
+                                                        <div className="space-y-2.5">
+                                                            {top5Items.map((item, index) => {
+                                                                const percent = todayStats.sales > 0 ? ((item.sales / todayStats.sales) * 100).toFixed(1) : 0;
+
+                                                                const rankColors = [
+                                                                    'bg-amber-100 text-amber-600 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30',
+                                                                    'bg-slate-200 text-slate-600 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600',
+                                                                    'bg-orange-100 text-orange-600 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30'
+                                                                ];
+                                                                const currentRankColor = index < 3 ? rankColors[index] : 'bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700';
+
+                                                                return (
+                                                                    <div key={`top-${index}`} className="flex items-center justify-between p-3 md:p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700/50 hover:border-blue-200 dark:hover:border-blue-500/30 transition-colors group">
+                                                                        <div className="flex items-center gap-3 overflow-hidden pr-3">
+                                                                            <div className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-black border ${currentRankColor} shadow-sm`}>
+                                                                                {index + 1}
+                                                                            </div>
+                                                                            <div className="truncate text-sm font-bold text-slate-700 dark:text-slate-200 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" title={item.name}>
+                                                                                {item.name}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex flex-col items-end shrink-0">
+                                                                            <div className="text-sm md:text-base font-black text-slate-800 dark:text-slate-100">
+                                                                                ${item.sales.toLocaleString()}
+                                                                            </div>
+                                                                            <div className="text-[11px] md:text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-2">
+                                                                                <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                                                                                    {item.quantity} 件
+                                                                                </span>
+                                                                                <span className="text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-500/20 font-bold">
+                                                                                    {percent}%
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
-                                                    <button onClick={() => deleteRecord(record.date)} className="p-2 ml-4 mt-1 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/20"><i className="fa-solid fa-trash-can"></i></button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                                );
+                                            })()
+                                        )}
 
-                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
-                                    <h2 className="text-xl font-semibold mb-4 flex items-center dark:text-slate-100"><i className="fa-solid fa-sliders text-emerald-500 mr-2"></i>月目標/新品/小作文</h2>
-                                    <div className="mb-6 w-full md:w-1/2">
-                                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">選定月份業績目標 (萬)</label>
-                                        <div className="relative">
-                                            <input type="number" className="w-full pl-4 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-900 dark:text-white" value={settings.targetAmount} onChange={(e) => updateCloudData('settings', { ...settings, targetAmount: Number(e.target.value) })} />
-                                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-slate-500">萬</span></div>
-                                        </div>
-                                    </div>
-                                    <div className="mb-6 pt-6 border-t border-slate-100 dark:border-slate-700/50">
-                                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">追蹤的新品 Barcode</label>
-                                        <div className="flex flex-col sm:flex-row gap-2 mb-3">
-                                            <input type="text" className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="輸入條碼..." value={newBarcodeStr} onChange={(e) => setNewBarcodeStr(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addNewBarcode()} />
-                                            <div className="relative w-full sm:w-32"><input type="number" className="w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="端盒數量" value={newBoxSize} onChange={(e) => setNewBoxSize(Number(e.target.value))} min="1" /><div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-slate-500 text-xs">入/盒</span></div></div>
-                                            <button onClick={addNewBarcode} className="px-4 py-2 bg-slate-800 dark:bg-blue-600 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-blue-700 transition-colors"><i className="fa-solid fa-plus mr-1"></i> 新增</button>
-                                        </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {settings.newBarcodes.map(code => (
-                                                <span key={code} className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-sm font-medium">{code} <span className="text-xs ml-1 opacity-60 font-normal">({settings.boxSizeMap[code] || 6}入)</span><button onClick={() => removeBarcode(code)} className="ml-2 hover:text-red-500"><i className="fa-solid fa-xmark"></i></button></span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="pt-6 border-t border-slate-100 dark:border-slate-700/50">
-                                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">賣場狀況分享（小作文）</label>
-                                        <textarea className="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-lg outline-none h-24 resize-none dark:bg-slate-900 dark:text-white" placeholder="例如：今天是週五，人潮明顯增加..." value={story} onChange={(e) => setStory(e.target.value)}></textarea>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="lg:col-span-5 relative">
-                                
-                               {/* ✨ 新增：今日熱銷 Top 5 儀表板 (直接從 itemStats 讀取乾淨資料) */}
-                                {todayStats && todayStats.itemStats && (
-                                    (() => {
-                                        const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0);
-                                            
-                                        // 統一使用：數量優先，業績次之
-                                        const statsArray = rawArray.map(item => ({
-                                            name: item.desc,
-                                            quantity: item.top5Qty || item.qty || item.quantity || item.count || 0,
-                                            sales: item.top5Amt || 0
-                                        }));
-
-                                        const top5Items = statsArray.sort((a, b) => b.quantity - a.quantity || b.sales - a.sales).slice(0, 5);
-
-                                        if (top5Items.length === 0) return null;
-
-                                        return (
-                                            <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors animate-scale-in mb-6">
-                                                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center">
-                                                    <i className="fa-solid fa-trophy text-amber-500 mr-2.5"></i> 今日熱銷 Top 5
-                                                </h3>
-                                                <div className="space-y-2.5">
-                                                    {top5Items.map((item, index) => {
-                                                        const percent = todayStats.sales > 0 ? ((item.sales / todayStats.sales) * 100).toFixed(1) : 0;
-                                                        
-                                                        const rankColors = [
-                                                            'bg-amber-100 text-amber-600 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30',
-                                                            'bg-slate-200 text-slate-600 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600',
-                                                            'bg-orange-100 text-orange-600 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30'
-                                                        ];
-                                                        const currentRankColor = index < 3 ? rankColors[index] : 'bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700';
-
-                                                        return (
-                                                            <div key={`top-${index}`} className="flex items-center justify-between p-3 md:p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700/50 hover:border-blue-200 dark:hover:border-blue-500/30 transition-colors group">
-                                                                <div className="flex items-center gap-3 overflow-hidden pr-3">
-                                                                    <div className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-black border ${currentRankColor} shadow-sm`}>
-                                                                        {index + 1}
-                                                                    </div>
-                                                                    <div className="truncate text-sm font-bold text-slate-700 dark:text-slate-200 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" title={item.name}>
-                                                                        {item.name}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex flex-col items-end shrink-0">
-                                                                    <div className="text-sm md:text-base font-black text-slate-800 dark:text-slate-100">
-                                                                        ${item.sales.toLocaleString()}
-                                                                    </div>
-                                                                    <div className="text-[11px] md:text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-2">
-                                                                        <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                                                                            {item.quantity} 件
-                                                                        </span>
-                                                                        <span className="text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-500/20 font-bold">
-                                                                            {percent}%
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
+                                        {/* 原本的報表預覽區塊 */}
+                                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 sticky top-8 flex flex-col h-[calc(100vh-8rem)] transition-colors z-10">
+                                            <div className="flex justify-between items-center mb-4 shrink-0">
+                                                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center"><i className="fa-solid fa-file-lines text-slate-400 mr-2"></i> 報表預覽</h2>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => setIsQRCodeModalOpen(true)} className="px-3 md:px-4 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-colors flex items-center text-sm font-medium shadow-sm border border-blue-100 dark:border-blue-500/20"><i className="fa-solid fa-qrcode mr-2"></i> <span className="hidden md:inline">產生條碼</span><span className="md:hidden">條碼</span></button>
+                                                    <button onClick={() => navigator.clipboard.writeText(reportContent).then(() => showToast('報表已複製！'))} className="px-3 md:px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-slate-600 transition-colors flex items-center text-sm font-medium shadow-sm"><i className="fa-solid fa-copy md:mr-2"></i> <span className="hidden md:inline">複製</span></button>
                                                 </div>
                                             </div>
-                                        );
-                                    })()
-                                )}
-
-                                {/* 原本的報表預覽區塊 */}
-                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 sticky top-8 flex flex-col h-[calc(100vh-8rem)] transition-colors z-10">
-                                    <div className="flex justify-between items-center mb-4 shrink-0">
-                                        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center"><i className="fa-solid fa-file-lines text-slate-400 mr-2"></i> 報表預覽</h2>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => setIsQRCodeModalOpen(true)} className="px-3 md:px-4 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-colors flex items-center text-sm font-medium shadow-sm border border-blue-100 dark:border-blue-500/20"><i className="fa-solid fa-qrcode mr-2"></i> <span className="hidden md:inline">產生條碼</span><span className="md:hidden">條碼</span></button>
-                                            <button onClick={() => navigator.clipboard.writeText(reportContent).then(() => showToast('報表已複製！'))} className="px-3 md:px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-slate-600 transition-colors flex items-center text-sm font-medium shadow-sm"><i className="fa-solid fa-copy md:mr-2"></i> <span className="hidden md:inline">複製</span></button>
+                                            <div className="flex-1 bg-slate-50 dark:bg-slate-900 p-6 rounded-xl text-sm font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed overflow-y-auto border border-slate-200 dark:border-slate-700">{reportContent}</div>
                                         </div>
                                     </div>
-                                    <div className="flex-1 bg-slate-50 dark:bg-slate-900 p-6 rounded-xl text-sm font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed overflow-y-auto border border-slate-200 dark:border-slate-700">{reportContent}</div>
                                 </div>
-                            </div>
-                        </div>
-                    )}
+                            )}
 
                             {/* =========================================
                         分頁 2: 盒損登記器 (120% 適配 + 響應式折疊版)
@@ -2107,26 +2252,26 @@
 
 
                     {/* ✨ 質感底色 ＋ 紅色進度條 Undo 復原介面 (修復手機版擠壓與 24px 邊距) */}
-              {undoData && (
-                <div className="fixed bottom-28 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] md:w-auto md:min-w-[360px] max-w-md bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-4 md:px-6 md:py-4 rounded-2xl shadow-2xl flex items-center justify-between gap-4 z-[80] overflow-hidden animate-slide-up-fade border border-slate-200 dark:border-slate-700 no-print transition-colors">
-                    <span className="text-sm font-bold tracking-wide flex items-center flex-1 leading-snug min-w-0">
-                        <i className="fa-solid fa-circle-exclamation text-rose-500 mr-2.5 shrink-0"></i>
-                        <span className="line-clamp-2">{undoData.message}</span>
-                    </span>
-                    <button onClick={handleUndoAction} className="shrink-0 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2 transition-all cursor-pointer shadow-sm border border-slate-200 dark:border-slate-600">
-                        <i className="fa-solid fa-rotate-left"></i> 復原
-                    </button>
-                    {/* 5 秒直線倒數進度條 */}
-                    <div className="absolute bottom-0 left-0 h-1.5 bg-rose-500 animate-shrink-x origin-left w-full shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
-                </div>
-            )}
+                    {undoData && (
+                        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] md:w-auto md:min-w-[360px] max-w-md bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-4 md:px-6 md:py-4 rounded-2xl shadow-2xl flex items-center justify-between gap-4 z-[80] overflow-hidden animate-slide-up-fade border border-slate-200 dark:border-slate-700 no-print transition-colors">
+                            <span className="text-sm font-bold tracking-wide flex items-center flex-1 leading-snug min-w-0">
+                                <i className="fa-solid fa-circle-exclamation text-rose-500 mr-2.5 shrink-0"></i>
+                                <span className="line-clamp-2">{undoData.message}</span>
+                            </span>
+                            <button onClick={handleUndoAction} className="shrink-0 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2 transition-all cursor-pointer shadow-sm border border-slate-200 dark:border-slate-600">
+                                <i className="fa-solid fa-rotate-left"></i> 復原
+                            </button>
+                            {/* 5 秒直線倒數進度條 */}
+                            <div className="absolute bottom-0 left-0 h-1.5 bg-rose-500 animate-shrink-x origin-left w-full shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
+                        </div>
+                    )}
 
                     {/* ✨ 全域綠色 Toast 提示 (修復手機版寬度與 24px 邊距) */}
-              {toast && (
-                <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] sm:w-auto max-w-md z-[60] bg-emerald-500 text-white px-6 py-3.5 rounded-2xl shadow-xl font-bold animate-slide-up-fade no-print flex items-center justify-center text-center text-sm md:text-base leading-snug">
-                  {toast}
-                </div>
-              )}
+                    {toast && (
+                        <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] sm:w-auto max-w-md z-[60] bg-emerald-500 text-white px-6 py-3.5 rounded-2xl shadow-xl font-bold animate-slide-up-fade no-print flex items-center justify-center text-center text-sm md:text-base leading-snug">
+                            {toast}
+                        </div>
+                    )}
 
                     {/* =========================================
                   列印渲染區域 (Print Only DOM)
