@@ -194,9 +194,7 @@
         const findNameInDict = (barcode, dict) => {
             if (!barcode || !dict) return null;
             const safeBarcode = String(barcode).trim();
-            // 1. 精準比對
             if (dict[safeBarcode]) return dict[safeBarcode];
-            // 2. 去零比對 (對應 Excel 匯出時少掉開頭 0 的狀況)
             const stripped = safeBarcode.replace(/^0+/, '');
             const key = Object.keys(dict).find(k => String(k).trim().replace(/^0+/, '') === stripped);
             return key ? dict[key] : null;
@@ -416,7 +414,6 @@
             const handleScanSubmit = (e) => {
                 e.preventDefault(); const barcode = barcodeInput.trim(); if (!barcode) return;
                 
-                // ✨ 防呆找尋機制，確保掃描槍刷出來的條碼也能正確去 0 找尋
                 let dictName = findNameInDict(barcode, settings.customNameMap);
                 let productName = dictName || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
 
@@ -661,22 +658,21 @@
 
                     const barcode = String(row[idxBarcode] || '').trim();
                     const rawDesc = idxDesc !== -1 ? String(row[idxDesc] || '').trim() : '';
-                    
-                    // ✨ 修改點：若沒有條碼「且」沒有名稱，才跳過。保留判斷無條碼 MEGA 盲盒的能力
+
                     if (!barcode && !rawDesc) continue;
 
                     if (!firstDate && row[idxDate]) firstDate = row[idxDate].toString().split(' ')[0];
                     if (storeName === '未知店鋪' && row[idxStore]) storeName = row[idxStore].toString().replace(/\[.*?\]/, '').trim();
 
-                    // ✨ 修改點：直接拿條碼去字典找！支援去0匹配
                     let dictName = findNameInDict(barcode, settings.customNameMap);
                     const desc = dictName || rawDesc || `未知商品 (${barcode})`;
 
-                    const qty = parseFloat(row[idxQty]) || 0; 
-                    const amt = parseFloat(row[idxAmt]) || 0; 
+                    const qty = parseFloat(row[idxQty]) || 0;
+                    const amt = parseFloat(row[idxAmt]) || 0;
                     const disc = parseFloat(row[idxDisc]) || 0;
 
-                    if (barcode && desc && !dictName) updatedBarcodeMap[barcode] = desc;
+                    // ✨ 核心防呆：如果 Excel 抓到的品名跟條碼一模一樣，就不要當作新單字記下來
+                    if (barcode && desc && !dictName && barcode !== desc) updatedBarcodeMap[barcode] = desc;
                     todaySales += amt; if (disc === 330) pointsRedeemed += 330;
 
                     // 判斷 MEGA 玩具
@@ -687,13 +683,13 @@
                     if (barcode) {
                         if (!itemStats[barcode]) itemStats[barcode] = { barcode, desc, top5Qty: 0, top5Amt: 0, singles: 0, boxes: 0 };
                         if (amt > 0) { itemStats[barcode].top5Qty += qty; itemStats[barcode].top5Amt += amt; }
-                        
+
                         const boxSize = settings.boxSizeMap[barcode] || 6;
                         if (qty >= boxSize) { itemStats[barcode].boxes += Math.floor(qty / boxSize); itemStats[barcode].singles += (qty % boxSize); }
                         else { itemStats[barcode].singles += qty; }
                     }
                 }
-                
+
                 setCurrentStore(storeName);
                 const newDateStr = firstDate || new Date().toISOString().split('T')[0];
 
@@ -703,9 +699,8 @@
 
                 const formattedDate = formatDateStr(newDateStr);
                 const filtered = dailyRecords.filter(r => r.date !== formattedDate);
-                // 確保排序是新的日期在最上面 (b 比較 a)
                 const newRecords = [...filtered, { date: formattedDate, weekday: getWeekday(newDateStr), sales: todaySales, points: pointsRedeemed, bigToys: newStats.bigToys }].sort((a, b) => b.date.localeCompare(a.date));
-                
+
                 updateCloudData('dailyRecords', newRecords, '報表解析成功！已自動同步至雲端 ☁️');
                 updateCloudData('settings', { ...settings, barcodeMap: updatedBarcodeMap });
             };
@@ -754,23 +749,105 @@
             };
 
             // ==========================================
-            // ✨ 字典匯入升級版 (支援 Regex 容錯)
+            // ✨ 1. 字典匯入升級版 (精準區分：全新新增、覆寫更新、完全重複略過)
             // ==========================================
             const handleImportDict = () => {
                 if (!dictInput.trim()) return;
+                
                 let newDict = { ...settings.customNameMap }; 
-                let count = 0;
+                let newCount = 0;    // 全新加入的數量
+                let updateCount = 0; // 條碼一樣，但名字被更新的數量
+                let skipCount = 0;   // 條碼跟名字都一模一樣，或是無效資料(品名=條碼)的數量
+
                 dictInput.split('\n').forEach(line => { 
                     const parts = line.trim().split(/\t|,/); 
+                    let bc = '', name = '';
+
+                    // 支援 Tab、逗號、或是空格分隔
                     if (parts.length < 2) {
                         const match = line.trim().match(/^([^\s,]+)[\s,]+(.+)$/);
-                        if (match) { newDict[match[1].trim()] = match[2].trim(); count++; }
+                        if (match) { bc = match[1].trim(); name = match[2].trim(); }
                     } else {
-                        if (parts[0].trim() && parts[1].trim()) { newDict[parts[0].trim()] = parts[1].trim(); count++; }
+                        if (parts[0].trim() && parts[1].trim()) { bc = parts[0].trim(); name = parts[1].trim(); }
+                    }
+
+                    // 核心判斷邏輯
+                    if (bc && name) {
+                        if (bc === name) {
+                            skipCount++; // 無效資料：品名等於條碼
+                        } else if (newDict[bc] === name) {
+                            skipCount++; // 重複資料：字典裡已經有一模一樣的資料了
+                        } else {
+                            if (newDict[bc]) {
+                                updateCount++; // 條碼已存在，但名字不同 (覆寫更新)
+                            } else {
+                                newCount++; // 全新條碼
+                            }
+                            newDict[bc] = name; // 存入字典
+                        }
                     }
                 });
-                updateCloudData('settings', { ...settings, customNameMap: newDict }, `成功匯入 ${count} 筆翻譯字典！`); 
+
+                // 如果全部都是重複的，顯示警告
+                if (newCount === 0 && updateCount === 0) {
+                    showToast(`⚠️ 沒有匯入新資料 (皆為重複或無效資料)`);
+                    setDictInput('');
+                    return;
+                }
+
+                // 組合精準的提示訊息
+                let toastMsg = `✅ 成功新增 ${newCount} 筆`;
+                if (updateCount > 0) toastMsg += `，更新 ${updateCount} 筆`;
+                if (skipCount > 0) toastMsg += ` (略過 ${skipCount} 筆重複)`;
+
+                updateCloudData('settings', { ...settings, customNameMap: newDict }, toastMsg); 
                 setDictInput('');
+            };
+
+            // ==========================================
+            // ✨ 2. 系統記憶 (barcodeMap) 一鍵轉移至正式字典 (修復沒反應的問題)
+            // ==========================================
+            const handleMergeBarcodeMap = () => {
+                // 加入 || {} 防止 undefined 報錯
+                const memoryMap = settings.barcodeMap || {};
+                const currentMemoryKeys = Object.keys(memoryMap);
+                
+                if (currentMemoryKeys.length === 0) {
+                    return showToast('目前系統沒有暫存的學習記憶喔！');
+                }
+
+                let newDict = { ...settings.customNameMap };
+                let count = 0;
+
+                // 尋訪所有系統偷記下來的 barcodeMap
+                currentMemoryKeys.forEach(barcode => {
+                    const name = memoryMap[barcode];
+                    // 不在正式字典裡，且「品名不等於條碼」才加入
+                    if (!newDict[barcode] && barcode !== name) {
+                        newDict[barcode] = name;
+                        count++;
+                    }
+                });
+
+                // 備份供 Undo 使用
+                const backupMap = { ...memoryMap };
+                const backupCustomMap = { ...settings.customNameMap };
+
+                // 直接強制執行並顯示 Toast，跳過容易被手機阻擋的 window.confirm
+                updateCloudData('settings', { 
+                    ...settings, 
+                    customNameMap: newDict,
+                    barcodeMap: {} 
+                }, `🎉 成功收編 ${count} 筆資料至正式字典！`);
+
+                // 觸發防呆復原
+                triggerUndo(`已清空並收編 ${currentMemoryKeys.length} 筆系統記憶`, () => {
+                    updateCloudData('settings', {
+                        ...settings,
+                        customNameMap: backupCustomMap,
+                        barcodeMap: backupMap
+                    });
+                });
             };
 
             const addNewBarcode = () => {
@@ -807,7 +884,7 @@
                 report += `目標：${settings.targetAmount}萬\n達成率：${achievement}%\n\n銷售狀況分享：\n`;
 
                 const isTodaySelected = todayStats && (formatDateStr(todayStats.dateStr).split('/')[0] === selectedMonth);
-                
+
                 // ✨ 修改點：確保此處的 Top 5 與畫面儀表板完全同步 (銷量優先, 金額次之)
                 if (isTodaySelected && todayStats.itemStats) {
                     const top5 = Object.values(todayStats.itemStats)
@@ -1756,7 +1833,22 @@
                                                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 hidden sm:block">管理並匯入條碼對應的中文品名，全設備即時同步。</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-2 md:gap-3">
+                                                {/* ✨ 新增：一鍵轉移按鈕，只有當系統有偷記資料時才會顯示 */}
+                                                {Object.keys(settings.barcodeMap || {}).length > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMergeBarcodeMap(); }}
+                                                        className="flex items-center px-3 py-1.5 bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/40 rounded-lg text-sm font-bold shadow-sm transition-colors whitespace-nowrap"
+                                                        title="將系統自動學起來的名稱轉為正式字典"
+                                                    >
+                                                        <i className="fa-solid fa-wand-magic-sparkles sm:mr-1.5"></i>
+                                                        <span className="hidden sm:inline">收編系統記憶 </span>
+                                                        <span className="sm:hidden ml-1">收編 </span>
+                                                        ({Object.keys(settings.barcodeMap || {}).length})
+                                                    </button>
+                                                )}
+
                                                 <span className="bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-400 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap">
                                                     共 {Object.keys(settings.customNameMap).length} 筆
                                                 </span>
