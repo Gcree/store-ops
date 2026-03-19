@@ -968,10 +968,6 @@
 
             // --- 產生報表內文 ---
             const reportContent = useMemo(() => {
-                // ... 下面是你原本的程式碼
-            
-            // --- 產生報表內文 ---
-            const reportContent = useMemo(() => {
                 if (!selectedMonth) return '請先上傳檔案或建立紀錄...';
                 let recordsToPrint = dailyRecords.filter(r => r.date.split('/')[0] === selectedMonth);
                 if (todayStats && formatDateStr(todayStats.dateStr).split('/')[0] === selectedMonth && !recordsToPrint.find(r => r.date === formatDateStr(todayStats.dateStr))) {
