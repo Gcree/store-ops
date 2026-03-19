@@ -13,22 +13,20 @@
         tailwind.config = {
             darkMode: 'class',
             theme: {
-                // ✨ 1. 強制套用 Apple 系統字體 (SF Pro)
                 fontFamily: {
                     sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
                     mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', '"Liberation Mono"', '"Courier New"', 'monospace'],
                 },
                 extend: {
-                    // ✨ 2. 完美映射 Apple HIG 字級與黃金比例字距 (Tracking)
                     fontSize: {
-                        'xs': ['12px', { lineHeight: '16px', letterSpacing: '0em' }],       // Caption
-                        'sm': ['14px', { lineHeight: '18px', letterSpacing: '-0.006em' }],  // Subhead / Footnote
-                        'base': ['17px', { lineHeight: '22px', letterSpacing: '-0.022em' }],// Body (Apple 原生標準 17pt)
-                        'lg': ['19px', { lineHeight: '24px', letterSpacing: '-0.021em' }],  // Callout
-                        'xl': ['20px', { lineHeight: '25px', letterSpacing: '-0.022em' }],  // Title 3
-                        '2xl': ['22px', { lineHeight: '28px', letterSpacing: '-0.026em' }], // Title 2
-                        '3xl': ['28px', { lineHeight: '34px', letterSpacing: '-0.038em' }], // Title 1
-                        '4xl': ['34px', { lineHeight: '41px', letterSpacing: '-0.041em' }], // Large Title
+                        'xs': ['12px', { lineHeight: '16px', letterSpacing: '0em' }],
+                        'sm': ['14px', { lineHeight: '18px', letterSpacing: '-0.006em' }],
+                        'base': ['17px', { lineHeight: '22px', letterSpacing: '-0.022em' }],
+                        'lg': ['19px', { lineHeight: '24px', letterSpacing: '-0.021em' }],
+                        'xl': ['20px', { lineHeight: '25px', letterSpacing: '-0.022em' }],
+                        '2xl': ['22px', { lineHeight: '28px', letterSpacing: '-0.026em' }],
+                        '3xl': ['28px', { lineHeight: '34px', letterSpacing: '-0.038em' }],
+                        '4xl': ['34px', { lineHeight: '41px', letterSpacing: '-0.041em' }],
                     },
                     animation: {
                         'shrink-x': 'shrinkX 5s linear forwards',
@@ -51,8 +49,7 @@
             }
         }
     </script>
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧸</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧸</text></svg>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -69,212 +66,64 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
-        html.dark ::-webkit-scrollbar-thumb {
-            background: #475569;
-        }
+        html.dark ::-webkit-scrollbar-thumb { background: #475569; }
+        html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
-        html.dark ::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
-        }
-
-        /* ==========================================
-           ✨ 全域 UI/UX 微交互升級 (iOS / Android 最佳化)
-           ========================================== */
-        
-        /* 1. iOS 底部安全區與全域點擊優化 */
         body {
-            /* 讓系統底部永遠留出 iPhone 黑條的空間 */
             padding-bottom: env(safe-area-inset-bottom);
-            /* 移除手機端點擊按鈕時，醜陋的預設灰色方形閃爍 */
             -webkit-tap-highlight-color: transparent; 
         }
 
-        /* 2 & 3. 全局按鈕：物理下壓 Q 彈回饋 + 觸控加速 */
         button {
             transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            /* 關閉瀏覽器預設的雙擊放大，讓點擊判定瞬間快 300ms */
             touch-action: manipulation; 
         }
-        button:active {
-            /* 所有按鈕點下去瞬間，都會有真實的內縮感 */
-            transform: scale(0.95) !important;
-        }
+        button:active { transform: scale(0.95) !important; }
 
-        /* 4. 全局 Sticky 標題列：自動加上毛玻璃與滾動陰影 */
         .sticky.top-0 {
             backdrop-filter: blur(12px) !important;
             -webkit-backdrop-filter: blur(12px) !important;
-            background-color: rgba(248, 250, 252, 0.85) !important; /* Tailwind slate-50 的半透明版 */
+            background-color: rgba(248, 250, 252, 0.85) !important;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
             border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
             z-index: 20;
         }
         
-        /* 支援深色模式的毛玻璃 */
         .dark .sticky.top-0 {
-            background-color: rgba(30, 41, 59, 0.85) !important; /* Tailwind slate-800 的半透明版 */
+            background-color: rgba(30, 41, 59, 0.85) !important;
             border-bottom: 1px solid rgba(51, 65, 85, 0.8) !important;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2) !important;
         }
 
-        /* 列印專用 CSS */
         @media print {
-
-            html,
-            body,
-            html.dark,
-            html.dark body {
-                height: auto !important;
-                min-height: auto !important;
-                overflow: visible !important;
-                background: white !important;
-                color: black !important;
-                margin: 0;
-                padding: 0 !important;
-                -webkit-print-color-adjust: exact;
-            }
-
-            .h-screen,
-            .h-full {
-                height: auto !important;
-                min-height: auto !important;
-            }
-
-            .overflow-hidden,
-            .overflow-auto,
-            .overflow-y-auto {
-                overflow: visible !important;
-            }
-
-            .no-print {
-                display: none !important;
-            }
-
-            .print-only {
-                display: block !important;
-                position: static !important;
-                width: 100%;
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            #print-area-barcode {
-                border: none;
-                width: 80mm !important;
-                max-width: 80mm !important;
-                margin: 0 auto;
-                box-sizing: border-box;
-                overflow: hidden;
-            }
-
-            .label-item {
-                width: 80mm;
-                padding: 6mm 4mm;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                page-break-inside: avoid;
-                page-break-after: auto;
-                border-bottom: 1px dashed #ccc;
-                margin-bottom: 4mm;
-                box-sizing: border-box;
-                background: white !important;
-                color: black !important;
-            }
-
-            .label-item:last-child {
-                border-bottom: none;
-                margin-bottom: 0;
-            }
-
-            .label-item svg {
-                max-width: 100%;
-                height: auto;
-            }
-
-            #print-area-damaged {
-                width: 80mm !important;
-                max-width: 80mm !important;
-                padding: 4mm !important;
-                color: black !important;
-                font-size: 12px !important;
-                font-family: sans-serif;
-                background: white !important;
-                box-sizing: border-box;
-                overflow: hidden;
-            }
-
-            .damaged-print-item {
-                margin-bottom: 5mm;
-                padding-bottom: 5mm;
-                border-bottom: 1px dashed #ccc;
-                page-break-inside: avoid;
-            }
-
-            @page {
-                size: 80mm auto;
-                margin: 0;
-            }
+            html, body, html.dark, html.dark body { height: auto !important; min-height: auto !important; overflow: visible !important; background: white !important; color: black !important; margin: 0; padding: 0 !important; -webkit-print-color-adjust: exact; }
+            .h-screen, .h-full { height: auto !important; min-height: auto !important; }
+            .overflow-hidden, .overflow-auto, .overflow-y-auto { overflow: visible !important; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; position: static !important; width: 100%; height: auto !important; overflow: visible !important; }
+            #print-area-barcode { border: none; width: 80mm !important; max-width: 80mm !important; margin: 0 auto; box-sizing: border-box; overflow: hidden; }
+            .label-item { width: 80mm; padding: 6mm 4mm; display: flex; flex-direction: column; align-items: center; justify-content: center; page-break-inside: avoid; page-break-after: auto; border-bottom: 1px dashed #ccc; margin-bottom: 4mm; box-sizing: border-box; background: white !important; color: black !important; }
+            .label-item:last-child { border-bottom: none; margin-bottom: 0; }
+            .label-item svg { max-width: 100%; height: auto; }
+            #print-area-damaged { width: 80mm !important; max-width: 80mm !important; padding: 4mm !important; color: black !important; font-size: 12px !important; font-family: sans-serif; background: white !important; box-sizing: border-box; overflow: hidden; }
+            .damaged-print-item { margin-bottom: 5mm; padding-bottom: 5mm; border-bottom: 1px dashed #ccc; page-break-inside: avoid; }
+            @page { size: 80mm auto; margin: 0; }
         }
 
-        .print-only {
-            display: none;
-        }
-
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        body {
-            padding-bottom: 80px;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-
-        /* 相機掃描器的美化 CSS */
-        #reader {
-            border: none !important;
-            border-radius: 1rem;
-            overflow: hidden;
-            background: #000;
-        }
-
-        #reader button {
-            background-color: #6366f1 !important;
-            color: white !important;
-            padding: 0.5rem 1rem !important;
-            border-radius: 0.75rem !important;
-            margin: 0.5rem !important;
-            cursor: pointer;
-            font-weight: bold;
-            border: none;
-        }
-
-        #reader select {
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-        }
+        .print-only { display: none; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        body { padding-bottom: 80px; transition: background-color 0.3s ease, color 0.3s ease; }
+        #reader { border: none !important; border-radius: 1rem; overflow: hidden; background: #000; }
+        #reader button { background-color: #6366f1 !important; color: white !important; padding: 0.5rem 1rem !important; border-radius: 0.75rem !important; margin: 0.5rem !important; cursor: pointer; font-weight: bold; border: none; }
+        #reader select { padding: 0.5rem; border-radius: 0.5rem; margin-bottom: 1rem; }
     </style>
 
 </head>
 
-<body
-    class="antialiased text-base bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 min-h-screen flex flex-col">
+<body class="antialiased text-base bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 min-h-screen flex flex-col">
     <div id="root" class="flex-1 flex flex-col"></div>
 
     <script type="text/babel">
@@ -293,7 +142,6 @@
 
         if (typeof window.firebase !== 'undefined' && !window.firebase.apps.length) {
             window.firebase.initializeApp(firebaseConfig);
-            // ✨ 新增：開啟 Firestore 離線持久化快取，提升二次載入速度
             window.firebase.firestore().enablePersistence({ synchronizeTabs: true })
                 .catch(function (err) { console.warn("快取啟用失敗:", err.code); });
         }
@@ -334,13 +182,24 @@
             return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
         };
         const determineCategory = (productName, categories) => {
-            // ✨ 防呆：確保比對前，將品名與關鍵字一律轉為小寫 (toLowerCase)，實現大小寫通吃
             const lowerProductName = (productName || '').toLowerCase();
             for (let cat of categories) {
                 const keywords = cat.keywords.split(',').map(k => k.trim().toLowerCase()).filter(k => k);
                 if (keywords.some(k => lowerProductName.includes(k))) return cat.name;
             }
             return '📦 其他 IP';
+        };
+
+        // ✨ 輔助尋找中文字典 (具備 Excel 吃 0 容錯能力)
+        const findNameInDict = (barcode, dict) => {
+            if (!barcode || !dict) return null;
+            const safeBarcode = String(barcode).trim();
+            // 1. 精準比對
+            if (dict[safeBarcode]) return dict[safeBarcode];
+            // 2. 去零比對 (對應 Excel 匯出時少掉開頭 0 的狀況)
+            const stripped = safeBarcode.replace(/^0+/, '');
+            const key = Object.keys(dict).find(k => String(k).trim().replace(/^0+/, '') === stripped);
+            return key ? dict[key] : null;
         };
 
         function BarcodeImage({ value, name, printMode = false, mini = false, hideName = false, quantity = 1 }) {
@@ -381,7 +240,6 @@
             );
         }
 
-        // ✨ 新增：自動分類規則的專屬「原地編輯」元件 (Blue 色系一致版)
         function EditableCategoryItem({ cat, onSave, onDelete }) {
             const [isEditing, setIsEditing] = useState(false);
             const [tempName, setTempName] = useState(cat.name);
@@ -447,38 +305,9 @@
             const [toast, setToast] = useState('');
             const [printContext, setPrintContext] = useState(null);
 
-            // ✨ 全局高容錯翻譯引擎：專治 Excel 吃零、科學記號與隱形空白
-            const getTranslatedName = (barcode, rawDesc, customNameMap) => {
-                if (!customNameMap) return rawDesc;
-                const safeBarcode = String(barcode || '').trim();
-                
-                // 1. 處理 Excel 科學記號 (例如 6.94E+12 -> 6940000000000)
-                const finalBarcode = (safeBarcode.includes('E') || safeBarcode.includes('e')) 
-                    ? Number(safeBarcode).toLocaleString('fullwide', { useGrouping: false }) 
-                    : safeBarcode;
-
-                // 2. 精準比對
-                if (customNameMap[finalBarcode]) return customNameMap[finalBarcode];
-
-                // 3. 容錯比對 (無視開頭的 0)
-                const stripped = finalBarcode.replace(/^0+/, '');
-                for (const key in customNameMap) {
-                    const safeKey = String(key).trim().replace(/^0+/, '');
-                    if (safeKey === stripped && stripped !== '') return customNameMap[key];
-                }
-
-                // 4. 比對失敗，退回原本的描述
-                return rawDesc;
-            };
-
-            // ✨ 復原並升級：列印執行大腦
             const executePrint = (context) => {
                 setPrintContext(context);
-                // 💡 關鍵修復：必須給 React 150 毫秒的時間把隱藏的「列印專用 DOM」渲染出來。
-                // 如果不加延遲，熱感應機會收到不完整的寬度或空白畫面，導致印字頭撞擊發出怪聲。
-                setTimeout(() => {
-                    window.print();
-                }, 150);
+                setTimeout(() => { window.print(); }, 150);
             };
             const [undoData, setUndoData] = useState(null);
             const [isQRCodeModalOpen, setIsQRCodeModalOpen] = useState(false);
@@ -487,23 +316,17 @@
 
             const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 4000); };
 
-            // ==========================================
-            // ✨ 新增功能：匯出 Excel 清單
-            // ==========================================
             const exportToExcel = (data, filename) => {
                 if (data.length === 0) return showToast('⚠️ 匯出失敗：沒有資料可以匯出');
-                // 1. 將資料格式化為易讀的 Excel 欄位
                 const exportData = data.map(item => ({
                     '條碼': item.barcode,
                     '品名': item.name,
                     '數量': item.quantity,
                     '狀態': item.status ? (item.status === 'displayed' ? '陳列中' : '已撤下') : '盒損'
                 }));
-                // 2. 建立工作表與活頁簿
                 const worksheet = window.XLSX.utils.json_to_sheet(exportData);
                 const workbook = window.XLSX.utils.book_new();
                 window.XLSX.utils.book_append_sheet(workbook, worksheet, "品項清單");
-                // 3. 觸發下載 (檔名加上當前日期)
                 const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
                 window.XLSX.writeFile(workbook, `${filename}_${dateStr}.xlsx`);
             };
@@ -514,30 +337,22 @@
                 return () => window.removeEventListener('afterprint', afterPrint);
             }, []);
 
-            // ==========================================
-            // Firestore 雲端同步
-            // ==========================================
             const [dailyRecords, setDailyRecords] = useState([]);
             const [settings, setSettings] = useState(defaultSettings);
             const [damagedItems, setDamagedItems] = useState([]);
-            const [displayItems, setDisplayItems] = useState([]); // ✨ 新增陳列品狀態
+            const [displayItems, setDisplayItems] = useState([]); 
             const [dbStatus, setDbStatus] = useState('連線中...');
-            // ✨ 防呆鎖狀態：確保四個雲端資料庫都已經確實下載完畢
             const [dataLoaded, setDataLoaded] = useState({ records: false, settings: false, damaged: false, display: false });
             const isDataReady = dataLoaded.records && dataLoaded.settings && dataLoaded.damaged && dataLoaded.display;
 
             useEffect(() => {
                 if (!user || !db) return;
 
-                // ✨ 關鍵參數：開啟 metadata 監聽，我們才能知道資料到底是來自「本地快取」還是「真實雲端」
                 const options = { includeMetadataChanges: true };
 
                 const unsubRecords = db.collection('retailOps').doc('dailyRecords').onSnapshot(options, doc => {
                     if (doc.exists) setDailyRecords(doc.data().data || []);
-                    // 🛑 嚴格防呆鎖：如果資料來自快取 (fromCache 是 true)，絕對不准解鎖！
-                    if (!doc.metadata.fromCache) {
-                        setDataLoaded(prev => ({ ...prev, records: true }));
-                    }
+                    if (!doc.metadata.fromCache) { setDataLoaded(prev => ({ ...prev, records: true })); }
                     setDbStatus(doc.metadata.fromCache ? '🟡 連線中...' : '🟢 已同步');
                 }, err => { setDbStatus('🔴 權限不足或連線失敗'); });
 
@@ -577,14 +392,9 @@
                 updateCloudData('settings', { ...settings, customNameMap: { ...settings.customNameMap, [barcode]: newName } }, `已更新字典！`);
             };
 
-            // ==========================================
-            // ✨ 全局復原 (Undo) 引擎大升級：支援任意操作
-            // ==========================================
-            // (這裡不要有 const [undoData...] 的宣告了，因為上面已經有)
-
             const triggerUndo = (message, onUndoCallback) => {
                 if (undoData && undoData.timerId) clearTimeout(undoData.timerId);
-                const timerId = setTimeout(() => setUndoData(null), 5000); // 準確的 5 秒倒數
+                const timerId = setTimeout(() => setUndoData(null), 5000); 
                 setUndoData({ message, onUndo: onUndoCallback, timerId });
             };
 
@@ -596,9 +406,6 @@
                 showToast('✅ 已成功復原操作！');
             };
 
-            // ==========================================
-            // 盒損登記模組 (導入防覆寫佇列更新)
-            // ==========================================
             const [barcodeInput, setBarcodeInput] = useState('');
             const [lastAction, setLastAction] = useState(null);
             const [isDamagedOverviewExpanded, setIsDamagedOverviewExpanded] = useState(false);
@@ -606,10 +413,12 @@
             const [activeDamagedCategory, setActiveDamagedCategory] = useState('全部');
             const damagedInputRef = useRef(null);
 
-            // 支援 USB 掃描槍：連續秒刷也不會遺失資料
             const handleScanSubmit = (e) => {
                 e.preventDefault(); const barcode = barcodeInput.trim(); if (!barcode) return;
-                let productName = settings.customNameMap[barcode] || settings.barcodeMap[barcode] || `未知商品 (條碼: ${barcode})`;
+                
+                // ✨ 這裡也加入防呆找尋機制，確保掃描槍刷出來的條碼也能正確去 0 找尋
+                let dictName = findNameInDict(barcode, settings.customNameMap);
+                let productName = dictName || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
 
                 setDamagedItems(prev => {
                     const existing = prev.findIndex(item => item.barcode === barcode);
@@ -624,7 +433,6 @@
                 setBarcodeInput(''); setTimeout(() => damagedInputRef.current?.focus(), 10);
             };
 
-            // 防止使用者連點加減號導致資料遺失
             const updateQuantity = (id, delta) => {
                 setDamagedItems(prev => {
                     const newData = prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item);
@@ -648,6 +456,7 @@
                     return newData;
                 });
             };
+            
             const clearAllDamagedItems = () => {
                 const backup = [...damagedItems];
                 setDamagedItems([]);
@@ -673,9 +482,6 @@
                 return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
             }, [filteredDamagedItems, settings.customCategories]);
 
-            // ==========================================
-            // 陳列品典藏庫 (Display Items - 導入防覆寫機制)
-            // ==========================================
             const [displayBarcodeInput, setDisplayBarcodeInput] = useState('');
             const [displayFilter, setDisplayFilter] = useState('stored');
             const [revealedBarcodes, setRevealedBarcodes] = useState({});
@@ -683,7 +489,9 @@
 
             const handleDisplayScanSubmit = (e) => {
                 e.preventDefault(); const barcode = displayBarcodeInput.trim(); if (!barcode) return;
-                let productName = settings.customNameMap[barcode] || settings.barcodeMap[barcode] || `未知商品 (條碼: ${barcode})`;
+                
+                let dictName = findNameInDict(barcode, settings.customNameMap);
+                let productName = dictName || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
 
                 setDisplayItems(prev => {
                     const existing = prev.findIndex(item => item.barcode === barcode && item.status === displayFilter);
@@ -735,9 +543,6 @@
                 setRevealedBarcodes(prev => ({ ...prev, [id]: !prev[id] }));
             };
 
-            // ==========================================
-            // 備份與還原
-            // ==========================================
             const handleExportData = () => {
                 const backupData = { dailyRecords, reportSettings: settings, damagedItems, displayItems };
                 const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -762,9 +567,6 @@
                 reader.readAsText(file); e.target.value = null;
             };
 
-            // ==========================================
-            // 條碼列印模組
-            // ==========================================
             const [barcodeItems, setBarcodeItems] = useState([]);
             const [barcodePrintInput, setBarcodePrintInput] = useState('');
             const [barcodeSearch, setBarcodeSearch] = useState('');
@@ -772,7 +574,9 @@
 
             const handleBarcodePrintScan = (e) => {
                 e.preventDefault(); const barcode = barcodePrintInput.trim(); if (!barcode) return;
-                let name = settings.customNameMap[barcode] || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
+                let dictName = findNameInDict(barcode, settings.customNameMap);
+                let name = dictName || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
+                
                 setBarcodeItems(prev => {
                     const ex = prev.find(i => i.barcode === barcode);
                     if (ex) { showToast(`增加數量：${name}`); return prev.map(i => i.barcode === barcode ? { ...i, quantity: i.quantity + 1 } : i); }
@@ -803,9 +607,6 @@
                 return barcodeItems.filter(item => item.name.toLowerCase().includes(q) || item.barcode.includes(q));
             }, [barcodeItems, barcodeSearch]);
 
-            // ==========================================
-            // 日報表與系統設定
-            // ==========================================
             const [newCatName, setNewCatName] = useState('');
             const [newCatKeys, setNewCatKeys] = useState('');
             const handleAddCategory = () => {
@@ -835,6 +636,9 @@
 
             useEffect(() => { if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) setSelectedMonth(availableMonths[0]); }, [availableMonths]);
 
+            // ==========================================
+            // ✨ 解析 Excel 資料 (最核心的攔截翻譯區)
+            // ==========================================
             const processData = (rows) => {
                 if (rows.length < 2) return showToast('檔案格式錯誤');
                 const headers = rows[0];
@@ -842,56 +646,64 @@
                 const idxType = headers.indexOf('TYPE');
                 const idxStore = headers.indexOf('STORE');
                 const idxBarcode = headers.indexOf('BARCODE');
-                const idxDesc = headers.indexOf('DESCRIPTION_CN');
+                const idxDesc = headers.indexOf('DESCRIPTION_CN'); // 留著用來抓 1000% 關鍵字
                 const idxQty = headers.indexOf('SOLD_QTY');
                 const idxAmt = headers.indexOf('AMT_WITH_TAX');
                 const idxDisc = headers.indexOf('DISC_AMT');
 
                 let todaySales = 0, pointsRedeemed = 0, firstDate = null, storeName = '未知店鋪';
                 let mega1000 = { amt: 0, qty: 0, giftQty: 0 }, mega400 = { amt: 0, qty: 0, giftQty: 0 };
-                let itemStats = {}, updatedBarcodeMap = { ...settings.barcodeMap };
+                let itemStats = {};
 
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i]; if (row.length < 5) continue;
                     if (idxType !== -1 && !['sale', 'return', 'refund', 'exchange'].includes(String(row[idxType] || '').trim().toLowerCase())) continue;
 
-                    const barcode = String(row[idxBarcode] || '').trim(); const rawDesc = String(row[idxDesc] || '').trim();
-                    if (!barcode && !rawDesc) continue;
+                    const barcode = String(row[idxBarcode] || '').trim();
+                    if (!barcode) continue; // 如果沒有條碼就直接跳過，不再讀取殘缺資料
+
                     if (!firstDate && row[idxDate]) firstDate = row[idxDate].toString().split(' ')[0];
                     if (storeName === '未知店鋪' && row[idxStore]) storeName = row[idxStore].toString().replace(/\[.*?\]/, '').trim();
 
-                    const desc = settings.customNameMap[barcode] || rawDesc;
-                    const qty = parseFloat(row[idxQty]) || 0; const amt = parseFloat(row[idxAmt]) || 0; const disc = parseFloat(row[idxDisc]) || 0;
+                    // ✨ 核心邏輯：直接拿條碼去神仙字典找！不再使用 Excel 裡面的 DESCRIPTION_CN 當名字！
+                    let dictName = findNameInDict(barcode, settings.customNameMap);
+                    const desc = dictName || `未知商品 (${barcode})`;
 
-                    if (barcode && desc) updatedBarcodeMap[barcode] = desc;
+                    // 依然抓取 Excel 的原始描述，但"只用來判斷是不是 1000% 或 400%"
+                    const rawDesc = idxDesc !== -1 ? String(row[idxDesc] || '').trim() : '';
+
+                    const qty = parseFloat(row[idxQty]) || 0; 
+                    const amt = parseFloat(row[idxAmt]) || 0; 
+                    const disc = parseFloat(row[idxDisc]) || 0;
+
                     todaySales += amt; if (disc === 330) pointsRedeemed += 330;
 
+                    // 判斷 MEGA 玩具
                     if (rawDesc.includes('1000%') || desc.includes('1000%')) { amt === 0 ? (mega1000.giftQty += qty) : (mega1000.qty += qty, mega1000.amt += amt); }
                     if (rawDesc.includes('400%') || desc.includes('400%')) { amt === 0 ? (mega400.giftQty += qty) : (mega400.qty += qty, mega400.amt += amt); }
 
-                    if (barcode) {
-                        if (!itemStats[barcode]) itemStats[barcode] = { barcode, desc, top5Qty: 0, top5Amt: 0, singles: 0, boxes: 0 };
-                        if (amt > 0) { itemStats[barcode].top5Qty += qty; itemStats[barcode].top5Amt += amt; }
-                        const boxSize = settings.boxSizeMap[barcode] || 6;
-                        if (qty >= boxSize) { itemStats[barcode].boxes += Math.floor(qty / boxSize); itemStats[barcode].singles += (qty % boxSize); }
-                        else { itemStats[barcode].singles += qty; }
-                    }
+                    // 將乾淨的中文名字 (desc) 與對齊的變數存入 itemStats
+                    if (!itemStats[barcode]) itemStats[barcode] = { barcode, desc, top5Qty: 0, top5Amt: 0, singles: 0, boxes: 0 };
+                    if (amt > 0) { itemStats[barcode].top5Qty += qty; itemStats[barcode].top5Amt += amt; }
+                    
+                    const boxSize = settings.boxSizeMap[barcode] || 6;
+                    if (qty >= boxSize) { itemStats[barcode].boxes += Math.floor(qty / boxSize); itemStats[barcode].singles += (qty % boxSize); }
+                    else { itemStats[barcode].singles += qty; }
                 }
-                updateCloudData('settings', { ...settings, barcodeMap: updatedBarcodeMap }); setCurrentStore(storeName);
+                
+                setCurrentStore(storeName);
                 const newDateStr = firstDate || new Date().toISOString().split('T')[0];
 
                 const newStats = { dateStr: newDateStr, sales: todaySales, points: pointsRedeemed, itemStats, bigToys: { '1000': mega1000, '400': mega400 } };
                 setTodayStats(newStats);
                 setSelectedMonth(formatDateStr(newDateStr).split('/')[0]);
 
-                // ✨ 升級：自動存檔邏輯 (取代原本的手動按鈕)
                 const formattedDate = formatDateStr(newDateStr);
                 const filtered = dailyRecords.filter(r => r.date !== formattedDate);
                 const newRecords = [...filtered, { date: formattedDate, weekday: getWeekday(newDateStr), sales: todaySales, points: pointsRedeemed, bigToys: newStats.bigToys }].sort((a, b) => a.date.localeCompare(b.date));
                 updateCloudData('dailyRecords', newRecords, '報表解析成功！已自動同步至雲端 ☁️');
             };
 
-            // ✨ 把不小心刪掉的上傳處理函式補回來！
             const handleFileUpload = (e) => {
                 const file = e.target.files[0]; if (!file) return; setIsProcessing(true); const reader = new FileReader();
                 if (file.name.toLowerCase().endsWith('.csv')) {
@@ -952,45 +764,9 @@
                 updateCloudData('settings', { ...settings, newBarcodes: settings.newBarcodes.filter(b => b !== code), boxSizeMap: newBoxMap });
             };
 
-// ✨ 神級淨化翻譯器：無視所有隱形空白與被 Excel 吃掉的 0，保證 100% 抓到中文！
-            const getTranslatedName = (item, settings) => {
-                const rawName = item.desc || '';
-                let finalName = null;
-                
-                // 1. 暴力淨化：拔除條碼上所有的特殊字元與空白，只留英數字
-                const safeBarcode = String(item.barcode || '').replace(/[^a-zA-Z0-9]/g, '');
-                
-                // 2. 建立純淨版字典：把字典的 Key 也做一樣的暴力淨化
-                const cleanDict = {};
-                if (settings.customNameMap) {
-                    Object.entries(settings.customNameMap).forEach(([k, v]) => {
-                        cleanDict[String(k).replace(/[^a-zA-Z0-9]/g, '')] = v;
-                    });
-                }
-                
-                // 3. 條碼配對 (含去 0 容錯)
-                if (safeBarcode) {
-                    finalName = cleanDict[safeBarcode];
-                    if (!finalName) {
-                        const strippedBarcode = safeBarcode.replace(/^0+/, '');
-                        const dictKey = Object.keys(cleanDict).find(k => k.replace(/^0+/, '') === strippedBarcode);
-                        if (dictKey) finalName = cleanDict[dictKey];
-                    }
-                }
-                
-                // 4. 英文名反查 (如果條碼真的爛掉了，拿英文原名反向找字典)
-                if (!finalName && settings.barcodeMap) {
-                    const cleanRawName = rawName.trim().toLowerCase();
-                    const foundKey = Object.keys(settings.barcodeMap).find(k => 
-                        settings.barcodeMap[k] && settings.barcodeMap[k].trim().toLowerCase() === cleanRawName
-                    );
-                    if (foundKey) finalName = cleanDict[String(foundKey).replace(/[^a-zA-Z0-9]/g, '')];
-                }
-                
-                return finalName || rawName;
-            };
-
+            // ==========================================
             // --- 產生報表內文 ---
+            // ==========================================
             const reportContent = useMemo(() => {
                 if (!selectedMonth) return '請先上傳檔案或建立紀錄...';
                 let recordsToPrint = dailyRecords.filter(r => r.date.split('/')[0] === selectedMonth);
@@ -1012,23 +788,15 @@
                 report += `目標：${settings.targetAmount}萬\n達成率：${achievement}%\n\n銷售狀況分享：\n`;
 
                 const isTodaySelected = todayStats && (formatDateStr(todayStats.dateStr).split('/')[0] === selectedMonth);
+                
+                // ✨ 簡化版：直接讀取處理好的 item.desc，並照要求移除數量/金額/趴數
                 if (isTodaySelected && todayStats.itemStats) {
-                    // 1. 抓取有銷售額的原始資料
-                    const rawArray = Object.values(todayStats.itemStats).filter(item => item.desc && item.top5Amt > 0);
-                    
-                    // ✨ 2. 動態翻譯層：呼叫神級淨化翻譯器
-                    const translatedArray = rawArray.map(item => ({
-                        ...item,
-                        translatedName: getTranslatedName(item, settings)
-                    }));
-
-                    // 3. 排序並取前 5 名
-                    const top5 = translatedArray.sort((a, b) => b.top5Amt - a.top5Amt).slice(0, 5);
+                    const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0);
+                    const top5 = rawArray.sort((a, b) => b.top5Amt - a.top5Amt).slice(0, 5);
 
                     if (top5.length > 0) {
                         top5.forEach((item, idx) => {
-                            // ✨ 照你要求的：還原原本只有品名的乾淨格式，不加金額與數量！
-                            report += `${idx + 1}.${item.translatedName}\n`;
+                            report += `${idx + 1}. ${item.desc}\n`;
                         });
                     } else {
                         report += `(今日無Top 5)\n`;
@@ -1041,7 +809,8 @@
                 if (settings.newBarcodes.length > 0) {
                     settings.newBarcodes.forEach(barcode => {
                         const itemData = isTodaySelected ? todayStats?.itemStats?.[barcode] : null;
-                        const desc = settings.customNameMap?.[barcode] || settings.barcodeMap?.[barcode] || barcode;
+                        let dictName = findNameInDict(barcode, settings.customNameMap);
+                        const desc = dictName || settings.barcodeMap?.[barcode] || barcode;
                         const boxSize = settings.boxSizeMap[barcode] || 6;
                         if (itemData && (itemData.singles > 0 || itemData.boxes > 0)) {
                             let qtyStr = boxSize === 1 ? `${(itemData.boxes * boxSize) + itemData.singles}` : (itemData.singles > 0 && itemData.boxes > 0 ? `散盒 ${itemData.singles} 端盒 ${itemData.boxes}` : (itemData.boxes > 0 ? `端盒 ${itemData.boxes}` : `散盒 ${itemData.singles}`));
@@ -1057,7 +826,7 @@
             const visibleRecords = isHistoryExpanded ? currentMonthRecords : currentMonthRecords.slice(0, 3);
 
             // ==========================================
-            // QR Code 產生 (完全拔除字數限制，轉為純文字)
+            // QR Code 產生
             // ==========================================
             useEffect(() => {
                 if (!isQRCodeModalOpen || !reportContent) return;
@@ -1078,7 +847,7 @@
             }, [reportContent, isQRCodeModalOpen]);
 
             // ==========================================
-            // ✨ 終極防彈版：手機鏡頭掃描器狀態與邏輯
+            // 相機掃描器狀態與邏輯
             // ==========================================
             const [scannerOpen, setScannerOpen] = useState(false);
             const [scannerTarget, setScannerTarget] = useState(''); // 'damaged' | 'display' | 'print'
@@ -1086,15 +855,13 @@
             const [isDictExpanded, setIsDictExpanded] = useState(true);
             const [dictCurrentPage, setDictCurrentPage] = useState(1);
 
-            // 1. 建立掃描防護鎖與最新狀態快照箱
             const scanLockRef = useRef(false);
             const latestStateRef = useRef({});
-            // 每次畫面更新時，靜默更新快照，避免 useEffect 重新觸發導致相機狂閃
             latestStateRef.current = { settings, displayFilter };
 
             useEffect(() => {
                 if (!scannerOpen) {
-                    scanLockRef.current = false; // 關閉相機時解鎖
+                    scanLockRef.current = false; 
                     return;
                 }
 
@@ -1105,22 +872,20 @@
                     { fps: 15, qrbox: { width: 250, height: 120 } },
                     (decodedText) => {
                         if (scanLockRef.current) return;
-                        scanLockRef.current = true; // 🔒 抓到條碼瞬間立刻上鎖，擋住幽靈連刷！
+                        scanLockRef.current = true; 
 
                         if (typeof navigator.vibrate === 'function') navigator.vibrate(100);
 
                         html5QrCode.stop().then(() => {
                             setScannerOpen(false);
 
-                            // 🧹 淨化條碼：暴力切除換行與隱形空白，解決「未知商品」Bug！
                             const barcode = decodedText.replace(/[^a-zA-Z0-9-]/g, '').trim();
 
-                            // 從快照箱拿出最新的字典與過濾器狀態
                             const currentSettings = latestStateRef.current.settings;
                             const currentFilter = latestStateRef.current.displayFilter;
-                            const productName = currentSettings.customNameMap[barcode] || currentSettings.barcodeMap[barcode] || `未知商品 (${barcode})`;
+                            let dictName = findNameInDict(barcode, currentSettings.customNameMap);
+                            const productName = dictName || currentSettings.barcodeMap[barcode] || `未知商品 (${barcode})`;
 
-                            // 🔄 使用 prev 陣列更新法，不管連刷多快都能絕對安全排隊推上雲端
                             if (scannerTarget === 'damaged') {
                                 setDamagedItems(prev => {
                                     const existing = prev.findIndex(item => item.barcode === barcode);
@@ -1167,7 +932,7 @@
             }, [scannerOpen, scannerTarget]);
 
             // ==========================================
-            // Auth 登入畫面處理 (請確保上面那段貼在這個的上方)
+            // Auth 登入畫面處理
             // ==========================================
             const handleLogin = (e) => {
                 e.preventDefault();
@@ -1211,7 +976,6 @@
             return (
                 <div className="flex flex-col min-h-screen w-full font-sans overflow-x-hidden">
 
-                    {/* ✨ 新增：全域半透明安全遮罩 (Soft Lock) */}
                     {user && !isDataReady && (
                         <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center transition-all">
                             <div className="bg-white dark:bg-slate-800 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-scale-in border border-slate-200 dark:border-slate-700">
@@ -1224,7 +988,6 @@
                         </div>
                     )}
 
-                    {/* ✨ 導入網格系統邊距：手機 24px (px-6)，平板/電腦加大 */}
               <div className="pt-8 pb-32 px-6 md:px-8 lg:px-12 max-w-7xl mx-auto min-h-screen w-full no-print">
                 <div className="space-y-6 md:space-y-8">
 
@@ -1345,14 +1108,14 @@
 
                             <div className="lg:col-span-5 relative">
                                 
-                               {/* ✨ 新增：今日熱銷 Top 5 儀表板 (使用神級淨化翻譯器) */}
+                               {/* ✨ 新增：今日熱銷 Top 5 儀表板 (直接從 itemStats 讀取乾淨資料) */}
                                 {todayStats && todayStats.itemStats && (
                                     (() => {
-                                        const rawArray = Object.values(todayStats.itemStats).filter(item => item.desc && item.top5Amt > 0);
+                                        const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0);
                                             
-                                        // ✨ 呼叫神級翻譯器，確保彩色面板也能顯示中文
+                                        // 直接對齊並抓取資料，不再做二次翻譯
                                         const statsArray = rawArray.map(item => ({
-                                            name: getTranslatedName(item, settings),
+                                            name: item.desc,
                                             quantity: item.top5Qty || item.qty || item.quantity || item.count || 0,
                                             sales: item.top5Amt || 0
                                         }));
@@ -1410,7 +1173,6 @@
                                 )}
 
                                 {/* 原本的報表預覽區塊 */}
-                                {/* 調整 top-8 讓卡片往上靠，h-[calc(100vh-8rem)] 剛好避開底部的 Dock */}
                                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 sticky top-8 flex flex-col h-[calc(100vh-8rem)] transition-colors z-10">
                                     <div className="flex justify-between items-center mb-4 shrink-0">
                                         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center"><i className="fa-solid fa-file-lines text-slate-400 mr-2"></i> 報表預覽</h2>
@@ -1648,19 +1410,19 @@
                                                                     </div>
                                                                 </div>
                                                             ))}
-
-                                                            {/* 防呆：空狀態 */}
-                                                            {groupedDamagedItems.filter(([cat]) => activeDamagedCategory === '全部' || cat === activeDamagedCategory).length === 0 && (
-                                                                <div className="p-10 text-center text-slate-400 font-medium flex flex-col items-center justify-center h-48 animate-scale-in">
-                                                                    <i className={`fa-solid ${damagedSearch ? 'fa-magnifying-glass-minus text-blue-200 dark:text-blue-900' : 'fa-folder-open'} text-4xl mb-4`}></i>
-                                                                    {damagedSearch ? (
-                                                                        <span>找不到包含 <span className="text-blue-500 mx-1">{damagedSearch}</span> 的商品</span>
-                                                                    ) : (
-                                                                        '此分類目前沒有商品'
-                                                                    )}
-                                                                </div>
-                                                            )}
                                                         </div>
+
+                                                        {/* 防呆：空狀態 */}
+                                                        {groupedDamagedItems.filter(([cat]) => activeDamagedCategory === '全部' || cat === activeDamagedCategory).length === 0 && (
+                                                            <div className="p-10 text-center text-slate-400 font-medium flex flex-col items-center justify-center h-48 animate-scale-in">
+                                                                <i className={`fa-solid ${damagedSearch ? 'fa-magnifying-glass-minus text-blue-200 dark:text-blue-900' : 'fa-folder-open'} text-4xl mb-4`}></i>
+                                                                {damagedSearch ? (
+                                                                    <span>找不到包含 <span className="text-blue-500 mx-1">{damagedSearch}</span> 的商品</span>
+                                                                ) : (
+                                                                    '此分類目前沒有商品'
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
