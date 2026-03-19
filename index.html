@@ -416,7 +416,7 @@
             const handleScanSubmit = (e) => {
                 e.preventDefault(); const barcode = barcodeInput.trim(); if (!barcode) return;
                 
-                // ✨ 這裡也加入防呆找尋機制，確保掃描槍刷出來的條碼也能正確去 0 找尋
+                // ✨ 防呆找尋機制，確保掃描槍刷出來的條碼也能正確去 0 找尋
                 let dictName = findNameInDict(barcode, settings.customNameMap);
                 let productName = dictName || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
 
@@ -637,7 +637,7 @@
             useEffect(() => { if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) setSelectedMonth(availableMonths[0]); }, [availableMonths]);
 
             // ==========================================
-            // ✨ 解析 Excel 資料 (最核心的攔截翻譯區)
+            // ✨ 解析 Excel 資料 (核心：整合升級版)
             // ==========================================
             const processData = (rows) => {
                 if (rows.length < 2) return showToast('檔案格式錯誤');
@@ -646,49 +646,52 @@
                 const idxType = headers.indexOf('TYPE');
                 const idxStore = headers.indexOf('STORE');
                 const idxBarcode = headers.indexOf('BARCODE');
-                const idxDesc = headers.indexOf('DESCRIPTION_CN'); // 留著用來抓 1000% 關鍵字
+                const idxDesc = headers.indexOf('DESCRIPTION_CN');
                 const idxQty = headers.indexOf('SOLD_QTY');
                 const idxAmt = headers.indexOf('AMT_WITH_TAX');
                 const idxDisc = headers.indexOf('DISC_AMT');
 
                 let todaySales = 0, pointsRedeemed = 0, firstDate = null, storeName = '未知店鋪';
                 let mega1000 = { amt: 0, qty: 0, giftQty: 0 }, mega400 = { amt: 0, qty: 0, giftQty: 0 };
-                let itemStats = {};
+                let itemStats = {}, updatedBarcodeMap = { ...settings.barcodeMap };
 
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i]; if (row.length < 5) continue;
                     if (idxType !== -1 && !['sale', 'return', 'refund', 'exchange'].includes(String(row[idxType] || '').trim().toLowerCase())) continue;
 
                     const barcode = String(row[idxBarcode] || '').trim();
-                    if (!barcode) continue; // 如果沒有條碼就直接跳過，不再讀取殘缺資料
+                    const rawDesc = idxDesc !== -1 ? String(row[idxDesc] || '').trim() : '';
+                    
+                    // ✨ 修改點：若沒有條碼「且」沒有名稱，才跳過。保留判斷無條碼 MEGA 盲盒的能力
+                    if (!barcode && !rawDesc) continue;
 
                     if (!firstDate && row[idxDate]) firstDate = row[idxDate].toString().split(' ')[0];
                     if (storeName === '未知店鋪' && row[idxStore]) storeName = row[idxStore].toString().replace(/\[.*?\]/, '').trim();
 
-                    // ✨ 核心邏輯：直接拿條碼去神仙字典找！不再使用 Excel 裡面的 DESCRIPTION_CN 當名字！
+                    // ✨ 修改點：直接拿條碼去字典找！支援去0匹配
                     let dictName = findNameInDict(barcode, settings.customNameMap);
-                    const desc = dictName || `未知商品 (${barcode})`;
-
-                    // 依然抓取 Excel 的原始描述，但"只用來判斷是不是 1000% 或 400%"
-                    const rawDesc = idxDesc !== -1 ? String(row[idxDesc] || '').trim() : '';
+                    const desc = dictName || rawDesc || `未知商品 (${barcode})`;
 
                     const qty = parseFloat(row[idxQty]) || 0; 
                     const amt = parseFloat(row[idxAmt]) || 0; 
                     const disc = parseFloat(row[idxDisc]) || 0;
 
+                    if (barcode && desc && !dictName) updatedBarcodeMap[barcode] = desc;
                     todaySales += amt; if (disc === 330) pointsRedeemed += 330;
 
                     // 判斷 MEGA 玩具
                     if (rawDesc.includes('1000%') || desc.includes('1000%')) { amt === 0 ? (mega1000.giftQty += qty) : (mega1000.qty += qty, mega1000.amt += amt); }
                     if (rawDesc.includes('400%') || desc.includes('400%')) { amt === 0 ? (mega400.giftQty += qty) : (mega400.qty += qty, mega400.amt += amt); }
 
-                    // 將乾淨的中文名字 (desc) 與對齊的變數存入 itemStats
-                    if (!itemStats[barcode]) itemStats[barcode] = { barcode, desc, top5Qty: 0, top5Amt: 0, singles: 0, boxes: 0 };
-                    if (amt > 0) { itemStats[barcode].top5Qty += qty; itemStats[barcode].top5Amt += amt; }
-                    
-                    const boxSize = settings.boxSizeMap[barcode] || 6;
-                    if (qty >= boxSize) { itemStats[barcode].boxes += Math.floor(qty / boxSize); itemStats[barcode].singles += (qty % boxSize); }
-                    else { itemStats[barcode].singles += qty; }
+                    // 將乾淨的中文名字與對齊的變數存入 itemStats，僅當有條碼時才進入 Top 5 榜單
+                    if (barcode) {
+                        if (!itemStats[barcode]) itemStats[barcode] = { barcode, desc, top5Qty: 0, top5Amt: 0, singles: 0, boxes: 0 };
+                        if (amt > 0) { itemStats[barcode].top5Qty += qty; itemStats[barcode].top5Amt += amt; }
+                        
+                        const boxSize = settings.boxSizeMap[barcode] || 6;
+                        if (qty >= boxSize) { itemStats[barcode].boxes += Math.floor(qty / boxSize); itemStats[barcode].singles += (qty % boxSize); }
+                        else { itemStats[barcode].singles += qty; }
+                    }
                 }
                 
                 setCurrentStore(storeName);
@@ -700,8 +703,11 @@
 
                 const formattedDate = formatDateStr(newDateStr);
                 const filtered = dailyRecords.filter(r => r.date !== formattedDate);
-                const newRecords = [...filtered, { date: formattedDate, weekday: getWeekday(newDateStr), sales: todaySales, points: pointsRedeemed, bigToys: newStats.bigToys }].sort((a, b) => a.date.localeCompare(b.date));
+                // 確保排序是新的日期在最上面 (b 比較 a)
+                const newRecords = [...filtered, { date: formattedDate, weekday: getWeekday(newDateStr), sales: todaySales, points: pointsRedeemed, bigToys: newStats.bigToys }].sort((a, b) => b.date.localeCompare(a.date));
+                
                 updateCloudData('dailyRecords', newRecords, '報表解析成功！已自動同步至雲端 ☁️');
+                updateCloudData('settings', { ...settings, barcodeMap: updatedBarcodeMap });
             };
 
             const handleFileUpload = (e) => {
@@ -724,7 +730,7 @@
                 updateCloudData('dailyRecords', newData);
                 if (recordToRestore) {
                     triggerUndo(`已刪除 ${dateToRemove} 的業績紀錄`, () => {
-                        updateCloudData('dailyRecords', [...newData, recordToRestore].sort((a, b) => a.date.localeCompare(b.date)));
+                        updateCloudData('dailyRecords', [...newData, recordToRestore].sort((a, b) => b.date.localeCompare(a.date)));
                     });
                 }
             };
@@ -744,14 +750,27 @@
                         }
                     }
                 });
-                if (count > 0) { updateCloudData('dailyRecords', newRecords.sort((a, b) => a.date.localeCompare(b.date)), `成功匯入 ${count} 筆歷史紀錄！`); setBulkInput(''); setIsBulkImportOpen(false); setSelectedMonth(newRecords[0].date.split('/')[0]); }
+                if (count > 0) { updateCloudData('dailyRecords', newRecords.sort((a, b) => b.date.localeCompare(a.date)), `成功匯入 ${count} 筆歷史紀錄！`); setBulkInput(''); setIsBulkImportOpen(false); setSelectedMonth(newRecords[0].date.split('/')[0]); }
             };
 
+            // ==========================================
+            // ✨ 字典匯入升級版 (支援 Regex 容錯)
+            // ==========================================
             const handleImportDict = () => {
                 if (!dictInput.trim()) return;
-                let newDict = { ...settings.customNameMap }; let count = 0;
-                dictInput.split('\n').forEach(line => { const parts = line.trim().split(/\t|,/); if (parts.length >= 2 && parts[0].trim() && parts[1].trim()) { newDict[parts[0].trim()] = parts[1].trim(); count++; } });
-                updateCloudData('settings', { ...settings, customNameMap: newDict }, `成功匯入 ${count} 筆翻譯字典！`); setDictInput('');
+                let newDict = { ...settings.customNameMap }; 
+                let count = 0;
+                dictInput.split('\n').forEach(line => { 
+                    const parts = line.trim().split(/\t|,/); 
+                    if (parts.length < 2) {
+                        const match = line.trim().match(/^([^\s,]+)[\s,]+(.+)$/);
+                        if (match) { newDict[match[1].trim()] = match[2].trim(); count++; }
+                    } else {
+                        if (parts[0].trim() && parts[1].trim()) { newDict[parts[0].trim()] = parts[1].trim(); count++; }
+                    }
+                });
+                updateCloudData('settings', { ...settings, customNameMap: newDict }, `成功匯入 ${count} 筆翻譯字典！`); 
+                setDictInput('');
             };
 
             const addNewBarcode = () => {
@@ -765,7 +784,7 @@
             };
 
             // ==========================================
-            // --- 產生報表內文 ---
+            // ✨ 產生報表內文 (統一 Top 5 排序)
             // ==========================================
             const reportContent = useMemo(() => {
                 if (!selectedMonth) return '請先上傳檔案或建立紀錄...';
@@ -774,7 +793,7 @@
                     recordsToPrint.push({ date: formatDateStr(todayStats.dateStr), weekday: getWeekday(todayStats.dateStr), sales: todayStats.sales, points: todayStats.points, bigToys: todayStats.bigToys });
                 }
                 if (recordsToPrint.length === 0 && !todayStats) return '此月份尚無紀錄...';
-                recordsToPrint.sort((a, b) => a.date.localeCompare(b.date));
+                recordsToPrint.sort((a, b) => a.date.localeCompare(b.date)); // 日期舊到新排列
                 const totalSales = recordsToPrint.reduce((sum, r) => sum + r.sales, 0);
                 const totalPoints = recordsToPrint.reduce((sum, r) => sum + (r.points || 0), 0);
                 const sumBigToy = (type, key) => recordsToPrint.reduce((sum, r) => sum + (r.bigToys?.[type]?.[key] || 0), 0);
@@ -789,17 +808,19 @@
 
                 const isTodaySelected = todayStats && (formatDateStr(todayStats.dateStr).split('/')[0] === selectedMonth);
                 
-                // ✨ 簡化版：直接讀取處理好的 item.desc，並照要求移除數量/金額/趴數
+                // ✨ 修改點：確保此處的 Top 5 與畫面儀表板完全同步 (銷量優先, 金額次之)
                 if (isTodaySelected && todayStats.itemStats) {
-                    const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0);
-                    const top5 = rawArray.sort((a, b) => b.top5Amt - a.top5Amt).slice(0, 5);
+                    const top5 = Object.values(todayStats.itemStats)
+                        .filter(item => item.desc && item.desc.trim() !== '' && item.top5Amt > 0)
+                        .sort((a, b) => b.top5Qty - a.top5Qty || b.top5Amt - a.top5Amt)
+                        .slice(0, 5);
 
                     if (top5.length > 0) {
                         top5.forEach((item, idx) => {
                             report += `${idx + 1}. ${item.desc}\n`;
                         });
                     } else {
-                        report += `(今日無Top 5)\n`;
+                        report += `(今日無銷售商品可產生 Top 5)\n`;
                     }
                 } else {
                     report += `(請上傳該日資料以產生 Top 5)\n`;
@@ -1113,14 +1134,14 @@
                                     (() => {
                                         const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0);
                                             
-                                        // 直接對齊並抓取資料，不再做二次翻譯
+                                        // 統一使用：數量優先，業績次之
                                         const statsArray = rawArray.map(item => ({
                                             name: item.desc,
                                             quantity: item.top5Qty || item.qty || item.quantity || item.count || 0,
                                             sales: item.top5Amt || 0
                                         }));
 
-                                        const top5Items = statsArray.sort((a, b) => b.sales - a.sales).slice(0, 5);
+                                        const top5Items = statsArray.sort((a, b) => b.quantity - a.quantity || b.sales - a.sales).slice(0, 5);
 
                                         if (top5Items.length === 0) return null;
 
@@ -1531,7 +1552,7 @@
                                                             <button onClick={() => {
                                                                 const textToCopy = `${item.barcode}\t${item.name}`;
                                                                 if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製條碼與品名！')).catch(fallbackCopy); } else { fallbackCopy(); }
-                                                                function fallbackCopy() { const textArea = document.createElement("textarea"); textArea.value = textToCopy; textArea.style.position = "fixed"; textArea.style.opacity = "0"; document.body.appendChild(textArea); textArea.focus(); textArea.select(); try { document.execCommand('copy'); showToast('📋 已複製條碼與品名！'); } catch (err) { showToast('❌ 複製失敗，請手動複製'); } document.body.removeChild(textArea); }
+                                                                function fallbackCopy() { const textArea = document.createElement("textarea"); textArea.value = textToCopy; textArea.style.position = "fixed"; textArea.style.opacity = "0"; document.body.appendChild(textArea); textArea.focus(); textArea.select(); try { document.execCommand('copy'); showToast('📋 已複製條碼與品名！'); } catch (err) { showToast('❌ 複製失敗，請手手動複製'); } document.body.removeChild(textArea); }
                                                             }} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors" title="複製條碼與品名">
                                                                 <i className="fa-solid fa-copy"></i>
                                                             </button>
@@ -1838,7 +1859,7 @@
                                                             <i className="fa-solid fa-paste mr-2"></i>批量匯入 (覆寫/新增)
                                                         </label>
                                                         <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                                                            請貼上 Excel 內容，格式需為：<br /><strong className="text-teal-600 dark:text-teal-500">「條碼 [Tab或逗號] 品名」</strong>，每行一筆。
+                                                            請貼上 Excel 內容，格式需為：<br /><strong className="text-teal-600 dark:text-teal-500">「條碼 [Tab或逗號或空格] 品名」</strong>，每行一筆。
                                                         </p>
 
                                                         <textarea className="w-full flex-1 px-4 py-4 border border-teal-200/60 dark:border-teal-500/30 rounded-xl outline-none min-h-[140px] text-sm font-mono whitespace-pre dark:bg-slate-900/80 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 transition-shadow resize-none" placeholder="6941313089877	DIMOO 隱藏版&#10;6941313071988	SKULLPANDA 盒玩..." value={dictInput} onChange={(e) => setDictInput(e.target.value)}></textarea>
