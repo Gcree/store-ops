@@ -447,6 +447,30 @@
             const [toast, setToast] = useState('');
             const [printContext, setPrintContext] = useState(null);
 
+            // ✨ 全局高容錯翻譯引擎：專治 Excel 吃零、科學記號與隱形空白
+            const getTranslatedName = (barcode, rawDesc, customNameMap) => {
+                if (!customNameMap) return rawDesc;
+                const safeBarcode = String(barcode || '').trim();
+                
+                // 1. 處理 Excel 科學記號 (例如 6.94E+12 -> 6940000000000)
+                const finalBarcode = (safeBarcode.includes('E') || safeBarcode.includes('e')) 
+                    ? Number(safeBarcode).toLocaleString('fullwide', { useGrouping: false }) 
+                    : safeBarcode;
+
+                // 2. 精準比對
+                if (customNameMap[finalBarcode]) return customNameMap[finalBarcode];
+
+                // 3. 容錯比對 (無視開頭的 0)
+                const stripped = finalBarcode.replace(/^0+/, '');
+                for (const key in customNameMap) {
+                    const safeKey = String(key).trim().replace(/^0+/, '');
+                    if (safeKey === stripped && stripped !== '') return customNameMap[key];
+                }
+
+                // 4. 比對失敗，退回原本的描述
+                return rawDesc;
+            };
+
             // ✨ 復原並升級：列印執行大腦
             const executePrint = (context) => {
                 setPrintContext(context);
