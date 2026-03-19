@@ -1325,41 +1325,17 @@
 
                             <div className="lg:col-span-5 relative">
                                 
-                               {/* ✨ 新增：今日熱銷 Top 5 儀表板 (對齊 top5Qty 並加入開頭 0 容錯) */}
+                               {/* ✨ 新增：今日熱銷 Top 5 儀表板 (使用神級淨化翻譯器) */}
                                 {todayStats && todayStats.itemStats && (
                                     (() => {
                                         const rawArray = Object.values(todayStats.itemStats).filter(item => item.desc && item.top5Amt > 0);
                                             
-                                        const statsArray = rawArray.map(item => {
-                                            const safeBarcode = String(item.barcode || '').trim();
-                                            
-                                            let finalName = settings.customNameMap?.[safeBarcode];
-                                            
-                                            // Excel 吃 0 容錯
-                                            if (!finalName && safeBarcode) {
-                                                const strippedBarcode = safeBarcode.replace(/^0+/, '');
-                                                const dictKey = Object.keys(settings.customNameMap || {}).find(k => k.replace(/^0+/, '') === strippedBarcode);
-                                                if (dictKey) finalName = settings.customNameMap[dictKey];
-                                            }
-                                            
-                                            // 英文原名反查
-                                            if (!finalName) {
-                                                const cleanRawName = (item.desc || '').trim().toLowerCase();
-                                                const foundBarcode = Object.keys(settings.barcodeMap || {}).find(key => 
-                                                    settings.barcodeMap[key] && settings.barcodeMap[key].trim().toLowerCase() === cleanRawName
-                                                );
-                                                if (foundBarcode) finalName = settings.customNameMap?.[foundBarcode];
-                                            }
-                                            
-                                            finalName = finalName || settings.barcodeMap?.[safeBarcode] || item.desc || '';
-                                            
-                                            return {
-                                                name: finalName,
-                                                // ✨ 關鍵修正：抓取正確的件數變數 top5Qty
-                                                quantity: item.top5Qty || item.qty || item.quantity || item.count || 0,
-                                                sales: item.top5Amt || 0
-                                            };
-                                        });
+                                        // ✨ 呼叫神級翻譯器，確保彩色面板也能顯示中文
+                                        const statsArray = rawArray.map(item => ({
+                                            name: getTranslatedName(item, settings),
+                                            quantity: item.top5Qty || item.qty || item.quantity || item.count || 0,
+                                            sales: item.top5Amt || 0
+                                        }));
 
                                         const top5Items = statsArray.sort((a, b) => b.sales - a.sales).slice(0, 5);
 
