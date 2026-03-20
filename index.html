@@ -99,6 +99,14 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2) !important;
         }
 
+        /* 隱藏 Input type=number 的原生箭頭 */
+        .hide-arrows::-webkit-outer-spin-button,
+        .hide-arrows::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .hide-arrows { -moz-appearance: textfield; }
+
         @media print {
             html, body, html.dark, html.dark body { height: auto !important; min-height: auto !important; overflow: visible !important; background: white !important; color: black !important; margin: 0; padding: 0 !important; -webkit-print-color-adjust: exact; }
             .h-screen, .h-full { height: auto !important; min-height: auto !important; }
@@ -427,6 +435,16 @@
                     updateCloudData('damagedItems', newData);
                     return newData;
                 });
+                setTimeout(() => damagedInputRef.current?.focus(), 10);
+            };
+            const setDamagedQuantity = (id, newQty) => {
+                const qty = Math.max(1, parseInt(newQty) || 1);
+                setDamagedItems(prev => {
+                    const newData = prev.map(item => item.id === id ? { ...item, quantity: qty } : item);
+                    updateCloudData('damagedItems', newData);
+                    return newData;
+                });
+                setTimeout(() => damagedInputRef.current?.focus(), 10);
             };
 
             const removeDamagedItem = (id) => {
@@ -472,8 +490,37 @@
 
             const [displayBarcodeInput, setDisplayBarcodeInput] = useState('');
             const [displayFilter, setDisplayFilter] = useState('stored');
+            const [displaySearch, setDisplaySearch] = useState('');
+            const [displayCurrentPage, setDisplayCurrentPage] = useState(1);
             const [revealedBarcodes, setRevealedBarcodes] = useState({});
             const displayInputRef = useRef(null);
+
+            // 計算陳列品過濾與分頁
+            const displayData = useMemo(() => {
+                let filtered = displayItems.filter(item => item.status === displayFilter);
+                if (displaySearch.trim()) {
+                    const q = displaySearch.toLowerCase();
+                    filtered = filtered.filter(item => item.name.toLowerCase().includes(q) || item.barcode.includes(q));
+                }
+                
+                // 計算總覽用的分類群組
+                const groups = {};
+                filtered.forEach(item => {
+                    const cat = determineCategory(item.name, settings.customCategories);
+                    if (!groups[cat]) groups[cat] = [];
+                    groups[cat].push(item);
+                });
+                const grouped = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+
+                // 分頁邏輯 (一頁 6 張)
+                const ITEMS_PER_PAGE = 6;
+                const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+                const paginated = filtered.slice((displayCurrentPage - 1) * ITEMS_PER_PAGE, displayCurrentPage * ITEMS_PER_PAGE);
+
+                return { filtered, grouped, paginated, totalPages };
+            }, [displayItems, displayFilter, displaySearch, displayCurrentPage, settings.customCategories]);
+
+            useEffect(() => { setDisplayCurrentPage(1); }, [displayFilter, displaySearch]);
 
             const handleDisplayScanSubmit = (e) => {
                 e.preventDefault(); const barcode = displayBarcodeInput.trim(); if (!barcode) return;
@@ -506,6 +553,16 @@
                     updateCloudData('displayItems', newData);
                     return newData;
                 });
+                setTimeout(() => displayInputRef.current?.focus(), 10);
+            };
+            const setDisplayItemQuantity = (id, newQty) => {
+                const qty = Math.max(1, parseInt(newQty) || 1);
+                setDisplayItems(prev => {
+                    const newData = prev.map(item => item.id === id ? { ...item, quantity: qty } : item);
+                    updateCloudData('displayItems', newData);
+                    return newData;
+                });
+                setTimeout(() => displayInputRef.current?.focus(), 10);
             };
 
             const removeDisplayItem = (id) => {
@@ -570,7 +627,16 @@
                 setBarcodePrintInput(''); setTimeout(() => barcodeInputRef.current?.focus(), 10);
             };
 
-            const updateBarcodeItemQuantity = (id, delta) => setBarcodeItems(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
+            const updateBarcodeItemQuantity = (id, delta) => {
+                setBarcodeItems(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
+                setTimeout(() => barcodeInputRef.current?.focus(), 10);
+            };
+            const setBarcodeQuantity = (id, newQty) => {
+                const qty = Math.max(1, parseInt(newQty) || 1);
+                setBarcodeItems(prev => prev.map(item => item.id === id ? { ...item, quantity: qty } : item));
+                setTimeout(() => barcodeInputRef.current?.focus(), 10);
+            };
+
             const removeBarcodeItem = (id) => {
                 setBarcodeItems(prev => {
                     const item = prev.find(i => i.id === id);
@@ -602,7 +668,6 @@
             const handleRemoveCategory = (id) => updateCloudData('settings', { ...settings, customCategories: settings.customCategories.filter(c => c.id !== id) });
 
             const [story, setStory] = useState('');
-            // ✨ 升級：改為複選關鍵字 (Set)
             const [selectedKeywords, setSelectedKeywords] = useState(new Set());
             const [currentStore, setCurrentStore] = useState('未知店鋪');
             const [todayStats, setTodayStats] = useState(null);
@@ -615,7 +680,6 @@
             const [newBoxSize, setNewBoxSize] = useState(6);
             const [dictInput, setDictInput] = useState('');
 
-            // ✨ 複選關鍵字切換邏輯
             const toggleKeyword = (kw) => {
                 setSelectedKeywords(prev => {
                     const next = new Set(prev);
@@ -785,9 +849,6 @@
                 updateCloudData('settings', { ...settings, newBarcodes: settings.newBarcodes.filter(b => b !== code), boxSizeMap: newBoxMap });
             };
 
-            // ==========================================
-            // ✨ 升級版小作文生成 (18 篇範本 + 複選關鍵字組合)
-            // ==========================================
             const handleAutoGenerateStory = (e) => {
                 e.preventDefault();
                 if (!todayStats || !todayStats.itemStats) {
@@ -810,137 +871,46 @@
 
                 const top1Percent = ((top1.sales / todayStats.sales) * 100).toFixed(1);
                 const top2Percent = todayStats.sales > 0 ? ((top2.sales / todayStats.sales) * 100).toFixed(1) : 0;
-                const top3Percent = todayStats.sales > 0 ? ((top3.sales / todayStats.sales) * 100).toFixed(1) : 0;
                 const weekdayStr = getWeekday(todayStats.dateStr);
                 const mega400qty = todayStats.bigToys?.['400']?.qty || 0;
-                const mega1000qty = todayStats.bigToys?.['1000']?.qty || 0;
 
-                // ==========================================
-                // ✨ 20 篇範本（口氣參照實際日報語氣，2段，自然口語）
-                // tags 可複選，交錯搭配
-                // ==========================================
                 const templates = [
-                    // ── 上架秒殺 ──
-                    {
-                        tags: ['上架秒殺'],
-                        text: `今天是週${weekdayStr}，「${top1.name}」一上架就被搶購一空，售完後還是不斷有客人來問還有沒有貨，今日佔業績 ${top1Percent}%，完全感受到這款的人氣有多高。\n\n「${top2.name}」緊接在後拿下今日第二名，佔比 ${top2Percent}%，今天整體買氣相當不錯，收穫滿滿。`
-                    },
-                    {
-                        tags: ['上架秒殺'],
-                        text: `今天週${weekdayStr}補進了「${top1.name}」，一上架不到幾分鐘就幾乎被搶光，現場氣氛非常熱烈，售完後還是有許多客人陸續來詢問，可見這款的人氣真的非常高，大家都很期待能入手。\n\n今日銷售第二名是「${top2.name}」，佔比 ${top2Percent}%，整體業績在補貨助攻下表現相當亮眼。`
-                    },
-                    // ── 假日人潮 ──
-                    {
-                        tags: ['假日人潮'],
-                        text: `今天是週${weekdayStr}，許多家長帶著小朋友來台茂逛街，人潮比平日明顯多了許多。「${top1.name}」吸引了大批客人的目光，現場不時傳來抽到喜歡款的驚喜聲，今日售出 ${top1.quantity} 件，佔業績 ${top1Percent}%。\n\n「${top2.name}」同樣深受喜愛，佔比 ${top2Percent}%，今天整個賣場充滿歡樂的氣氛，能看到客人滿載而歸真的很開心。`
-                    },
-                    {
-                        tags: ['假日人潮', '客人端盒'],
-                        text: `今天是週${weekdayStr}，假日人潮絡繹不絕，家庭客群特別多。讓人印象深刻的是有幾組客人直接以中盒為單位購買「${top1.name}」，就是衝著要湊套來的，帶動了整體買氣，這款佔今日業績 ${top1Percent}%，拿下今日冠軍。\n\n「${top2.name}」在假日人潮的帶動下也有 ${top2Percent}% 的好表現，今天業績相當豐收！`
-                    },
-                    // ── 天氣不佳 ──
-                    {
-                        tags: ['天氣不佳'],
-                        text: `今天週${weekdayStr}天氣不太好，但門市的客人沒有因此少，還是一樣很熱絡。很多客人都詢問現場沒貨的商品，得知沒有庫存後還會再問陳列品能不能賣，看來客人對於心中喜歡的商品沒得到手真的不善罷甘休。\n\n今天熱銷第一名是「${top1.name}」，佔了整體業績 ${top1Percent}%，「${top2.name}」緊接其後，佔比 ${top2Percent}%，今天業績整體表現撐得住。`
-                    },
-                    {
-                        tags: ['天氣不佳'],
-                        text: `今天週${weekdayStr}外面比前幾天還冷，不過門市的人潮沒有因此減少，到了晚餐時間人流甚至明顯變多了。今天有不少客人一進門就直接鎖定「${top1.name}」，今日佔業績 ${top1Percent}%，成為當日銷售冠軍。\n\n「${top2.name}」今天表現也相當穩定，佔比 ${top2Percent}%，整體業績比預期好，算是不錯的一天。`
-                    },
-                    {
-                        tags: ['天氣不佳', '大排長龍'],
-                        text: `今天週${weekdayStr}外面一直下著雨，但這完全擋不住大家出門的熱情，一開店門口就已經有客人在等了，就是衝著「${top1.name}」的補貨來的！最終這款佔了今日業績 ${top1Percent}%，雨天照樣賣到缺貨。\n\n「${top2.name}」同樣表現不俗，拿下第二名、佔比 ${top2Percent}%，今天天氣差但業績好，非常值得！`
-                    },
-                    // ── 客人端盒 ──
-                    {
-                        tags: ['客人端盒'],
-                        text: `今天週${weekdayStr}出現了一位很豪氣的客人，直接把「${top1.name}」整中盒帶走，旁邊的客人看到之後也跟著手癢起來，陸續跟進，帶動了整體買氣，這款最終佔了今日業績 ${top1Percent}%，登上銷售冠軍。\n\n「${top2.name}」今天也有不錯的表現，佔比 ${top2Percent}%，今天整體業績表現扎實，收穫滿滿。`
-                    },
-                    {
-                        tags: ['客人端盒'],
-                        text: `今天週${weekdayStr}傍晚來了一個家庭，大人帶著小朋友一起挑「${top1.name}」，每開一盒就全家人一起猜款式，抽到重複款時小孩雖然有點失望，但大人還是笑著再買一盒，那個氛圍真的很溫馨，最後這款佔了今日業績 ${top1Percent}%，成為銷售冠軍。\n\n「${top2.name}」今天佔比 ${top2Percent}%，今天整個門市都是這樣充滿溫暖的畫面。`
-                    },
-                    {
-                        tags: ['客人端盒', '補貨熱銷'],
-                        text: `今天週${weekdayStr}補了「${top1.name}」的貨，上架沒多久就有客人直接端盒帶走，其他客人看到之後也紛紛跟進，補進來的量下午就快見底了，整日佔了業績 ${top1Percent}%，補貨節奏很順，去化速度讓人驚喜。\n\n「${top2.name}」今天同樣有 ${top2Percent}% 的好表現，今天整體業績超出預期，補貨策略押對了！`
-                    },
-                    // ── 大單出現 ──
-                    {
-                        tags: ['大單出現'],
-                        text: `今天週${weekdayStr}出現了一位剛辦會員就大手筆消費的新客人，一口氣帶走了好幾款，消費金額相當驚人，成為今天的大客戶，真的很開心我們的商品能吸引到他！\n\n今日銷售冠軍是「${top1.name}」，佔業績 ${top1Percent}%，第二名「${top2.name}」佔比 ${top2Percent}%，在大單助攻下今天業績相當漂亮。`
-                    },
-                    {
-                        tags: ['大單出現', '客人端盒'],
-                        text: `今天週${weekdayStr}客單價表現亮眼，有好幾位客人是以中盒為單位在購買「${top1.name}」，其中一位更是加購了多款散盒一起帶走，光這位客人的消費就已經非常驚人，今日這款佔業績 ${top1Percent}%，穩坐冠軍。\n\n「${top2.name}」佔比達 ${top2Percent}%，今天算是質量遠大於數量的一天，客單價拉得很好！`
-                    },
-                    // ── MEGA熱銷 ──
-                    {
-                        tags: ['MEGA熱銷'],
-                        text: `今天週${weekdayStr}最讓人驚喜的是 MEGA 系列的表現，店內陸續賣出了 ${mega400qty} 隻 400%，每位帶走的客人都超興奮，有幾位說沒抽到目標款可能還會再來挑戰，大家對這系列的熱情真的很難抵擋。\n\n盲盒方面「${top1.name}」依然是今日業績擔當，佔比 ${top1Percent}%，「${top2.name}」緊接在後，整體業績相當亮眼，收穫滿滿 💪`
-                    },
-                    {
-                        tags: ['MEGA熱銷'],
-                        text: `今天週${weekdayStr}有客人特地來詢問想要的 MEGA 款式，連續買了好幾隻都沒有抽到，雖然有點失望，但還是很有禮貌地來問能不能和店裡展示品交換，看到這樣的場景真的感受到大家對這系列有多喜愛。今日 MEGA 400% 共售出 ${mega400qty} 隻，表現不俗。\n\n盲盒方面「${top1.name}」今日佔比 ${top1Percent}%，成為今天的銷售冠軍，業績整體令人滿意。`
-                    },
-                    {
-                        tags: ['MEGA熱銷', '大單出現'],
-                        text: `今天週${weekdayStr}出現了幾位專程來買 MEGA 的客人，今日共賣出 ${mega400qty} 隻 400%，直接帶走好幾隻，連旁邊的顧客都忍不住停下來看，現場氣氛非常嗨！光 MEGA 系列就為業績貢獻了相當可觀的金額。\n\n盲盒方面「${top1.name}」同樣表現出色，佔比 ${top1Percent}%，今天大單與盲盒雙雙發威，業績非常漂亮 🎉`
-                    },
-                    // ── 大排長龍 ──
-                    {
-                        tags: ['大排長龍'],
-                        text: `今天週${weekdayStr}一開店門口就有客人在等候，主要都是衝著「${top1.name}」來的！一開賣現場氣氛非常熱烈，很多人就算沒抽到喜歡的款也繼續追，完全停不下來，這款售出 ${top1.quantity} 件，佔業績 ${top1Percent}%，集客力超強。\n\n「${top2.name}」承接了下午的人潮，銷售穩定，佔比 ${top2Percent}%，今天客流從早到晚沒有停過，業績相當豐收。`
-                    },
-                    {
-                        tags: ['大排長龍', '上架秒殺'],
-                        text: `今天週${weekdayStr}一大早就開始大排長龍，客人一進來馬上直奔「${top1.name}」的陳列區，上架之後不到幾分鐘就幾乎掃光了，補完貨人潮還是沒有散，整日佔了業績 ${top1Percent}%，現場的熱鬧程度讓店員都跟著振奮起來！\n\n「${top2.name}」今天也有 ${top2Percent}% 的好表現，今天算是本週數一數二的好日子，整體業績令人滿意。`
-                    },
-                    // ── 補貨熱銷 ──
-                    {
-                        tags: ['補貨熱銷'],
-                        text: `今天週${weekdayStr}補進了「${top1.name}」，一上架就迎來一波搶購，今日售出 ${top1.quantity} 件，佔業績 ${top1Percent}%，補到最後又快見底，後面陸續有客人來詢問還有沒有，可見這款商品的需求還是相當旺盛。\n\n「${top2.name}」今天反應同樣不錯，佔比 ${top2Percent}%，今天補貨節奏很順，能看到客人滿載而歸真的很有成就感。`
-                    },
-                    {
-                        tags: ['補貨熱銷', '上架秒殺'],
-                        text: `近幾日許多客人都在詢問「${top1.name}」的補貨時間，今天一到貨就馬上有消息靈通的客人出現，一上架就幾乎被掃光，售出 ${top1.quantity} 件，業績佔比直衝 ${top1Percent}%，補一次清一次，熱度真的非常驚人。\n\n「${top2.name}」跟著受惠，今日同樣有 ${top2Percent}% 的好表現，整天店內不斷傳來抽到喜歡款的歡呼聲，氛圍超棒！`
-                    },
-                    // ── 組合情境 ──
-                    {
-                        tags: ['假日人潮', '天氣不佳'],
-                        text: `今天週${weekdayStr}天氣稍涼，但家長帶著小朋友來台茂逛街的人潮一點都不少，很多客人都詢問現場沒貨的商品，得知沒有庫存後還問陳列品能不能賣，看來客人對心儀的商品真的不善罷甘休。\n\n今天銷售第一名是「${top1.name}」，佔了整體業績 ${top1Percent}%，「${top2.name}」緊接其後，佔比 ${top2Percent}%，今天業績整體表現相當穩健。`
-                    },
-                    {
-                        tags: ['假日人潮', '補貨熱銷'],
-                        text: `今天是週${weekdayStr}，許多家長帶著小朋友來台茂逛街。今天補進了「${top1.name}」，一上架馬上就吸引到親子客群搶購，大人小孩都圍在一起，現場歡樂的氣氛非常熱烈，這款今日佔業績 ${top1Percent}%。\n\n「${top2.name}」也在今天的假日氣氛帶動下有 ${top2Percent}% 的好表現，整體業績相當不錯！`
-                    },
-                    {
-                        tags: ['上架秒殺', 'MEGA熱銷'],
-                        text: `今天週${weekdayStr}真的是雙喜臨門，「${top1.name}」一上架就直接秒殺，售出 ${top1.quantity} 件、佔比 ${top1Percent}%，根本沒有留給人猶豫的空間；同時 MEGA 400% 系列今日共賣出 ${mega400qty} 隻，很多客人買完大隻的還順手帶走一堆盲盒，消費力超強。\n\n「${top2.name}」在今天的強勢氛圍帶動下同樣有 ${top2Percent}% 的亮眼表現，整天買氣高漲，今天算是本月數一數二的好日子！`
-                    },
-                    {
-                        tags: ['客人端盒', '假日人潮', '大單出現'],
-                        text: `今天是週${weekdayStr}，假日家庭客群特別多，現場不時傳來一家人一起開盒、抽到喜歡款的歡呼聲，氣氛非常熱鬧。其中還出現一位剛加入會員就消費了相當驚人金額的新客人，真的很開心我們的商品能吸引到他，成為今天的大客戶。\n\n今日銷售冠軍是「${top1.name}」，佔業績 ${top1Percent}%；第二名「${top2.name}」佔比 ${top2Percent}%，今天業績非常漂亮 🎉`
-                    },
-                    {
-                        tags: ['天氣不佳', '補貨熱銷', '客人端盒'],
-                        text: `今天週${weekdayStr}外面下著雨，不過完全擋不住大家衝來補貨的熱情！「${top1.name}」一補進來馬上就有消息靈通的顧客出現，甚至有客人直接以中盒為單位下手，售出 ${top1.quantity} 件，業績佔比 ${top1Percent}%，雨天照樣搶購，讓人感動。\n\n「${top2.name}」今天也有不錯的表現，佔比 ${top2Percent}%，雖然天氣差讓客流少了一點，但今天進來的客人買氣都超強，整體業績比預期好！`
-                    }
+                    { tags: ['上架秒殺'], text: `今天是週${weekdayStr}，「${top1.name}」一上架就被搶購一空，售完後還是不斷有客人來問還有沒有貨，今日佔業績 ${top1Percent}%，完全感受到這款的人氣有多高。\n\n「${top2.name}」緊接在後拿下今日第二名，佔比 ${top2Percent}%，今天整體買氣相當不錯，收穫滿滿。` },
+                    { tags: ['上架秒殺'], text: `今天週${weekdayStr}補進了「${top1.name}」，一上架不到幾分鐘就幾乎被搶光，現場氣氛非常熱烈，售完後還是有許多客人陸續來詢問，可見這款的人氣真的非常高，大家都很期待能入手。\n\n今日銷售第二名是「${top2.name}」，佔比 ${top2Percent}%，整體業績在補貨助攻下表現相當亮眼。` },
+                    { tags: ['假日人潮'], text: `今天是週${weekdayStr}，許多家長帶著小朋友來台茂逛街，人潮比平日明顯多了許多。「${top1.name}」吸引了大批客人的目光，現場不時傳來抽到喜歡款的驚喜聲，今日售出 ${top1.quantity} 件，佔業績 ${top1Percent}%。\n\n「${top2.name}」同樣深受喜愛，佔比 ${top2Percent}%，今天整個賣場充滿歡樂的氣氛，能看到客人滿載而歸真的很開心。` },
+                    { tags: ['假日人潮', '客人端盒'], text: `今天是週${weekdayStr}，假日人潮絡繹不絕，家庭客群特別多。讓人印象深刻的是有幾組客人直接以中盒為單位購買「${top1.name}」，就是衝著要湊套來的，帶動了整體買氣，這款佔今日業績 ${top1Percent}%，拿下今日冠軍。\n\n「${top2.name}」在假日人潮的帶動下也有 ${top2Percent}% 的好表現，今天業績相當豐收！` },
+                    { tags: ['天氣不佳'], text: `今天週${weekdayStr}天氣不太好，但門市的客人沒有因此少，還是一樣很熱絡。很多客人都詢問現場沒貨的商品，得知沒有庫存後還會再問陳列品能不能賣，看來客人對於心中喜歡的商品沒得到手真的不善罷甘休。\n\n今天熱銷第一名是「${top1.name}」，佔了整體業績 ${top1Percent}%，「${top2.name}」緊接其後，佔比 ${top2Percent}%，今天業績整體表現撐得住。` },
+                    { tags: ['天氣不佳'], text: `今天週${weekdayStr}外面比前幾天還冷，不過門市的人潮沒有因此減少，到了晚餐時間人流甚至明顯變多了。今天有不少客人一進門就直接鎖定「${top1.name}」，今日佔業績 ${top1Percent}%，成為當日銷售冠軍。\n\n「${top2.name}」今天表現也相當穩定，佔比 ${top2Percent}%，整體業績比預期好，算是不錯的一天。` },
+                    { tags: ['天氣不佳', '大排長龍'], text: `今天週${weekdayStr}外面一直下著雨，但這完全擋不住大家出門的熱情，一開店門口就已經有客人在等了，就是衝著「${top1.name}」的補貨來的！最終這款佔了今日業績 ${top1Percent}%，雨天照樣賣到缺貨。\n\n「${top2.name}」同樣表現不俗，拿下第二名、佔比 ${top2Percent}%，今天天氣差但業績好，非常值得！` },
+                    { tags: ['客人端盒'], text: `今天週${weekdayStr}出現了一位很豪氣的客人，直接把「${top1.name}」整中盒帶走，旁邊的客人看到之後也跟著手癢起來，陸續跟進，帶動了整體買氣，這款最終佔了今日業績 ${top1Percent}%，登上銷售冠軍。\n\n「${top2.name}」今天也有不錯的表現，佔比 ${top2Percent}%，今天整體業績表現扎實，收穫滿滿。` },
+                    { tags: ['客人端盒'], text: `今天週${weekdayStr}傍晚來了一個家庭，大人帶著小朋友一起挑「${top1.name}」，每開一盒就全家人一起猜款式，抽到重複款時小孩雖然有點失望，但大人還是笑著再買一盒，那個氛圍真的很溫馨，最後這款佔了今日業績 ${top1Percent}%，成為銷售冠軍。\n\n「${top2.name}」今天佔比 ${top2Percent}%，今天整個門市都是這樣充滿溫暖的畫面。` },
+                    { tags: ['客人端盒', '補貨熱銷'], text: `今天週${weekdayStr}補了「${top1.name}」的貨，上架沒多久就有客人直接端盒帶走，其他客人看到之後也紛紛跟進，補進來的量下午就快見底了，整日佔了業績 ${top1Percent}%，補貨節奏很順，去化速度讓人驚喜。\n\n「${top2.name}」今天同樣有 ${top2Percent}% 的好表現，今天整體業績超出預期，補貨策略押對了！` },
+                    { tags: ['大單出現'], text: `今天週${weekdayStr}出現了一位剛辦會員就大手筆消費的新客人，一口氣帶走了好幾款，消費金額相當驚人，成為今天的大客戶，真的很開心我們的商品能吸引到他！\n\n今日銷售冠軍是「${top1.name}」，佔業績 ${top1Percent}%，第二名「${top2.name}」佔比 ${top2Percent}%，在大單助攻下今天業績相當漂亮。` },
+                    { tags: ['大單出現', '客人端盒'], text: `今天週${weekdayStr}客單價表現亮眼，有好幾位客人是以中盒為單位在購買「${top1.name}」，其中一位更是加購了多款散盒一起帶走，光這位客人的消費就已經非常驚人，今日這款佔業績 ${top1Percent}%，穩坐冠軍。\n\n「${top2.name}」佔比達 ${top2Percent}%，今天算是質量遠大於數量的一天，客單價拉得很好！` },
+                    { tags: ['MEGA熱銷'], text: `今天週${weekdayStr}最讓人驚喜的是 MEGA 系列的表現，店內陸續賣出了 ${mega400qty} 隻 400%，每位帶走的客人都超興奮，有幾位說沒抽到目標款可能還會再來挑戰，大家對這系列的熱情真的很難抵擋。\n\n盲盒方面「${top1.name}」依然是今日業績擔當，佔比 ${top1Percent}%，「${top2.name}」緊接在後，整體業績相當亮眼，收穫滿滿 💪` },
+                    { tags: ['MEGA熱銷'], text: `今天週${weekdayStr}有客人特地來詢問想要的 MEGA 款式，連續買了好幾隻都沒有抽到，雖然有點失望，但還是很有禮貌地來問能不能和店裡展示品交換，看到這樣的場景真的感受到大家對這系列有多喜愛。今日 MEGA 400% 共售出 ${mega400qty} 隻，表現不俗。\n\n盲盒方面「${top1.name}」今日佔比 ${top1Percent}%，成為今天的銷售冠軍，業績整體令人滿意。` },
+                    { tags: ['MEGA熱銷', '大單出現'], text: `今天週${weekdayStr}出現了幾位專程來買 MEGA 的客人，今日共賣出 ${mega400qty} 隻 400%，直接帶走好幾隻，連旁邊的顧客都忍不住停下來看，現場氣氛非常嗨！光 MEGA 系列就為業績貢獻了相當可觀的金額。\n\n盲盒方面「${top1.name}」同樣表現出色，佔比 ${top1Percent}%，今天大單與盲盒雙雙發威，業績非常漂亮 🎉` },
+                    { tags: ['大排長龍'], text: `今天週${weekdayStr}一開店門口就有客人在等候，主要都是衝著「${top1.name}」來的！一開賣現場氣氛非常熱烈，很多人就算沒抽到喜歡的款也繼續追，完全停不下來，這款售出 ${top1.quantity} 件，佔業績 ${top1Percent}%，集客力超強。\n\n「${top2.name}」承接了下午的人潮，銷售穩定，佔比 ${top2Percent}%，今天客流從早到晚沒有停過，業績相當豐收。` },
+                    { tags: ['大排長龍', '上架秒殺'], text: `今天週${weekdayStr}一大早就開始大排長龍，客人一進來馬上直奔「${top1.name}」的陳列區，上架之後不到幾分鐘就幾乎掃光了，補完貨人潮還是沒有散，整日佔了業績 ${top1Percent}%，現場的熱鬧程度讓店員都跟著振奮起來！\n\n「${top2.name}」今天也有 ${top2Percent}% 的好表現，今天算是本週數一數二的好日子，整體業績令人滿意。` },
+                    { tags: ['補貨熱銷'], text: `今天週${weekdayStr}補進了「${top1.name}」，一上架就迎來一波搶購，今日售出 ${top1.quantity} 件，佔業績 ${top1Percent}%，補到最後又快見底，後面陸續有客人來詢問還有沒有，可見這款商品的需求還是相當旺盛。\n\n「${top2.name}」今天反應同樣不錯，佔比 ${top2Percent}%，今天補貨節奏很順，能看到客人滿載而歸真的很有成就感。` },
+                    { tags: ['補貨熱銷', '上架秒殺'], text: `近幾日許多客人都在詢問「${top1.name}」的補貨時間，今天一到貨就馬上有消息靈通的客人出現，一上架就幾乎被掃光，售出 ${top1.quantity} 件，業績佔比直衝 ${top1Percent}%，補一次清一次，熱度真的非常驚人。\n\n「${top2.name}」跟著受惠，今日同樣有 ${top2Percent}% 的好表現，整天店內不斷傳來抽到喜歡款的歡呼聲，氛圍超棒！` },
+                    { tags: ['假日人潮', '天氣不佳'], text: `今天週${weekdayStr}天氣稍涼，但家長帶著小朋友來台茂逛街的人潮一點都不少，很多客人都詢問現場沒貨的商品，得知沒有庫存後還問陳列品能不能賣，看來客人對心儀的商品真的不善罷甘休。\n\n今天銷售第一名是「${top1.name}」，佔了整體業績 ${top1Percent}%，「${top2.name}」緊接其後，佔比 ${top2Percent}%，今天業績整體表現相當穩健。` },
+                    { tags: ['假日人潮', '補貨熱銷'], text: `今天是週${weekdayStr}，許多家長帶著小朋友來台茂逛街。今天補進了「${top1.name}」，一上架馬上就吸引到親子客群搶購，大人小孩都圍在一起，現場歡樂的氣氛非常熱烈，這款今日佔業績 ${top1Percent}%。\n\n「${top2.name}」也在今天的假日氣氛帶動下有 ${top2Percent}% 的好表現，整體業績相當不錯！` },
+                    { tags: ['上架秒殺', 'MEGA熱銷'], text: `今天週${weekdayStr}真的是雙喜臨門，「${top1.name}」一上架就直接秒殺，售出 ${top1.quantity} 件、佔比 ${top1Percent}%，根本沒有留給人猶豫的空間；同時 MEGA 400% 系列今日共賣出 ${mega400qty} 隻，很多客人買完大隻的還順手帶走一堆盲盒，消費力超強。\n\n「${top2.name}」在今天的強勢氛圍帶動下同樣有 ${top2Percent}% 的亮眼表現，整天買氣高漲，今天算是本月數一數二的好日子！` },
+                    { tags: ['客人端盒', '假日人潮', '大單出現'], text: `今天是週${weekdayStr}，假日家庭客群特別多，現場不時傳來一家人一起開盒、抽到喜歡款的歡呼聲，氣氛非常熱鬧。其中還出現一位剛加入會員就消費了相當驚人金額的新客人，真的很開心我們的商品能吸引到他，成為今天的大客戶。\n\n今日銷售冠軍是「${top1.name}」，佔業績 ${top1Percent}%；第二名「${top2.name}」佔比 ${top2Percent}%，今天業績非常漂亮 🎉` },
+                    { tags: ['天氣不佳', '補貨熱銷', '客人端盒'], text: `今天週${weekdayStr}外面下著雨，不過完全擋不住大家衝來補貨的熱情！「${top1.name}」一補進來馬上就有消息靈通的顧客出現，甚至有客人直接以中盒為單位下手，售出 ${top1.quantity} 件，業績佔比 ${top1Percent}%，雨天照樣搶購，讓人感動。\n\n「${top2.name}」今天也有不錯的表現，佔比 ${top2Percent}%，雖然天氣差讓客流少了一點，但今天進來的客人買氣都超強，整體業績比預期好！` }
                 ];
 
-                // 根據複選關鍵字過濾範本
                 const activeKeywords = Array.from(selectedKeywords);
                 let availableTemplates;
 
                 if (activeKeywords.length === 0) {
-                    // 沒選任何關鍵字：全部範本都可以抽
                     availableTemplates = templates;
                 } else {
-                    // 有選關鍵字：優先找「完全包含所有選定關鍵字」的範本
                     const exactMatch = templates.filter(t => activeKeywords.every(kw => t.tags.includes(kw)));
                     if (exactMatch.length > 0) {
                         availableTemplates = exactMatch;
                     } else {
-                        // 找部分匹配（包含任一選定關鍵字）
                         availableTemplates = templates.filter(t => activeKeywords.some(kw => t.tags.includes(kw)));
                     }
                 }
@@ -1104,9 +1074,6 @@
                 );
             }
 
-            // ==========================================
-            // 主要 UI 渲染區塊
-            // ==========================================
             return (
                 <div className="flex flex-col min-h-screen w-full font-sans overflow-x-hidden">
 
@@ -1125,13 +1092,10 @@
                     <div className="pt-8 pb-32 px-6 md:px-8 lg:px-12 max-w-[1440px] mx-auto min-h-screen w-full no-print">
                         <div className="space-y-6 md:space-y-8">
 
-                            {/* =========================================
-                                分頁 1: 銷售日報表 (✨ 2 欄式設計，Top5 在預覽上方)
-                            ========================================= */}
+                            {/* 分頁 1: 銷售日報表 */}
                             {activeTab === 'daily-report' && (
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-8 pb-10 animate-scale-in">
 
-                                    {/* 第一欄：操作與控制區 */}
                                     <div className="space-y-6">
                                         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
                                             <h2 className="text-xl font-semibold mb-4 flex items-center dark:text-slate-100"><i className="fa-solid fa-cloud-arrow-up text-blue-500 mr-2"></i>上傳今日報表</h2>
@@ -1236,7 +1200,6 @@
                                                 </div>
                                             </div>
 
-                                            {/* ✨ 升級版小作文區塊：複選關鍵字 */}
                                             <div className="pt-6 border-t border-slate-100 dark:border-slate-700/50">
                                                 <div className="flex justify-between items-center mb-3">
                                                     <label className="block text-sm font-medium text-slate-600 dark:text-slate-300">賣場狀況分享（小作文）</label>
@@ -1249,7 +1212,6 @@
                                                     </button>
                                                 </div>
 
-                                                {/* ✨ 複選關鍵字區塊 */}
                                                 <div className="mb-3">
                                                     <div className="flex items-center justify-between mb-2">
                                                         <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
@@ -1302,10 +1264,8 @@
                                         </div>
                                     </div>
 
-                                    {/* 第二欄：Top 5 儀表板 + 報表預覽 (上下堆疊) */}
                                     <div className="flex flex-col gap-6">
 
-                                        {/* ✨ Top 5 儀表板（在報表預覽上方） */}
                                         {todayStats && todayStats.itemStats && (() => {
                                             const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0);
                                             const statsArray = rawArray.map(item => ({
@@ -1363,7 +1323,6 @@
                                             );
                                         })()}
 
-                                        {/* 報表預覽區（在 Top 5 下方，sticky 展開至螢幕底部） */}
                                         <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 sticky top-8 flex flex-col transition-colors z-10" style={{height: 'calc(100vh - 10rem)', minHeight: '400px'}}>
                                             <div className="flex justify-between items-center mb-4 shrink-0">
                                                 <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center"><i className="fa-solid fa-file-lines text-slate-400 mr-2"></i> 報表預覽</h2>
@@ -1382,9 +1341,7 @@
                                 </div>
                             )}
 
-                            {/* =========================================
-                                分頁 2: 盒損登記器
-                            ========================================= */}
+                            {/* 分頁 2: 盒損登記器 */}
                             {activeTab === 'damaged-box' && (
                                 <div className="w-full space-y-6 pb-10 animate-scale-in">
                                     <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden transition-colors">
@@ -1501,11 +1458,21 @@
                                                                             <div className="flex items-center justify-between w-full md:w-auto gap-3 shrink-0">
                                                                                 <div className="md:hidden text-xs text-slate-500 dark:text-slate-400 font-mono flex items-center bg-slate-50 dark:bg-slate-900/50 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700"><i className="fa-solid fa-barcode mr-1.5 opacity-70"></i>{item.barcode}</div>
                                                                                 <div className="flex items-center gap-3 ml-auto">
+                                                                                    
+                                                                                    {/* 盒損數量控制區 */}
                                                                                     <div className="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden p-1">
                                                                                         <button onClick={() => updateQuantity(item.id, -1)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-colors shadow-sm"><i className="fa-solid fa-minus text-xs"></i></button>
-                                                                                        <div className="w-10 text-center font-bold text-slate-800 dark:text-slate-100 text-base">{item.quantity}</div>
+                                                                                        <input 
+                                                                                            type="number" 
+                                                                                            min="1"
+                                                                                            value={item.quantity}
+                                                                                            onChange={(e) => setDamagedQuantity(item.id, e.target.value)}
+                                                                                            onFocus={(e) => e.target.select()}
+                                                                                            className="w-12 text-center font-bold text-slate-800 dark:text-slate-100 text-base bg-transparent outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 transition-all rounded px-1 hide-arrows"
+                                                                                        />
                                                                                         <button onClick={() => updateQuantity(item.id, 1)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-colors shadow-sm"><i className="fa-solid fa-plus text-xs"></i></button>
                                                                                     </div>
+                                                                                    
                                                                                     <button onClick={() => removeDamagedItem(item.id)} className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0"><i className="fa-solid fa-trash-can text-lg"></i></button>
                                                                                 </div>
                                                                             </div>
@@ -1528,9 +1495,7 @@
                                 </div>
                             )}
 
-                            {/* =========================================
-                                分頁 3: 陳列品典藏庫
-                            ========================================= */}
+                            {/* 分頁 3: 陳列品典藏庫 */}
                             {activeTab === 'display-items' && (
                                 <div className="w-full space-y-6 pb-10 animate-scale-in">
                                     <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden transition-colors">
@@ -1564,45 +1529,120 @@
                                             <p className="text-slate-500 font-medium">目前沒有{displayFilter === 'stored' ? '撤下' : '展示中'}的品項</p>
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                                            {displayItems.filter(item => item.status === displayFilter).map((item) => (
-                                                <div key={item.id} className={`group relative bg-white dark:bg-slate-800 rounded-2xl p-5 border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${item.status === 'displayed' ? 'border-amber-200 dark:border-amber-500/30 shadow-amber-500/5' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500/50'}`}>
-                                                    <button onClick={() => toggleDisplayStatus(item.id, item.status)} className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm ${item.status === 'displayed' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-400 hover:bg-blue-100 hover:text-blue-600'}`} title={item.status === 'displayed' ? '收回典藏' : '轉為陳列'}>
-                                                        <i className={`fa-solid ${item.status === 'displayed' ? 'fa-boxes-packing' : 'fa-lightbulb'} text-xs`}></i>
-                                                    </button>
-                                                    <div className="pr-10 mb-4">
-                                                        <div className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1 flex items-center gap-1.5"><i className="fa-solid fa-tag"></i><span>數量: <strong className={`text-base ${item.status === 'displayed' ? 'text-amber-500' : 'text-blue-500'}`}>{item.quantity}</strong></span></div>
-                                                        <div className="mb-2"><EditableItemName item={item} onSave={(id, bc, name) => handleUpdateItemName('display', id, bc, name)} /></div>
-                                                        <div className="mt-1.5">
-                                                            <button onClick={() => toggleBarcodeVisibility(item.id)} className="text-xs font-mono text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 flex items-center transition-colors bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">
-                                                                <i className={`fa-solid ${revealedBarcodes[item.id] ? 'fa-eye-slash' : 'fa-barcode'} mr-1.5`}></i>{revealedBarcodes[item.id] ? item.barcode : '顯示條碼'}
-                                                            </button>
+                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4 items-start">
+                                            {/* 左側：總覽與篩選 (固定長度, 內部 Scroll) */}
+                                            <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 flex flex-col h-auto lg:h-[calc(100vh-16rem)] lg:sticky top-28 transition-colors">
+                                                <div className="p-4 border-b border-slate-100 dark:border-slate-700">
+                                                    <div className="relative group">
+                                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                            <i className="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-amber-500 transition-colors"></i>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700/50">
-                                                        <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
-                                                            <button onClick={() => updateDisplayQuantity(item.id, -1)} className="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 transition-colors shadow-sm"><i className="fa-solid fa-minus text-[10px]"></i></button>
-                                                            <div className="w-8 text-center font-bold text-slate-700 dark:text-slate-200 text-sm">{item.quantity}</div>
-                                                            <button onClick={() => updateDisplayQuantity(item.id, 1)} className="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 transition-colors shadow-sm"><i className="fa-solid fa-plus text-[10px]"></i></button>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <button onClick={() => {
-                                                                const textToCopy = `${item.barcode}\t${item.name}`;
-                                                                if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製條碼與品名！')).catch(() => {}); }
-                                                            }} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors" title="複製條碼與品名"><i className="fa-solid fa-copy"></i></button>
-                                                            <button onClick={() => removeDisplayItem(item.id)} className="w-9 h-9 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors" title="移除此陳列品"><i className="fa-solid fa-trash-can"></i></button>
-                                                        </div>
+                                                        <input 
+                                                            type="text" 
+                                                            value={displaySearch} 
+                                                            onChange={(e) => setDisplaySearch(e.target.value)} 
+                                                            className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 transition-all shadow-sm dark:text-white" 
+                                                            placeholder="搜尋品名或條碼..." 
+                                                        />
                                                     </div>
                                                 </div>
-                                            ))}
+                                                
+                                                <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+                                                    <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-700 flex justify-between items-end">
+                                                        <span className="text-sm">分類總覽</span>
+                                                        <span className="text-amber-500 font-black text-sm">{displayData.filtered.reduce((sum, i) => sum + i.quantity, 0)} 件</span>
+                                                    </h4>
+                                                    {displayData.grouped.length === 0 ? (
+                                                        <p className="text-center text-sm text-slate-400 py-4">無符合的資料</p>
+                                                    ) : (
+                                                        <div className="space-y-4">
+                                                            {displayData.grouped.map(([category, items]) => (
+                                                                <div key={category} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                                                                    <div className="text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">{category}</div>
+                                                                    <ul className="space-y-2">
+                                                                        {items.map(item => (
+                                                                            <li key={`list-${item.id}`} className="flex justify-between items-start text-sm">
+                                                                                <span className="text-slate-600 dark:text-slate-400 pr-2 line-clamp-1 flex-1 text-xs">{item.name}</span>
+                                                                                <span className="font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-600 shadow-sm text-[10px] whitespace-nowrap">x {item.quantity}</span>
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* 右側：卡片列表與分頁 */}
+                                            <div className="lg:col-span-8 flex flex-col h-[500px] sm:h-[600px] lg:h-[calc(100vh-16rem)]">
+                                                {displayData.paginated.length === 0 ? (
+                                                    <div className="flex-1 flex flex-col items-center justify-center p-10 text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+                                                        <i className="fa-solid fa-magnifying-glass-minus text-4xl mb-3"></i>
+                                                        <p>找不到相符的品項</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex-1 overflow-y-auto custom-scrollbar pb-4 pr-2">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 content-start">
+                                                            {displayData.paginated.map((item) => (
+                                                                <div key={item.id} className={`group relative bg-white dark:bg-slate-800 rounded-2xl p-5 border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${item.status === 'displayed' ? 'border-amber-200 dark:border-amber-500/30 shadow-amber-500/5' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500/50'}`}>
+                                                                    <button onClick={() => toggleDisplayStatus(item.id, item.status)} className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm ${item.status === 'displayed' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-400 hover:bg-blue-100 hover:text-blue-600'}`} title={item.status === 'displayed' ? '收回典藏' : '轉為陳列'}>
+                                                                        <i className={`fa-solid ${item.status === 'displayed' ? 'fa-boxes-packing' : 'fa-lightbulb'} text-xs`}></i>
+                                                                    </button>
+                                                                    <div className="pr-10 mb-4">
+                                                                        <div className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1 flex items-center gap-1.5"><i className="fa-solid fa-tag"></i><span>數量: <strong className={`text-base ${item.status === 'displayed' ? 'text-amber-500' : 'text-blue-500'}`}>{item.quantity}</strong></span></div>
+                                                                        <div className="mb-2"><EditableItemName item={item} onSave={(id, bc, name) => handleUpdateItemName('display', id, bc, name)} /></div>
+                                                                        <div className="mt-1.5">
+                                                                            <button onClick={() => toggleBarcodeVisibility(item.id)} className="text-xs font-mono text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 flex items-center transition-colors bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">
+                                                                                <i className={`fa-solid ${revealedBarcodes[item.id] ? 'fa-eye-slash' : 'fa-barcode'} mr-1.5`}></i>{revealedBarcodes[item.id] ? item.barcode : '顯示條碼'}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                                                                        
+                                                                        {/* 陳列品數量控制區 */}
+                                                                        <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
+                                                                            <button onClick={() => updateDisplayQuantity(item.id, -1)} className="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 transition-colors shadow-sm"><i className="fa-solid fa-minus text-[10px]"></i></button>
+                                                                            <input 
+                                                                                type="number" 
+                                                                                min="1"
+                                                                                value={item.quantity}
+                                                                                onChange={(e) => setDisplayItemQuantity(item.id, e.target.value)}
+                                                                                onFocus={(e) => e.target.select()}
+                                                                                className="w-10 text-center font-bold text-slate-700 dark:text-slate-200 text-sm bg-transparent outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-amber-500 transition-all rounded px-1 hide-arrows"
+                                                                            />
+                                                                            <button onClick={() => updateDisplayQuantity(item.id, 1)} className="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 transition-colors shadow-sm"><i className="fa-solid fa-plus text-[10px]"></i></button>
+                                                                        </div>
+                                                                        
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            <button onClick={() => {
+                                                                                const textToCopy = `${item.barcode}\t${item.name}`;
+                                                                                if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製條碼與品名！')).catch(() => {}); }
+                                                                            }} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors" title="複製條碼與品名"><i className="fa-solid fa-copy"></i></button>
+                                                                            <button onClick={() => removeDisplayItem(item.id)} className="w-9 h-9 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors" title="移除此陳列品"><i className="fa-solid fa-trash-can"></i></button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* 分頁器 */}
+                                                {displayData.totalPages > 1 && (
+                                                    <div className="flex items-center justify-between p-3 mt-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm shrink-0">
+                                                        <button disabled={displayCurrentPage === 1} onClick={() => setDisplayCurrentPage(p => Math.max(1, p - 1))} className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center"><i className="fa-solid fa-angle-left mr-1.5"></i> 上一頁</button>
+                                                        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">第 {displayCurrentPage} / {displayData.totalPages} 頁</span>
+                                                        <button disabled={displayCurrentPage === displayData.totalPages} onClick={() => setDisplayCurrentPage(p => Math.min(displayData.totalPages, p + 1))} className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center">下一頁 <i className="fa-solid fa-angle-right ml-1.5"></i></button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
                             )}
 
-                            {/* =========================================
-                                分頁 4: 條碼列印中心
-                            ========================================= */}
+                            {/* 分頁 4: 條碼列印中心 */}
                             {activeTab === 'barcode-print' && (
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full pb-10 animate-scale-in mt-2 w-full">
                                     <div className="lg:col-span-4 space-y-6">
@@ -1653,11 +1693,21 @@
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex items-center gap-3 self-end sm:self-auto w-full sm:w-auto justify-between sm:justify-end shrink-0">
+                                                                    
+                                                                    {/* 條碼列印數量控制區 */}
                                                                     <div className="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg shadow-sm overflow-hidden p-1">
                                                                         <button onClick={() => updateBarcodeItemQuantity(item.id, -1)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 rounded"><i className="fa-solid fa-minus w-3"></i></button>
-                                                                        <div className="w-8 text-center font-bold text-slate-700 dark:text-slate-200 text-sm">{item.quantity}</div>
+                                                                        <input 
+                                                                            type="number" 
+                                                                            min="1"
+                                                                            value={item.quantity}
+                                                                            onChange={(e) => setBarcodeQuantity(item.id, e.target.value)}
+                                                                            onFocus={(e) => e.target.select()}
+                                                                            className="w-10 text-center font-bold text-slate-700 dark:text-slate-200 text-sm bg-transparent outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 transition-all rounded px-1 hide-arrows"
+                                                                        />
                                                                         <button onClick={() => updateBarcodeItemQuantity(item.id, 1)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 rounded"><i className="fa-solid fa-plus w-3"></i></button>
                                                                     </div>
+                                                                    
                                                                     <div className="flex gap-1.5">
                                                                         <button onClick={() => executePrint({ type: 'barcode-single', item })} className="px-3 py-1.5 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors">單獨印</button>
                                                                         <button onClick={() => removeBarcodeItem(item.id)} className="w-8 h-8 flex items-center justify-center bg-slate-50 dark:bg-slate-700 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"><i className="fa-solid fa-xmark"></i></button>
@@ -1673,9 +1723,7 @@
                                 </div>
                             )}
 
-                            {/* =========================================
-                                分頁 5: 系統設定
-                            ========================================= */}
+                            {/* 分頁 5: 系統設定 */}
                             {activeTab === 'settings' && (
                                 <div className="max-w-4xl mx-auto space-y-6 pb-10 animate-scale-in">
                                     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
@@ -1798,7 +1846,6 @@
                         </div>
                     </div>
 
-                    {/* 底部導覽 Dock */}
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-2xl rounded-full p-2 flex items-center z-50 no-print transition-all duration-300">
                         <div className="flex items-center gap-2 sm:gap-3 px-2">
                             <button onClick={() => { setActiveTab('daily-report'); setIsMobileMenuOpen(false); }} className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'daily-report' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="銷售日報"><i className="fa-solid fa-file-invoice text-lg"></i></button>
@@ -1880,7 +1927,6 @@
                         <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] sm:w-auto max-w-md z-[60] bg-emerald-500 text-white px-6 py-3.5 rounded-2xl shadow-xl font-bold animate-slide-up-fade no-print flex items-center justify-center text-center text-sm md:text-base leading-snug">{toast}</div>
                     )}
 
-                    {/* 列印渲染區 */}
                     <div className="print-only">
                         {printContext === 'damaged' && (
                             <div id="print-area-damaged">
