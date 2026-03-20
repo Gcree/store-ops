@@ -18,7 +18,6 @@
                     mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', '"Liberation Mono"', '"Courier New"', 'monospace'],
                 },
                 extend: {
-                    // 1. 覆寫 Tailwind 預設的 transition (讓所有 hover, active 也具備彈簧感)
                     transitionTimingFunction: {
                         DEFAULT: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
                         'spring': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -34,8 +33,7 @@
                         '4xl': ['34px', { lineHeight: '41px', letterSpacing: '-0.041em' }],
                     },
                     animation: {
-                        'shrink-x': 'shrinkX 5s linear forwards', // 計時進度條維持等速
-                        // 2. 將彈出動畫改為 Spring 曲線，並稍微拉長時間展現回彈細節
+                        'shrink-x': 'shrinkX 5s linear forwards',
                         'slide-up-fade': 'slideUpFade 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
                         'scale-in': 'scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
                         'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
@@ -43,7 +41,6 @@
                     keyframes: {
                         shrinkX: { '0%': { width: '100%' }, '100%': { width: '0%' } },
                         slideUpFade: { '0%': { transform: 'translate(-50%, 100%)', opacity: 0 }, '100%': { transform: 'translate(-50%, 0)', opacity: 1 } },
-                        // 為了讓彈簧感更好，初始縮放從 0.95 改為 0.8，讓 Q 彈的對比度更大
                         scaleIn: { '0%': { transform: 'scale(0.8)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
                         shake: {
                             '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
@@ -56,8 +53,7 @@
             }
         }
     </script>
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧸</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧸</text></svg>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -74,29 +70,19 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
-        html.dark ::-webkit-scrollbar-thumb {
-            background: #475569;
-        }
-
-        html.dark ::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
-        }
+        html.dark ::-webkit-scrollbar-thumb { background: #475569; }
+        html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
         body {
             padding-bottom: env(safe-area-inset-bottom);
-            -webkit-tap-highlight-color: transparent;
+            -webkit-tap-highlight-color: transparent; 
         }
 
         button {
-            /* 把時間從 0.15s 拉長到 0.4s，並換上 Spring 貝茲曲線 */
             transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-            touch-action: manipulation;
+            touch-action: manipulation; 
         }
-
-        button:active {
-            /* 點擊時縮得更小一點點，回彈時視覺張力更強 */
-            transform: scale(0.92) !important;
-        }
+        button:active { transform: scale(0.92) !important; }
 
         .sticky.top-0 {
             backdrop-filter: blur(12px) !important;
@@ -106,7 +92,7 @@
             border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
             z-index: 20;
         }
-
+        
         .dark .sticky.top-0 {
             background-color: rgba(30, 41, 59, 0.85) !important;
             border-bottom: 1px solid rgba(51, 65, 85, 0.8) !important;
@@ -114,167 +100,37 @@
         }
 
         @media print {
-
-            html,
-            body,
-            html.dark,
-            html.dark body {
-                height: auto !important;
-                min-height: auto !important;
-                overflow: visible !important;
-                background: white !important;
-                color: black !important;
-                margin: 0;
-                padding: 0 !important;
-                -webkit-print-color-adjust: exact;
-            }
-
-            .h-screen,
-            .h-full {
-                height: auto !important;
-                min-height: auto !important;
-            }
-
-            .overflow-hidden,
-            .overflow-auto,
-            .overflow-y-auto {
-                overflow: visible !important;
-            }
-
-            .no-print {
-                display: none !important;
-            }
-
-            .print-only {
-                display: block !important;
-                position: static !important;
-                width: 100%;
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            #print-area-barcode {
-                border: none;
-                width: 80mm !important;
-                max-width: 80mm !important;
-                margin: 0 auto;
-                box-sizing: border-box;
-                overflow: hidden;
-            }
-
-            .label-item {
-                width: 80mm;
-                padding: 6mm 4mm;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                page-break-inside: avoid;
-                page-break-after: auto;
-                border-bottom: 1px dashed #ccc;
-                margin-bottom: 4mm;
-                box-sizing: border-box;
-                background: white !important;
-                color: black !important;
-            }
-
-            .label-item:last-child {
-                border-bottom: none;
-                margin-bottom: 0;
-            }
-
-            .label-item svg {
-                max-width: 100%;
-                height: auto;
-            }
-
-            #print-area-damaged {
-                width: 80mm !important;
-                max-width: 80mm !important;
-                padding: 4mm !important;
-                color: black !important;
-                font-size: 12px !important;
-                font-family: sans-serif;
-                background: white !important;
-                box-sizing: border-box;
-                overflow: hidden;
-            }
-
-            .damaged-print-item {
-                margin-bottom: 5mm;
-                padding-bottom: 5mm;
-                border-bottom: 1px dashed #ccc;
-                page-break-inside: avoid;
-            }
-
-            @page {
-                size: 80mm auto;
-                margin: 0;
-            }
+            html, body, html.dark, html.dark body { height: auto !important; min-height: auto !important; overflow: visible !important; background: white !important; color: black !important; margin: 0; padding: 0 !important; -webkit-print-color-adjust: exact; }
+            .h-screen, .h-full { height: auto !important; min-height: auto !important; }
+            .overflow-hidden, .overflow-auto, .overflow-y-auto { overflow: visible !important; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; position: static !important; width: 100%; height: auto !important; overflow: visible !important; }
+            #print-area-barcode { border: none; width: 80mm !important; max-width: 80mm !important; margin: 0 auto; box-sizing: border-box; overflow: hidden; }
+            .label-item { width: 80mm; padding: 6mm 4mm; display: flex; flex-direction: column; align-items: center; justify-content: center; page-break-inside: avoid; page-break-after: auto; border-bottom: 1px dashed #ccc; margin-bottom: 4mm; box-sizing: border-box; background: white !important; color: black !important; }
+            .label-item:last-child { border-bottom: none; margin-bottom: 0; }
+            .label-item svg { max-width: 100%; height: auto; }
+            #print-area-damaged { width: 80mm !important; max-width: 80mm !important; padding: 4mm !important; color: black !important; font-size: 12px !important; font-family: sans-serif; background: white !important; box-sizing: border-box; overflow: hidden; }
+            .damaged-print-item { margin-bottom: 5mm; padding-bottom: 5mm; border-bottom: 1px dashed #ccc; page-break-inside: avoid; }
+            @page { size: 80mm auto; margin: 0; }
         }
 
-        .print-only {
-            display: none;
-        }
-
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        body {
-            padding-bottom: 80px;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-
-        #reader {
-            border: none !important;
-            border-radius: 1rem;
-            overflow: hidden;
-            background: #000;
-        }
-
-        #reader button {
-            background-color: #6366f1 !important;
-            color: white !important;
-            padding: 0.5rem 1rem !important;
-            border-radius: 0.75rem !important;
-            margin: 0.5rem !important;
-            cursor: pointer;
-            font-weight: bold;
-            border: none;
-        }
-
-        #reader select {
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-        }
+        .print-only { display: none; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        body { padding-bottom: 80px; transition: background-color 0.3s ease, color 0.3s ease; }
+        #reader { border: none !important; border-radius: 1rem; overflow: hidden; background: #000; }
+        #reader button { background-color: #6366f1 !important; color: white !important; padding: 0.5rem 1rem !important; border-radius: 0.75rem !important; margin: 0.5rem !important; cursor: pointer; font-weight: bold; border: none; }
+        #reader select { padding: 0.5rem; border-radius: 0.5rem; margin-bottom: 1rem; }
     </style>
 
 </head>
 
-<body
-    class="antialiased text-base bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 min-h-screen flex flex-col">
+<body class="antialiased text-base bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 min-h-screen flex flex-col">
     <div id="root" class="flex-1 flex flex-col"></div>
 
     <script type="text/babel">
-        // ==========================================
-        // Firebase 初始化與安全連線
-        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyDzqfgGPpbiXFO7DJVG-GIn1MKnDEVtSHw",
             authDomain: "retail-ops-90129.firebaseapp.com",
@@ -335,7 +191,6 @@
             return '📦 其他 IP';
         };
 
-        // ✨ 輔助尋找中文字典 (具備 Excel 吃 0 容錯能力)
         const findNameInDict = (barcode, dict) => {
             if (!barcode || !dict) return null;
             const safeBarcode = String(barcode).trim();
@@ -490,30 +345,24 @@
 
             useEffect(() => {
                 if (!user || !db) return;
-
                 const options = { includeMetadataChanges: true };
-
                 const unsubRecords = db.collection('retailOps').doc('dailyRecords').onSnapshot(options, doc => {
                     if (doc.exists) setDailyRecords(doc.data().data || []);
                     if (!doc.metadata.fromCache) { setDataLoaded(prev => ({ ...prev, records: true })); }
                     setDbStatus(doc.metadata.fromCache ? '🟡 連線中...' : '🟢 已同步');
                 }, err => { setDbStatus('🔴 權限不足或連線失敗'); });
-
                 const unsubSettings = db.collection('retailOps').doc('settings').onSnapshot(options, doc => {
                     if (doc.exists) setSettings(doc.data().data || defaultSettings);
                     if (!doc.metadata.fromCache) setDataLoaded(prev => ({ ...prev, settings: true }));
                 });
-
                 const unsubDamaged = db.collection('retailOps').doc('damagedItems').onSnapshot(options, doc => {
                     if (doc.exists) setDamagedItems(doc.data().data || []);
                     if (!doc.metadata.fromCache) setDataLoaded(prev => ({ ...prev, damaged: true }));
                 });
-
                 const unsubDisplay = db.collection('retailOps').doc('displayItems').onSnapshot(options, doc => {
                     if (doc.exists) setDisplayItems(doc.data().data || []);
                     if (!doc.metadata.fromCache) setDataLoaded(prev => ({ ...prev, display: true }));
                 });
-
                 return () => { unsubRecords(); unsubSettings(); unsubDamaged(); unsubDisplay(); };
             }, [user]);
 
@@ -558,10 +407,8 @@
 
             const handleScanSubmit = (e) => {
                 e.preventDefault(); const barcode = barcodeInput.trim(); if (!barcode) return;
-
                 let dictName = findNameInDict(barcode, settings.customNameMap);
                 let productName = dictName || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
-
                 setDamagedItems(prev => {
                     const existing = prev.findIndex(item => item.barcode === barcode);
                     const newData = existing >= 0
@@ -570,7 +417,6 @@
                     updateCloudData('damagedItems', newData);
                     return newData;
                 });
-
                 setLastAction(`已登錄：${productName}`);
                 setBarcodeInput(''); setTimeout(() => damagedInputRef.current?.focus(), 10);
             };
@@ -631,10 +477,8 @@
 
             const handleDisplayScanSubmit = (e) => {
                 e.preventDefault(); const barcode = displayBarcodeInput.trim(); if (!barcode) return;
-
                 let dictName = findNameInDict(barcode, settings.customNameMap);
                 let productName = dictName || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
-
                 setDisplayItems(prev => {
                     const existing = prev.findIndex(item => item.barcode === barcode && item.status === displayFilter);
                     const newData = existing >= 0
@@ -643,7 +487,6 @@
                     updateCloudData('displayItems', newData);
                     return newData;
                 });
-
                 showToast(`✨ 已登錄：${productName}`);
                 setDisplayBarcodeInput(''); setTimeout(() => displayInputRef.current?.focus(), 10);
             };
@@ -691,6 +534,7 @@
                 const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url;
                 a.download = `系統備份_${new Date().getTime()}.json`; a.click(); URL.revokeObjectURL(url);
             };
+
             const handleImportData = (e) => {
                 const file = e.target.files[0]; if (!file) return;
                 const reader = new FileReader();
@@ -718,7 +562,6 @@
                 e.preventDefault(); const barcode = barcodePrintInput.trim(); if (!barcode) return;
                 let dictName = findNameInDict(barcode, settings.customNameMap);
                 let name = dictName || settings.barcodeMap[barcode] || `未知商品 (${barcode})`;
-
                 setBarcodeItems(prev => {
                     const ex = prev.find(i => i.barcode === barcode);
                     if (ex) { showToast(`增加數量：${name}`); return prev.map(i => i.barcode === barcode ? { ...i, quantity: i.quantity + 1 } : i); }
@@ -759,6 +602,8 @@
             const handleRemoveCategory = (id) => updateCloudData('settings', { ...settings, customCategories: settings.customCategories.filter(c => c.id !== id) });
 
             const [story, setStory] = useState('');
+            // ✨ 升級：改為複選關鍵字 (Set)
+            const [selectedKeywords, setSelectedKeywords] = useState(new Set());
             const [currentStore, setCurrentStore] = useState('未知店鋪');
             const [todayStats, setTodayStats] = useState(null);
             const [isProcessing, setIsProcessing] = useState(false);
@@ -770,6 +615,16 @@
             const [newBoxSize, setNewBoxSize] = useState(6);
             const [dictInput, setDictInput] = useState('');
 
+            // ✨ 複選關鍵字切換邏輯
+            const toggleKeyword = (kw) => {
+                setSelectedKeywords(prev => {
+                    const next = new Set(prev);
+                    if (next.has(kw)) next.delete(kw);
+                    else next.add(kw);
+                    return next;
+                });
+            };
+
             const availableMonths = useMemo(() => {
                 let months = dailyRecords.map(r => r.date.split('/')[0]);
                 if (todayStats) months.push(formatDateStr(todayStats.dateStr).split('/')[0]);
@@ -778,9 +633,6 @@
 
             useEffect(() => { if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) setSelectedMonth(availableMonths[0]); }, [availableMonths]);
 
-            // ==========================================
-            // ✨ 解析 Excel 資料 (核心：整合升級版)
-            // ==========================================
             const processData = (rows) => {
                 if (rows.length < 2) return showToast('檔案格式錯誤');
                 const headers = rows[0];
@@ -800,35 +652,23 @@
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i]; if (row.length < 5) continue;
                     if (idxType !== -1 && !['sale', 'return', 'refund', 'exchange'].includes(String(row[idxType] || '').trim().toLowerCase())) continue;
-
                     const barcode = String(row[idxBarcode] || '').trim();
                     const rawDesc = idxDesc !== -1 ? String(row[idxDesc] || '').trim() : '';
-
                     if (!barcode && !rawDesc) continue;
-
                     if (!firstDate && row[idxDate]) firstDate = row[idxDate].toString().split(' ')[0];
                     if (storeName === '未知店鋪' && row[idxStore]) storeName = row[idxStore].toString().replace(/\[.*?\]/, '').trim();
-
                     let dictName = findNameInDict(barcode, settings.customNameMap);
                     const desc = dictName || rawDesc || `未知商品 (${barcode})`;
-
                     const qty = parseFloat(row[idxQty]) || 0;
                     const amt = parseFloat(row[idxAmt]) || 0;
                     const disc = parseFloat(row[idxDisc]) || 0;
-
-                    // ✨ 核心防呆：如果 Excel 抓到的品名跟條碼一模一樣，就不要當作新單字記下來
                     if (barcode && desc && !dictName && barcode !== desc) updatedBarcodeMap[barcode] = desc;
                     todaySales += amt; if (disc === 330) pointsRedeemed += 330;
-
-                    // 判斷 MEGA 玩具
                     if (rawDesc.includes('1000%') || desc.includes('1000%')) { amt === 0 ? (mega1000.giftQty += qty) : (mega1000.qty += qty, mega1000.amt += amt); }
                     if (rawDesc.includes('400%') || desc.includes('400%')) { amt === 0 ? (mega400.giftQty += qty) : (mega400.qty += qty, mega400.amt += amt); }
-
-                    // 將乾淨的中文名字與對齊的變數存入 itemStats，僅當有條碼時才進入 Top 5 榜單
                     if (barcode) {
                         if (!itemStats[barcode]) itemStats[barcode] = { barcode, desc, top5Qty: 0, top5Amt: 0, singles: 0, boxes: 0 };
                         if (amt > 0) { itemStats[barcode].top5Qty += qty; itemStats[barcode].top5Amt += amt; }
-
                         const boxSize = settings.boxSizeMap[barcode] || 6;
                         if (qty >= boxSize) { itemStats[barcode].boxes += Math.floor(qty / boxSize); itemStats[barcode].singles += (qty % boxSize); }
                         else { itemStats[barcode].singles += qty; }
@@ -837,15 +677,12 @@
 
                 setCurrentStore(storeName);
                 const newDateStr = firstDate || new Date().toISOString().split('T')[0];
-
                 const newStats = { dateStr: newDateStr, sales: todaySales, points: pointsRedeemed, itemStats, bigToys: { '1000': mega1000, '400': mega400 } };
                 setTodayStats(newStats);
                 setSelectedMonth(formatDateStr(newDateStr).split('/')[0]);
-
                 const formattedDate = formatDateStr(newDateStr);
                 const filtered = dailyRecords.filter(r => r.date !== formattedDate);
                 const newRecords = [...filtered, { date: formattedDate, weekday: getWeekday(newDateStr), sales: todaySales, points: pointsRedeemed, bigToys: newStats.bigToys }].sort((a, b) => b.date.localeCompare(a.date));
-
                 updateCloudData('dailyRecords', newRecords, '報表解析成功！已自動同步至雲端 ☁️');
                 updateCloudData('settings', { ...settings, barcodeMap: updatedBarcodeMap });
             };
@@ -893,105 +730,48 @@
                 if (count > 0) { updateCloudData('dailyRecords', newRecords.sort((a, b) => b.date.localeCompare(a.date)), `成功匯入 ${count} 筆歷史紀錄！`); setBulkInput(''); setIsBulkImportOpen(false); setSelectedMonth(newRecords[0].date.split('/')[0]); }
             };
 
-            // ==========================================
-            // ✨ 1. 字典匯入升級版 (精準區分：全新新增、覆寫更新、完全重複略過)
-            // ==========================================
             const handleImportDict = () => {
                 if (!dictInput.trim()) return;
-
                 let newDict = { ...settings.customNameMap };
-                let newCount = 0;    // 全新加入的數量
-                let updateCount = 0; // 條碼一樣，但名字被更新的數量
-                let skipCount = 0;   // 條碼跟名字都一模一樣，或是無效資料(品名=條碼)的數量
-
+                let newCount = 0, updateCount = 0, skipCount = 0;
                 dictInput.split('\n').forEach(line => {
                     const parts = line.trim().split(/\t|,/);
                     let bc = '', name = '';
-
-                    // 支援 Tab、逗號、或是空格分隔
                     if (parts.length < 2) {
                         const match = line.trim().match(/^([^\s,]+)[\s,]+(.+)$/);
                         if (match) { bc = match[1].trim(); name = match[2].trim(); }
                     } else {
                         if (parts[0].trim() && parts[1].trim()) { bc = parts[0].trim(); name = parts[1].trim(); }
                     }
-
-                    // 核心判斷邏輯
                     if (bc && name) {
-                        if (bc === name) {
-                            skipCount++; // 無效資料：品名等於條碼
-                        } else if (newDict[bc] === name) {
-                            skipCount++; // 重複資料：字典裡已經有一模一樣的資料了
-                        } else {
-                            if (newDict[bc]) {
-                                updateCount++; // 條碼已存在，但名字不同 (覆寫更新)
-                            } else {
-                                newCount++; // 全新條碼
-                            }
-                            newDict[bc] = name; // 存入字典
-                        }
+                        if (bc === name) { skipCount++; }
+                        else if (newDict[bc] === name) { skipCount++; }
+                        else { if (newDict[bc]) { updateCount++; } else { newCount++; } newDict[bc] = name; }
                     }
                 });
-
-                // 如果全部都是重複的，顯示警告
-                if (newCount === 0 && updateCount === 0) {
-                    showToast(`⚠️ 沒有匯入新資料 (皆為重複或無效資料)`);
-                    setDictInput('');
-                    return;
-                }
-
-                // 組合精準的提示訊息
+                if (newCount === 0 && updateCount === 0) { showToast(`⚠️ 沒有匯入新資料 (皆為重複或無效資料)`); setDictInput(''); return; }
                 let toastMsg = `✅ 成功新增 ${newCount} 筆`;
                 if (updateCount > 0) toastMsg += `，更新 ${updateCount} 筆`;
                 if (skipCount > 0) toastMsg += ` (略過 ${skipCount} 筆重複)`;
-
                 updateCloudData('settings', { ...settings, customNameMap: newDict }, toastMsg);
                 setDictInput('');
             };
 
-            // ==========================================
-            // ✨ 2. 系統記憶 (barcodeMap) 一鍵轉移至正式字典 (修復沒反應的問題)
-            // ==========================================
             const handleMergeBarcodeMap = () => {
-                // 加入 || {} 防止 undefined 報錯
                 const memoryMap = settings.barcodeMap || {};
                 const currentMemoryKeys = Object.keys(memoryMap);
-
-                if (currentMemoryKeys.length === 0) {
-                    return showToast('目前系統沒有暫存的學習記憶喔！');
-                }
-
+                if (currentMemoryKeys.length === 0) { return showToast('目前系統沒有暫存的學習記憶喔！'); }
                 let newDict = { ...settings.customNameMap };
                 let count = 0;
-
-                // 尋訪所有系統偷記下來的 barcodeMap
                 currentMemoryKeys.forEach(barcode => {
                     const name = memoryMap[barcode];
-                    // 不在正式字典裡，且「品名不等於條碼」才加入
-                    if (!newDict[barcode] && barcode !== name) {
-                        newDict[barcode] = name;
-                        count++;
-                    }
+                    if (!newDict[barcode] && barcode !== name) { newDict[barcode] = name; count++; }
                 });
-
-                // 備份供 Undo 使用
                 const backupMap = { ...memoryMap };
                 const backupCustomMap = { ...settings.customNameMap };
-
-                // 直接強制執行並顯示 Toast，跳過容易被手機阻擋的 window.confirm
-                updateCloudData('settings', {
-                    ...settings,
-                    customNameMap: newDict,
-                    barcodeMap: {}
-                }, `🎉 成功收編 ${count} 筆資料至正式字典！`);
-
-                // 觸發防呆復原
+                updateCloudData('settings', { ...settings, customNameMap: newDict, barcodeMap: {} }, `🎉 成功收編 ${count} 筆資料至正式字典！`);
                 triggerUndo(`已清空並收編 ${currentMemoryKeys.length} 筆系統記憶`, () => {
-                    updateCloudData('settings', {
-                        ...settings,
-                        customNameMap: backupCustomMap,
-                        barcodeMap: backupMap
-                    });
+                    updateCloudData('settings', { ...settings, customNameMap: backupCustomMap, barcodeMap: backupMap });
                 });
             };
 
@@ -1006,8 +786,172 @@
             };
 
             // ==========================================
-            // ✨ 產生報表內文 (統一 Top 5 排序)
+            // ✨ 升級版小作文生成 (18 篇範本 + 複選關鍵字組合)
             // ==========================================
+            const handleAutoGenerateStory = (e) => {
+                e.preventDefault();
+                if (!todayStats || !todayStats.itemStats) {
+                    showToast('⚠️ 請先上傳今日報表，才能根據數據生成小作文喔！');
+                    return;
+                }
+
+                const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0);
+                const statsArray = rawArray.map(item => ({
+                    name: item.desc,
+                    quantity: item.top5Qty || 0,
+                    sales: item.top5Amt || 0
+                })).sort((a, b) => b.quantity - a.quantity || b.sales - a.sales);
+
+                if (statsArray.length === 0) { showToast('⚠️ 今日無銷售數據，無法生成。'); return; }
+
+                const top1 = statsArray[0];
+                const top2 = statsArray[1] || { name: '其他系列盲盒', quantity: 0, sales: 0 };
+                const top3 = statsArray[2] || { name: '周邊商品', quantity: 0, sales: 0 };
+
+                const top1Percent = ((top1.sales / todayStats.sales) * 100).toFixed(1);
+                const top2Percent = todayStats.sales > 0 ? ((top2.sales / todayStats.sales) * 100).toFixed(1) : 0;
+                const top3Percent = todayStats.sales > 0 ? ((top3.sales / todayStats.sales) * 100).toFixed(1) : 0;
+                const weekdayStr = getWeekday(todayStats.dateStr);
+                const mega400qty = todayStats.bigToys?.['400']?.qty || 0;
+                const mega1000qty = todayStats.bigToys?.['1000']?.qty || 0;
+
+                // ==========================================
+                // ✨ 20 篇範本（口氣參照實際日報語氣，2段，自然口語）
+                // tags 可複選，交錯搭配
+                // ==========================================
+                const templates = [
+                    // ── 上架秒殺 ──
+                    {
+                        tags: ['上架秒殺'],
+                        text: `今天是週${weekdayStr}，「${top1.name}」一上架就被搶購一空，售完後還是不斷有客人來問還有沒有貨，今日佔業績 ${top1Percent}%，完全感受到這款的人氣有多高。\n\n「${top2.name}」緊接在後拿下今日第二名，佔比 ${top2Percent}%，今天整體買氣相當不錯，收穫滿滿。`
+                    },
+                    {
+                        tags: ['上架秒殺'],
+                        text: `今天週${weekdayStr}補進了「${top1.name}」，一上架不到幾分鐘就幾乎被搶光，現場氣氛非常熱烈，售完後還是有許多客人陸續來詢問，可見這款的人氣真的非常高，大家都很期待能入手。\n\n今日銷售第二名是「${top2.name}」，佔比 ${top2Percent}%，整體業績在補貨助攻下表現相當亮眼。`
+                    },
+                    // ── 假日人潮 ──
+                    {
+                        tags: ['假日人潮'],
+                        text: `今天是週${weekdayStr}，許多家長帶著小朋友來台茂逛街，人潮比平日明顯多了許多。「${top1.name}」吸引了大批客人的目光，現場不時傳來抽到喜歡款的驚喜聲，今日售出 ${top1.quantity} 件，佔業績 ${top1Percent}%。\n\n「${top2.name}」同樣深受喜愛，佔比 ${top2Percent}%，今天整個賣場充滿歡樂的氣氛，能看到客人滿載而歸真的很開心。`
+                    },
+                    {
+                        tags: ['假日人潮', '客人端盒'],
+                        text: `今天是週${weekdayStr}，假日人潮絡繹不絕，家庭客群特別多。讓人印象深刻的是有幾組客人直接以中盒為單位購買「${top1.name}」，就是衝著要湊套來的，帶動了整體買氣，這款佔今日業績 ${top1Percent}%，拿下今日冠軍。\n\n「${top2.name}」在假日人潮的帶動下也有 ${top2Percent}% 的好表現，今天業績相當豐收！`
+                    },
+                    // ── 天氣不佳 ──
+                    {
+                        tags: ['天氣不佳'],
+                        text: `今天週${weekdayStr}天氣不太好，但門市的客人沒有因此少，還是一樣很熱絡。很多客人都詢問現場沒貨的商品，得知沒有庫存後還會再問陳列品能不能賣，看來客人對於心中喜歡的商品沒得到手真的不善罷甘休。\n\n今天熱銷第一名是「${top1.name}」，佔了整體業績 ${top1Percent}%，「${top2.name}」緊接其後，佔比 ${top2Percent}%，今天業績整體表現撐得住。`
+                    },
+                    {
+                        tags: ['天氣不佳'],
+                        text: `今天週${weekdayStr}外面比前幾天還冷，不過門市的人潮沒有因此減少，到了晚餐時間人流甚至明顯變多了。今天有不少客人一進門就直接鎖定「${top1.name}」，今日佔業績 ${top1Percent}%，成為當日銷售冠軍。\n\n「${top2.name}」今天表現也相當穩定，佔比 ${top2Percent}%，整體業績比預期好，算是不錯的一天。`
+                    },
+                    {
+                        tags: ['天氣不佳', '大排長龍'],
+                        text: `今天週${weekdayStr}外面一直下著雨，但這完全擋不住大家出門的熱情，一開店門口就已經有客人在等了，就是衝著「${top1.name}」的補貨來的！最終這款佔了今日業績 ${top1Percent}%，雨天照樣賣到缺貨。\n\n「${top2.name}」同樣表現不俗，拿下第二名、佔比 ${top2Percent}%，今天天氣差但業績好，非常值得！`
+                    },
+                    // ── 客人端盒 ──
+                    {
+                        tags: ['客人端盒'],
+                        text: `今天週${weekdayStr}出現了一位很豪氣的客人，直接把「${top1.name}」整中盒帶走，旁邊的客人看到之後也跟著手癢起來，陸續跟進，帶動了整體買氣，這款最終佔了今日業績 ${top1Percent}%，登上銷售冠軍。\n\n「${top2.name}」今天也有不錯的表現，佔比 ${top2Percent}%，今天整體業績表現扎實，收穫滿滿。`
+                    },
+                    {
+                        tags: ['客人端盒'],
+                        text: `今天週${weekdayStr}傍晚來了一個家庭，大人帶著小朋友一起挑「${top1.name}」，每開一盒就全家人一起猜款式，抽到重複款時小孩雖然有點失望，但大人還是笑著再買一盒，那個氛圍真的很溫馨，最後這款佔了今日業績 ${top1Percent}%，成為銷售冠軍。\n\n「${top2.name}」今天佔比 ${top2Percent}%，今天整個門市都是這樣充滿溫暖的畫面。`
+                    },
+                    {
+                        tags: ['客人端盒', '補貨熱銷'],
+                        text: `今天週${weekdayStr}補了「${top1.name}」的貨，上架沒多久就有客人直接端盒帶走，其他客人看到之後也紛紛跟進，補進來的量下午就快見底了，整日佔了業績 ${top1Percent}%，補貨節奏很順，去化速度讓人驚喜。\n\n「${top2.name}」今天同樣有 ${top2Percent}% 的好表現，今天整體業績超出預期，補貨策略押對了！`
+                    },
+                    // ── 大單出現 ──
+                    {
+                        tags: ['大單出現'],
+                        text: `今天週${weekdayStr}出現了一位剛辦會員就大手筆消費的新客人，一口氣帶走了好幾款，消費金額相當驚人，成為今天的大客戶，真的很開心我們的商品能吸引到他！\n\n今日銷售冠軍是「${top1.name}」，佔業績 ${top1Percent}%，第二名「${top2.name}」佔比 ${top2Percent}%，在大單助攻下今天業績相當漂亮。`
+                    },
+                    {
+                        tags: ['大單出現', '客人端盒'],
+                        text: `今天週${weekdayStr}客單價表現亮眼，有好幾位客人是以中盒為單位在購買「${top1.name}」，其中一位更是加購了多款散盒一起帶走，光這位客人的消費就已經非常驚人，今日這款佔業績 ${top1Percent}%，穩坐冠軍。\n\n「${top2.name}」佔比達 ${top2Percent}%，今天算是質量遠大於數量的一天，客單價拉得很好！`
+                    },
+                    // ── MEGA熱銷 ──
+                    {
+                        tags: ['MEGA熱銷'],
+                        text: `今天週${weekdayStr}最讓人驚喜的是 MEGA 系列的表現，店內陸續賣出了 ${mega400qty} 隻 400%，每位帶走的客人都超興奮，有幾位說沒抽到目標款可能還會再來挑戰，大家對這系列的熱情真的很難抵擋。\n\n盲盒方面「${top1.name}」依然是今日業績擔當，佔比 ${top1Percent}%，「${top2.name}」緊接在後，整體業績相當亮眼，收穫滿滿 💪`
+                    },
+                    {
+                        tags: ['MEGA熱銷'],
+                        text: `今天週${weekdayStr}有客人特地來詢問想要的 MEGA 款式，連續買了好幾隻都沒有抽到，雖然有點失望，但還是很有禮貌地來問能不能和店裡展示品交換，看到這樣的場景真的感受到大家對這系列有多喜愛。今日 MEGA 400% 共售出 ${mega400qty} 隻，表現不俗。\n\n盲盒方面「${top1.name}」今日佔比 ${top1Percent}%，成為今天的銷售冠軍，業績整體令人滿意。`
+                    },
+                    {
+                        tags: ['MEGA熱銷', '大單出現'],
+                        text: `今天週${weekdayStr}出現了幾位專程來買 MEGA 的客人，今日共賣出 ${mega400qty} 隻 400%，直接帶走好幾隻，連旁邊的顧客都忍不住停下來看，現場氣氛非常嗨！光 MEGA 系列就為業績貢獻了相當可觀的金額。\n\n盲盒方面「${top1.name}」同樣表現出色，佔比 ${top1Percent}%，今天大單與盲盒雙雙發威，業績非常漂亮 🎉`
+                    },
+                    // ── 大排長龍 ──
+                    {
+                        tags: ['大排長龍'],
+                        text: `今天週${weekdayStr}一開店門口就有客人在等候，主要都是衝著「${top1.name}」來的！一開賣現場氣氛非常熱烈，很多人就算沒抽到喜歡的款也繼續追，完全停不下來，這款售出 ${top1.quantity} 件，佔業績 ${top1Percent}%，集客力超強。\n\n「${top2.name}」承接了下午的人潮，銷售穩定，佔比 ${top2Percent}%，今天客流從早到晚沒有停過，業績相當豐收。`
+                    },
+                    {
+                        tags: ['大排長龍', '上架秒殺'],
+                        text: `今天週${weekdayStr}一大早就開始大排長龍，客人一進來馬上直奔「${top1.name}」的陳列區，上架之後不到幾分鐘就幾乎掃光了，補完貨人潮還是沒有散，整日佔了業績 ${top1Percent}%，現場的熱鬧程度讓店員都跟著振奮起來！\n\n「${top2.name}」今天也有 ${top2Percent}% 的好表現，今天算是本週數一數二的好日子，整體業績令人滿意。`
+                    },
+                    // ── 補貨熱銷 ──
+                    {
+                        tags: ['補貨熱銷'],
+                        text: `今天週${weekdayStr}補進了「${top1.name}」，一上架就迎來一波搶購，今日售出 ${top1.quantity} 件，佔業績 ${top1Percent}%，補到最後又快見底，後面陸續有客人來詢問還有沒有，可見這款商品的需求還是相當旺盛。\n\n「${top2.name}」今天反應同樣不錯，佔比 ${top2Percent}%，今天補貨節奏很順，能看到客人滿載而歸真的很有成就感。`
+                    },
+                    {
+                        tags: ['補貨熱銷', '上架秒殺'],
+                        text: `近幾日許多客人都在詢問「${top1.name}」的補貨時間，今天一到貨就馬上有消息靈通的客人出現，一上架就幾乎被掃光，售出 ${top1.quantity} 件，業績佔比直衝 ${top1Percent}%，補一次清一次，熱度真的非常驚人。\n\n「${top2.name}」跟著受惠，今日同樣有 ${top2Percent}% 的好表現，整天店內不斷傳來抽到喜歡款的歡呼聲，氛圍超棒！`
+                    },
+                    // ── 組合情境 ──
+                    {
+                        tags: ['假日人潮', '天氣不佳'],
+                        text: `今天週${weekdayStr}天氣稍涼，但家長帶著小朋友來台茂逛街的人潮一點都不少，很多客人都詢問現場沒貨的商品，得知沒有庫存後還問陳列品能不能賣，看來客人對心儀的商品真的不善罷甘休。\n\n今天銷售第一名是「${top1.name}」，佔了整體業績 ${top1Percent}%，「${top2.name}」緊接其後，佔比 ${top2Percent}%，今天業績整體表現相當穩健。`
+                    },
+                    {
+                        tags: ['假日人潮', '補貨熱銷'],
+                        text: `今天是週${weekdayStr}，許多家長帶著小朋友來台茂逛街。今天補進了「${top1.name}」，一上架馬上就吸引到親子客群搶購，大人小孩都圍在一起，現場歡樂的氣氛非常熱烈，這款今日佔業績 ${top1Percent}%。\n\n「${top2.name}」也在今天的假日氣氛帶動下有 ${top2Percent}% 的好表現，整體業績相當不錯！`
+                    },
+                    {
+                        tags: ['上架秒殺', 'MEGA熱銷'],
+                        text: `今天週${weekdayStr}真的是雙喜臨門，「${top1.name}」一上架就直接秒殺，售出 ${top1.quantity} 件、佔比 ${top1Percent}%，根本沒有留給人猶豫的空間；同時 MEGA 400% 系列今日共賣出 ${mega400qty} 隻，很多客人買完大隻的還順手帶走一堆盲盒，消費力超強。\n\n「${top2.name}」在今天的強勢氛圍帶動下同樣有 ${top2Percent}% 的亮眼表現，整天買氣高漲，今天算是本月數一數二的好日子！`
+                    },
+                    {
+                        tags: ['客人端盒', '假日人潮', '大單出現'],
+                        text: `今天是週${weekdayStr}，假日家庭客群特別多，現場不時傳來一家人一起開盒、抽到喜歡款的歡呼聲，氣氛非常熱鬧。其中還出現一位剛加入會員就消費了相當驚人金額的新客人，真的很開心我們的商品能吸引到他，成為今天的大客戶。\n\n今日銷售冠軍是「${top1.name}」，佔業績 ${top1Percent}%；第二名「${top2.name}」佔比 ${top2Percent}%，今天業績非常漂亮 🎉`
+                    },
+                    {
+                        tags: ['天氣不佳', '補貨熱銷', '客人端盒'],
+                        text: `今天週${weekdayStr}外面下著雨，不過完全擋不住大家衝來補貨的熱情！「${top1.name}」一補進來馬上就有消息靈通的顧客出現，甚至有客人直接以中盒為單位下手，售出 ${top1.quantity} 件，業績佔比 ${top1Percent}%，雨天照樣搶購，讓人感動。\n\n「${top2.name}」今天也有不錯的表現，佔比 ${top2Percent}%，雖然天氣差讓客流少了一點，但今天進來的客人買氣都超強，整體業績比預期好！`
+                    }
+                ];
+
+                // 根據複選關鍵字過濾範本
+                const activeKeywords = Array.from(selectedKeywords);
+                let availableTemplates;
+
+                if (activeKeywords.length === 0) {
+                    // 沒選任何關鍵字：全部範本都可以抽
+                    availableTemplates = templates;
+                } else {
+                    // 有選關鍵字：優先找「完全包含所有選定關鍵字」的範本
+                    const exactMatch = templates.filter(t => activeKeywords.every(kw => t.tags.includes(kw)));
+                    if (exactMatch.length > 0) {
+                        availableTemplates = exactMatch;
+                    } else {
+                        // 找部分匹配（包含任一選定關鍵字）
+                        availableTemplates = templates.filter(t => activeKeywords.some(kw => t.tags.includes(kw)));
+                    }
+                }
+
+                if (availableTemplates.length === 0) { showToast('⚠️ 找不到符合此組合的範本，請換個關鍵字試試！'); return; }
+
+                const randomIndex = Math.floor(Math.random() * availableTemplates.length);
+                setStory(availableTemplates[randomIndex].text);
+                showToast('✨ 小作文已生成！可再依現場情況微調。');
+            };
+
             const reportContent = useMemo(() => {
                 if (!selectedMonth) return '請先上傳檔案或建立紀錄...';
                 let recordsToPrint = dailyRecords.filter(r => r.date.split('/')[0] === selectedMonth);
@@ -1015,7 +959,7 @@
                     recordsToPrint.push({ date: formatDateStr(todayStats.dateStr), weekday: getWeekday(todayStats.dateStr), sales: todayStats.sales, points: todayStats.points, bigToys: todayStats.bigToys });
                 }
                 if (recordsToPrint.length === 0 && !todayStats) return '此月份尚無紀錄...';
-                recordsToPrint.sort((a, b) => a.date.localeCompare(b.date)); // 日期舊到新排列
+                recordsToPrint.sort((a, b) => a.date.localeCompare(b.date));
                 const totalSales = recordsToPrint.reduce((sum, r) => sum + r.sales, 0);
                 const totalPoints = recordsToPrint.reduce((sum, r) => sum + (r.points || 0), 0);
                 const sumBigToy = (type, key) => recordsToPrint.reduce((sum, r) => sum + (r.bigToys?.[type]?.[key] || 0), 0);
@@ -1029,24 +973,14 @@
                 report += `目標：${settings.targetAmount}萬\n達成率：${achievement}%\n\n銷售狀況分享：\n`;
 
                 const isTodaySelected = todayStats && (formatDateStr(todayStats.dateStr).split('/')[0] === selectedMonth);
-
-                // ✨ 修改點：確保此處的 Top 5 與畫面儀表板完全同步 (銷量優先, 金額次之)
                 if (isTodaySelected && todayStats.itemStats) {
                     const top5 = Object.values(todayStats.itemStats)
                         .filter(item => item.desc && item.desc.trim() !== '' && item.top5Amt > 0)
                         .sort((a, b) => b.top5Qty - a.top5Qty || b.top5Amt - a.top5Amt)
                         .slice(0, 5);
-
-                    if (top5.length > 0) {
-                        top5.forEach((item, idx) => {
-                            report += `${idx + 1}. ${item.desc}\n`;
-                        });
-                    } else {
-                        report += `(今日無銷售商品可產生 Top 5)\n`;
-                    }
-                } else {
-                    report += `(請上傳該日資料以產生 Top 5)\n`;
-                }
+                    if (top5.length > 0) { top5.forEach((item, idx) => { report += `${idx + 1}. ${item.desc}\n`; }); }
+                    else { report += `(今日無銷售商品可產生 Top 5)\n`; }
+                } else { report += `(請上傳該日資料以產生 Top 5)\n`; }
 
                 report += `\n（2）新品分享\n`;
                 if (settings.newBarcodes.length > 0) {
@@ -1068,32 +1002,20 @@
             const currentMonthRecords = useMemo(() => dailyRecords.filter(r => r.date.split('/')[0] === selectedMonth).sort((a, b) => b.date.localeCompare(a.date)), [dailyRecords, selectedMonth]);
             const visibleRecords = isHistoryExpanded ? currentMonthRecords : currentMonthRecords.slice(0, 3);
 
-            // ==========================================
-            // QR Code 產生
-            // ==========================================
             useEffect(() => {
                 if (!isQRCodeModalOpen || !reportContent) return;
                 setQrDataUrl(''); setQrError('');
-
-                if (typeof window.QRious === 'undefined') {
-                    setQrError('⚠️ 條碼模組載入失敗，請檢查網路狀態。'); return;
-                }
-
+                if (typeof window.QRious === 'undefined') { setQrError('⚠️ 條碼模組載入失敗，請檢查網路狀態。'); return; }
                 try {
                     const utf8Content = unescape(encodeURIComponent(reportContent));
                     const qr = new window.QRious({ value: utf8Content, size: 350, level: 'L', background: 'white', foreground: '#000000' });
                     const dataUrl = qr.toDataURL();
                     if (dataUrl && dataUrl.length > 100) setQrDataUrl(dataUrl); else throw new Error("圖片異常");
-                } catch (err) {
-                    setQrError('⚠️ 條碼轉換失敗，報表文字可能包含無法解析的特殊字元，建議改用「複製」按鈕。');
-                }
+                } catch (err) { setQrError('⚠️ 條碼轉換失敗，報表文字可能包含無法解析的特殊字元，建議改用「複製」按鈕。'); }
             }, [reportContent, isQRCodeModalOpen]);
 
-            // ==========================================
-            // 相機掃描器狀態與邏輯
-            // ==========================================
             const [scannerOpen, setScannerOpen] = useState(false);
-            const [scannerTarget, setScannerTarget] = useState(''); // 'damaged' | 'display' | 'print'
+            const [scannerTarget, setScannerTarget] = useState('');
             const [dictSearch, setDictSearch] = useState('');
             const [isDictExpanded, setIsDictExpanded] = useState(true);
             const [dictCurrentPage, setDictCurrentPage] = useState(1);
@@ -1103,38 +1025,26 @@
             latestStateRef.current = { settings, displayFilter };
 
             useEffect(() => {
-                if (!scannerOpen) {
-                    scanLockRef.current = false;
-                    return;
-                }
-
+                if (!scannerOpen) { scanLockRef.current = false; return; }
                 const html5QrCode = new window.Html5Qrcode("reader");
-
                 html5QrCode.start(
                     { facingMode: "environment" },
                     { fps: 15, qrbox: { width: 250, height: 120 } },
                     (decodedText) => {
                         if (scanLockRef.current) return;
                         scanLockRef.current = true;
-
                         if (typeof navigator.vibrate === 'function') navigator.vibrate(100);
-
                         html5QrCode.stop().then(() => {
                             setScannerOpen(false);
-
                             const barcode = decodedText.replace(/[^a-zA-Z0-9-]/g, '').trim();
-
                             const currentSettings = latestStateRef.current.settings;
                             const currentFilter = latestStateRef.current.displayFilter;
                             let dictName = findNameInDict(barcode, currentSettings.customNameMap);
                             const productName = dictName || currentSettings.barcodeMap[barcode] || `未知商品 (${barcode})`;
-
                             if (scannerTarget === 'damaged') {
                                 setDamagedItems(prev => {
                                     const existing = prev.findIndex(item => item.barcode === barcode);
-                                    const newData = existing >= 0
-                                        ? prev.map(item => item.barcode === barcode ? { ...item, quantity: item.quantity + 1 } : item)
-                                        : [...prev, { id: Date.now(), barcode, name: productName, quantity: 1 }];
+                                    const newData = existing >= 0 ? prev.map(item => item.barcode === barcode ? { ...item, quantity: item.quantity + 1 } : item) : [...prev, { id: Date.now(), barcode, name: productName, quantity: 1 }];
                                     updateCloudData('damagedItems', newData);
                                     return newData;
                                 });
@@ -1142,9 +1052,7 @@
                             } else if (scannerTarget === 'display') {
                                 setDisplayItems(prev => {
                                     const existing = prev.findIndex(item => item.barcode === barcode && item.status === currentFilter);
-                                    const newData = existing >= 0
-                                        ? prev.map(item => (item.barcode === barcode && item.status === currentFilter) ? { ...item, quantity: item.quantity + 1 } : item)
-                                        : [...prev, { id: Date.now(), barcode, name: productName, quantity: 1, status: currentFilter }];
+                                    const newData = existing >= 0 ? prev.map(item => (item.barcode === barcode && item.status === currentFilter) ? { ...item, quantity: item.quantity + 1 } : item) : [...prev, { id: Date.now(), barcode, name: productName, quantity: 1, status: currentFilter }];
                                     updateCloudData('displayItems', newData);
                                     return newData;
                                 });
@@ -1152,31 +1060,17 @@
                             } else if (scannerTarget === 'print') {
                                 setBarcodeItems(prev => {
                                     const existing = prev.find(i => i.barcode === barcode);
-                                    if (existing) {
-                                        showToast(`✅ 列印數量 +1：${productName}`);
-                                        return prev.map(i => i.barcode === barcode ? { ...i, quantity: i.quantity + 1 } : i);
-                                    } else {
-                                        showToast(`🖨️ 已加入待印清單：${productName}`);
-                                        return [{ id: Date.now(), barcode, name: productName, quantity: 1 }, ...prev];
-                                    }
+                                    if (existing) { showToast(`✅ 列印數量 +1：${productName}`); return prev.map(i => i.barcode === barcode ? { ...i, quantity: i.quantity + 1 } : i); }
+                                    else { showToast(`🖨️ 已加入待印清單：${productName}`); return [{ id: Date.now(), barcode, name: productName, quantity: 1 }, ...prev]; }
                                 });
                             }
                         }).catch(() => { setScannerOpen(false); });
                     },
                     (error) => { }
-                ).catch(err => {
-                    showToast('⚠️ 無法啟動相機，請確認瀏覽器權限');
-                    setScannerOpen(false);
-                });
-
-                return () => {
-                    if (html5QrCode.isScanning) html5QrCode.stop().catch(console.error);
-                };
+                ).catch(err => { showToast('⚠️ 無法啟動相機，請確認瀏覽器權限'); setScannerOpen(false); });
+                return () => { if (html5QrCode.isScanning) html5QrCode.stop().catch(console.error); };
             }, [scannerOpen, scannerTarget]);
 
-            // ==========================================
-            // Auth 登入畫面處理
-            // ==========================================
             const handleLogin = (e) => {
                 e.preventDefault();
                 if (!emailInput || !passwordInput) return showToast('請填寫帳號與密碼');
@@ -1210,12 +1104,9 @@
                 );
             }
 
-
-
             // ==========================================
-            // 主要 UI 渲染區塊 
+            // 主要 UI 渲染區塊
             // ==========================================
-
             return (
                 <div className="flex flex-col min-h-screen w-full font-sans overflow-x-hidden">
 
@@ -1231,15 +1122,17 @@
                         </div>
                     )}
 
-                    <div className="pt-8 pb-32 px-6 md:px-8 lg:px-12 max-w-7xl mx-auto min-h-screen w-full no-print">
+                    <div className="pt-8 pb-32 px-6 md:px-8 lg:px-12 max-w-[1440px] mx-auto min-h-screen w-full no-print">
                         <div className="space-y-6 md:space-y-8">
 
                             {/* =========================================
-                        分頁 1: 銷售日報表
-                    ========================================= */}
+                                分頁 1: 銷售日報表 (✨ 2 欄式設計，Top5 在預覽上方)
+                            ========================================= */}
                             {activeTab === 'daily-report' && (
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full pb-10 animate-scale-in">
-                                    <div className="lg:col-span-7 space-y-6">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-8 pb-10 animate-scale-in">
+
+                                    {/* 第一欄：操作與控制區 */}
+                                    <div className="space-y-6">
                                         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
                                             <h2 className="text-xl font-semibold mb-4 flex items-center dark:text-slate-100"><i className="fa-solid fa-cloud-arrow-up text-blue-500 mr-2"></i>上傳今日報表</h2>
                                             <div className="flex items-center justify-center w-full">
@@ -1342,101 +1235,158 @@
                                                     ))}
                                                 </div>
                                             </div>
+
+                                            {/* ✨ 升級版小作文區塊：複選關鍵字 */}
                                             <div className="pt-6 border-t border-slate-100 dark:border-slate-700/50">
-                                                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">賣場狀況分享（小作文）</label>
-                                                <textarea className="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-lg outline-none h-24 resize-none dark:bg-slate-900 dark:text-white" placeholder="例如：今天是週五，人潮明顯增加..." value={story} onChange={(e) => setStory(e.target.value)}></textarea>
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-300">賣場狀況分享（小作文）</label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleAutoGenerateStory}
+                                                        className="px-3 py-1.5 bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/40 rounded-lg text-xs font-bold transition-colors flex items-center shadow-sm active:scale-95"
+                                                    >
+                                                        <i className="fa-solid fa-wand-magic-sparkles mr-1.5"></i> 一鍵生成
+                                                    </button>
+                                                </div>
+
+                                                {/* ✨ 複選關鍵字區塊 */}
+                                                <div className="mb-3">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
+                                                            <i className="fa-solid fa-filter mr-1"></i>
+                                                            情境關鍵字（可複選，組合出更精準的範本）
+                                                        </p>
+                                                        {selectedKeywords.size > 0 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedKeywords(new Set())}
+                                                                className="text-xs text-slate-400 hover:text-red-500 transition-colors flex items-center gap-1"
+                                                            >
+                                                                <i className="fa-solid fa-xmark"></i> 清除選擇
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {['上架秒殺', '客人端盒', '大排長龍', 'MEGA熱銷', '大單出現', '天氣不佳', '補貨熱銷', '假日人潮'].map(kw => (
+                                                            <button
+                                                                key={kw}
+                                                                type="button"
+                                                                onClick={() => toggleKeyword(kw)}
+                                                                className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 border ${
+                                                                    selectedKeywords.has(kw)
+                                                                        ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20 scale-105'
+                                                                        : 'bg-slate-100 text-slate-500 border-transparent dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:border-slate-300'
+                                                                }`}
+                                                            >
+                                                                {selectedKeywords.has(kw) && <i className="fa-solid fa-check mr-1 text-[10px]"></i>}
+                                                                {kw}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    {selectedKeywords.size > 0 && (
+                                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-medium">
+                                                            <i className="fa-solid fa-wand-magic-sparkles mr-1"></i>
+                                                            已選：{Array.from(selectedKeywords).join(' + ')}
+                                                            {selectedKeywords.size >= 2 && ' — 將優先尋找同時包含這些情境的範本！'}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                <textarea
+                                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-600 rounded-xl outline-none h-28 resize-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-shadow text-sm leading-relaxed"
+                                                    placeholder="點擊右上方「一鍵生成」按鈕，或選好關鍵字後再點生成，也可直接在此手動輸入..."
+                                                    value={story}
+                                                    onChange={(e) => setStory(e.target.value)}
+                                                ></textarea>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="lg:col-span-5 relative">
+                                    {/* 第二欄：Top 5 儀表板 + 報表預覽 (上下堆疊) */}
+                                    <div className="flex flex-col gap-6">
 
-                                        {/* ✨ 新增：今日熱銷 Top 5 儀表板 (直接從 itemStats 讀取乾淨資料) */}
-                                        {todayStats && todayStats.itemStats && (
-                                            (() => {
-                                                const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0);
-
-                                                // 統一使用：數量優先，業績次之
-                                                const statsArray = rawArray.map(item => ({
-                                                    name: item.desc,
-                                                    quantity: item.top5Qty || item.qty || item.quantity || item.count || 0,
-                                                    sales: item.top5Amt || 0
-                                                }));
-
-                                                const top5Items = statsArray.sort((a, b) => b.quantity - a.quantity || b.sales - a.sales).slice(0, 5);
-
-                                                if (top5Items.length === 0) return null;
-
-                                                return (
-                                                    <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors animate-scale-in mb-6">
-                                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center">
-                                                            <i className="fa-solid fa-trophy text-amber-500 mr-2.5"></i> 今日熱銷 Top 5
-                                                        </h3>
-                                                        <div className="space-y-2.5">
-                                                            {top5Items.map((item, index) => {
-                                                                const percent = todayStats.sales > 0 ? ((item.sales / todayStats.sales) * 100).toFixed(1) : 0;
-
-                                                                const rankColors = [
-                                                                    'bg-amber-100 text-amber-600 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30',
-                                                                    'bg-slate-200 text-slate-600 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600',
-                                                                    'bg-orange-100 text-orange-600 border-orange-200 dark:bg-orange-500/20 dark:text-orange-400 dark:border-orange-500/30'
-                                                                ];
-                                                                const currentRankColor = index < 3 ? rankColors[index] : 'bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700';
-
-                                                                return (
-                                                                    <div key={`top-${index}`} className="flex items-center justify-between p-3 md:p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700/50 hover:border-blue-200 dark:hover:border-blue-500/30 transition-colors group">
-                                                                        <div className="flex items-center gap-3 overflow-hidden pr-3">
-                                                                            <div className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-black border ${currentRankColor} shadow-sm`}>
-                                                                                {index + 1}
+                                        {/* ✨ Top 5 儀表板（在報表預覽上方） */}
+                                        {todayStats && todayStats.itemStats && (() => {
+                                            const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0);
+                                            const statsArray = rawArray.map(item => ({
+                                                name: item.desc,
+                                                quantity: item.top5Qty || 0,
+                                                sales: item.top5Amt || 0
+                                            }));
+                                            const top5Items = statsArray.sort((a, b) => b.quantity - a.quantity || b.sales - a.sales).slice(0, 5);
+                                            if (top5Items.length === 0) return null;
+                                            return (
+                                                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors animate-scale-in">
+                                                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center">
+                                                        <i className="fa-solid fa-trophy text-amber-500 mr-2.5"></i> 今日熱銷 Top 5
+                                                        <span className="ml-auto text-xs text-slate-400 font-normal">今日總業績 ${formatMoney(todayStats.sales)}</span>
+                                                    </h3>
+                                                    <div className="flex flex-col gap-2">
+                                                        {top5Items.map((item, index) => {
+                                                            const percent = todayStats.sales > 0 ? ((item.sales / todayStats.sales) * 100).toFixed(1) : 0;
+                                                            const barWidth = todayStats.sales > 0 ? Math.max(4, Math.round((item.sales / todayStats.sales) * 100)) : 0;
+                                                            const rankColors = [
+                                                                'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30',
+                                                                'bg-slate-50 border-slate-200 dark:bg-slate-700/50 dark:border-slate-600',
+                                                                'bg-orange-50 border-orange-200 dark:bg-orange-500/10 dark:border-orange-500/30'
+                                                            ];
+                                                            const badgeColors = [
+                                                                'bg-amber-400 text-white',
+                                                                'bg-slate-400 text-white',
+                                                                'bg-orange-400 text-white'
+                                                            ];
+                                                            const barColors = ['bg-amber-400', 'bg-slate-400', 'bg-orange-400', 'bg-blue-300', 'bg-blue-200'];
+                                                            const cardColor = index < 3 ? rankColors[index] : 'bg-slate-50 border-slate-100 dark:bg-slate-800/50 dark:border-slate-700';
+                                                            const badgeColor = index < 3 ? badgeColors[index] : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400';
+                                                            const barColor = barColors[index] || 'bg-blue-200';
+                                                            return (
+                                                                <div key={`top-${index}`} className={`flex items-center gap-3 p-3 rounded-xl border ${cardColor} transition-colors`}>
+                                                                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${badgeColor}`}>{index + 1}</span>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-snug truncate mb-1.5" title={item.name}>{item.name}</div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                                                <div className={`h-full ${barColor} rounded-full`} style={{width: `${barWidth}%`}}></div>
                                                                             </div>
-                                                                            <div className="truncate text-sm font-bold text-slate-700 dark:text-slate-200 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" title={item.name}>
-                                                                                {item.name}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="flex flex-col items-end shrink-0">
-                                                                            <div className="text-sm md:text-base font-black text-slate-800 dark:text-slate-100">
-                                                                                ${item.sales.toLocaleString()}
-                                                                            </div>
-                                                                            <div className="text-[11px] md:text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-2">
-                                                                                <span className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                                                                                    {item.quantity} 件
-                                                                                </span>
-                                                                                <span className="text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-500/20 font-bold">
-                                                                                    {percent}%
-                                                                                </span>
-                                                                            </div>
+                                                                            <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 shrink-0 w-9 text-right">{percent}%</span>
                                                                         </div>
                                                                     </div>
-                                                                );
-                                                            })}
-                                                        </div>
+                                                                    <div className="text-right shrink-0">
+                                                                        <div className="text-sm font-black text-slate-800 dark:text-slate-100">${item.sales.toLocaleString()}</div>
+                                                                        <div className="text-[10px] text-slate-400 mt-0.5">{item.quantity} 件</div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                );
-                                            })()
-                                        )}
+                                                </div>
+                                            );
+                                        })()}
 
-                                        {/* 原本的報表預覽區塊 */}
-                                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 sticky top-8 flex flex-col h-[calc(100vh-8rem)] transition-colors z-10">
+                                        {/* 報表預覽區（在 Top 5 下方，sticky 展開至螢幕底部） */}
+                                        <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 sticky top-8 flex flex-col transition-colors z-10" style={{height: 'calc(100vh - 10rem)', minHeight: '400px'}}>
                                             <div className="flex justify-between items-center mb-4 shrink-0">
                                                 <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center"><i className="fa-solid fa-file-lines text-slate-400 mr-2"></i> 報表預覽</h2>
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => setIsQRCodeModalOpen(true)} className="px-3 md:px-4 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-colors flex items-center text-sm font-medium shadow-sm border border-blue-100 dark:border-blue-500/20"><i className="fa-solid fa-qrcode mr-2"></i> <span className="hidden md:inline">產生條碼</span><span className="md:hidden">條碼</span></button>
-                                                    <button onClick={() => navigator.clipboard.writeText(reportContent).then(() => showToast('報表已複製！'))} className="px-3 md:px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-slate-600 transition-colors flex items-center text-sm font-medium shadow-sm"><i className="fa-solid fa-copy md:mr-2"></i> <span className="hidden md:inline">複製</span></button>
+                                                <div className="flex gap-1.5 sm:gap-2">
+                                                    <button onClick={() => setIsQRCodeModalOpen(true)} className="px-3 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-500/30 transition-colors flex items-center text-sm font-medium shadow-sm border border-blue-100 dark:border-blue-500/20">
+                                                        <i className="fa-solid fa-qrcode sm:mr-1.5"></i> <span className="hidden sm:inline">產生條碼</span>
+                                                    </button>
+                                                    <button onClick={() => navigator.clipboard.writeText(reportContent).then(() => showToast('報表已複製！'))} className="px-3 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-slate-600 transition-colors flex items-center text-sm font-medium shadow-sm">
+                                                        <i className="fa-solid fa-copy sm:mr-1.5"></i> <span className="hidden sm:inline">複製</span>
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div className="flex-1 bg-slate-50 dark:bg-slate-900 p-6 rounded-xl text-sm font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed overflow-y-auto border border-slate-200 dark:border-slate-700">{reportContent}</div>
+                                            <div className="flex-1 bg-slate-50 dark:bg-slate-900 p-5 rounded-xl text-sm font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed overflow-y-auto border border-slate-200 dark:border-slate-700">{reportContent}</div>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
                             {/* =========================================
-                        分頁 2: 盒損登記器 (120% 適配 + 響應式折疊版)
-                    ========================================= */}
+                                分頁 2: 盒損登記器
+                            ========================================= */}
                             {activeTab === 'damaged-box' && (
                                 <div className="w-full space-y-6 pb-10 animate-scale-in">
-
-                                    {/* 頂部掃描輸入區 (標準尺寸) */}
                                     <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden transition-colors">
                                         <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] px-3 py-1 font-bold rounded-bl-lg flex items-center shadow-sm">
                                             <i className="fa-solid fa-cloud-arrow-up mr-1"></i> 雲端同步開啟
@@ -1446,294 +1396,168 @@
                                                 <i className="fa-solid fa-barcode text-slate-400 mr-2"></i> 盒損條碼登錄
                                             </h3>
                                         </div>
-
                                         <form onSubmit={handleScanSubmit} className="relative group flex gap-2">
                                             <div className="relative flex-1">
                                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-transform group-focus-within:scale-110">
                                                     <i className="fa-solid fa-barcode text-slate-400 text-lg"></i>
                                                 </div>
-                                                <input
-                                                    ref={damagedInputRef} type="text" value={barcodeInput} onChange={(e) => setBarcodeInput(e.target.value)}
-                                                    className="block w-full pl-12 pr-4 py-3 md:py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 dark:text-white text-base transition-all outline-none shadow-inner font-mono"
-                                                    placeholder="請輸入或掃描條碼..." autoFocus
-                                                />
+                                                <input ref={damagedInputRef} type="text" value={barcodeInput} onChange={(e) => setBarcodeInput(e.target.value)} className="block w-full pl-12 pr-4 py-3 md:py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 dark:text-white text-base transition-all outline-none shadow-inner font-mono" placeholder="請輸入或掃描條碼..." autoFocus />
                                             </div>
                                             <button type="button" onClick={() => { setScannerTarget('damaged'); setScannerOpen(true); }} className="px-5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-colors shadow-sm flex items-center justify-center">
                                                 <i className="fa-solid fa-camera text-xl"></i>
                                             </button>
-                                            <button type="submit" className="px-6 bg-slate-800 dark:bg-blue-600 text-white hover:bg-slate-900 dark:hover:bg-blue-700 rounded-xl font-bold transition-colors shadow-sm">
-                                                加入
-                                            </button>
+                                            <button type="submit" className="px-6 bg-slate-800 dark:bg-blue-600 text-white hover:bg-slate-900 dark:hover:bg-blue-700 rounded-xl font-bold transition-colors shadow-sm">加入</button>
                                         </form>
                                     </div>
 
-                                    {/* 內容區塊 */}
                                     {damagedItems.length === 0 ? (
                                         <div className="text-center py-20 bg-white/50 dark:bg-slate-800/30 rounded-2xl border border-slate-200 dark:border-slate-700 border-dashed transition-colors">
                                             <i className="fa-solid fa-box-open text-5xl text-slate-300 dark:text-slate-600 mb-4 block"></i>
                                             <p className="text-slate-500 font-medium">雲端資料庫尚未登記任何盒損商品</p>
                                         </div>
                                     ) : (
-                                        <>
-                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-2">
-
-                                                {/* 👈 左側：盤點總覽表 (響應式折疊設計) */}
-                                                <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 flex flex-col h-auto lg:h-[calc(100vh-16rem)] lg:sticky top-28 transition-colors">
-
-                                                    {/* 標題區：在小螢幕時具有 cursor-pointer 可點擊折疊 */}
-                                                    <div
-                                                        className="bg-slate-50 dark:bg-slate-800/80 px-5 py-4 border-b border-slate-200 dark:border-slate-700 rounded-t-2xl shrink-0 cursor-pointer lg:cursor-auto"
-                                                        onClick={() => { if (window.innerWidth < 1024) setIsDamagedOverviewExpanded(!isDamagedOverviewExpanded); }}
-                                                    >
-                                                        <div className="flex items-center justify-between lg:mb-3">
-                                                            <div className="flex items-center">
-                                                                <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mr-3 shadow-inner">
-                                                                    <i className="fa-solid fa-list-check text-base"></i>
-                                                                </div>
-                                                                <div>
-                                                                    <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight">盤點總覽</h4>
-                                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">總計 {damagedItems.reduce((sum, item) => sum + item.quantity, 0)} 件</p>
-                                                                </div>
-                                                            </div>
-                                                            {/* 手機版專用折疊箭頭 */}
-                                                            <div className="lg:hidden text-slate-400 p-2">
-                                                                <i className={`fa-solid fa-chevron-${isDamagedOverviewExpanded ? 'up' : 'down'} transition-transform duration-300`}></i>
+                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-2">
+                                            <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 flex flex-col h-auto lg:h-[calc(100vh-16rem)] lg:sticky top-28 transition-colors">
+                                                <div className="bg-slate-50 dark:bg-slate-800/80 px-5 py-4 border-b border-slate-200 dark:border-slate-700 rounded-t-2xl shrink-0 cursor-pointer lg:cursor-auto" onClick={() => { if (window.innerWidth < 1024) setIsDamagedOverviewExpanded(!isDamagedOverviewExpanded); }}>
+                                                    <div className="flex items-center justify-between lg:mb-3">
+                                                        <div className="flex items-center">
+                                                            <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mr-3 shadow-inner"><i className="fa-solid fa-list-check text-base"></i></div>
+                                                            <div>
+                                                                <h4 className="font-bold text-slate-800 dark:text-slate-100 text-base leading-tight">盤點總覽</h4>
+                                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">總計 {damagedItems.reduce((sum, item) => sum + item.quantity, 0)} 件</p>
                                                             </div>
                                                         </div>
-
-                                                        {/* 操作按鈕：大螢幕永遠顯示，小螢幕展開時才顯示 */}
-                                                        <div className={`items-center gap-2 mt-3 lg:mt-0 ${isDamagedOverviewExpanded ? 'flex' : 'hidden lg:flex'}`}>
-                                                            {/* ✨ 補回列印按鈕 */}
-                                                            <button onClick={(e) => { e.stopPropagation(); executePrint('damaged'); }} className="flex-1 text-xs px-2 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-400 rounded-lg transition-colors font-bold border border-blue-200 dark:border-blue-500/30 shadow-sm flex justify-center items-center">
-                                                                <i className="fa-solid fa-print mr-1.5"></i>列印
-                                                            </button>
-                                                            <button onClick={(e) => { e.stopPropagation(); exportToExcel(damagedItems, '盒損盤點清單'); }} className="flex-1 text-xs px-2 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg transition-colors font-bold border border-emerald-200 dark:border-emerald-500/30 shadow-sm flex justify-center items-center">
-                                                                <i className="fa-solid fa-file-excel mr-1.5"></i>匯出 Excel
-                                                            </button>
-                                                            <button onClick={(e) => { e.stopPropagation(); clearAllDamagedItems(); }} className="flex-1 text-xs px-2 py-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition-colors font-bold border border-red-100 dark:border-red-500/20 shadow-sm flex justify-center items-center">
-                                                                <i className="fa-solid fa-trash-can mr-1.5"></i>季末清空
-                                                            </button>
-                                                        </div>
+                                                        <div className="lg:hidden text-slate-400 p-2"><i className={`fa-solid fa-chevron-${isDamagedOverviewExpanded ? 'up' : 'down'} transition-transform duration-300`}></i></div>
                                                     </div>
-
-                                                    {/* 滾動內容區：大螢幕永遠顯示，小螢幕展開時才顯示 */}
-                                                    <div className={`flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50/50 dark:bg-transparent rounded-b-2xl ${isDamagedOverviewExpanded ? 'block' : 'hidden lg:block'}`}>
-                                                        <div className="flex flex-col gap-3">
-                                                            {groupedDamagedItems.length === 0 ? (
-                                                                <p className="text-center text-sm text-slate-400 py-4">無符合的資料</p>
-                                                            ) : (
-                                                                groupedDamagedItems.map(([category, items]) => (
-                                                                    <div key={`overview-${category}`} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm animate-scale-in">
-                                                                        <h5 className="font-bold text-slate-700 dark:text-slate-300 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 flex justify-between items-end">
-                                                                            <span className="text-sm">{category}</span>
-                                                                            <span className="text-blue-600 dark:text-blue-400 font-black text-sm">{items.reduce((s, i) => s + i.quantity, 0)} 件</span>
-                                                                        </h5>
-                                                                        <ul className="space-y-2">
-                                                                            {items.map(item => (
-                                                                                <li key={`overview-item-${item.id}`} className="flex justify-between items-start text-sm">
-                                                                                    <span className="text-slate-600 dark:text-slate-400 pr-3 leading-snug flex-1 text-sm">{item.name}</span>
-                                                                                    <span className="font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600 shadow-sm text-xs">x {item.quantity}</span>
-                                                                                </li>
-                                                                            ))}
-                                                                        </ul>
-                                                                    </div>
-                                                                ))
-                                                            )}
-                                                        </div>
+                                                    <div className={`items-center gap-2 mt-3 lg:mt-0 ${isDamagedOverviewExpanded ? 'flex' : 'hidden lg:flex'}`}>
+                                                        <button onClick={(e) => { e.stopPropagation(); executePrint('damaged'); }} className="flex-1 text-xs px-2 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-400 rounded-lg transition-colors font-bold border border-blue-200 dark:border-blue-500/30 shadow-sm flex justify-center items-center"><i className="fa-solid fa-print mr-1.5"></i>列印</button>
+                                                        <button onClick={(e) => { e.stopPropagation(); exportToExcel(damagedItems, '盒損盤點清單'); }} className="flex-1 text-xs px-2 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg transition-colors font-bold border border-emerald-200 dark:border-emerald-500/30 shadow-sm flex justify-center items-center"><i className="fa-solid fa-file-excel mr-1.5"></i>匯出 Excel</button>
+                                                        <button onClick={(e) => { e.stopPropagation(); clearAllDamagedItems(); }} className="flex-1 text-xs px-2 py-2 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition-colors font-bold border border-red-100 dark:border-red-500/20 shadow-sm flex justify-center items-center"><i className="fa-solid fa-trash-can mr-1.5"></i>季末清空</button>
                                                     </div>
                                                 </div>
-
-                                                {/* 👉 右側：分頁式分類與搜尋 (Col-span-8) */}
-                                                <div className="lg:col-span-8 flex flex-col h-[500px] sm:h-[600px] lg:h-[calc(100vh-16rem)]">
-
-                                                    {/* ✨ 優化版：頂部控制列 (上下排列，各自滿版，美化 Tab) */}
-                                                    <div className="flex flex-col gap-3 mb-5 shrink-0">
-
-                                                        {/* 分類 Tab (解決切邊問題，加入滑鼠拖曳與滾輪支援) */}
-                                                        <div
-                                                            className="flex overflow-x-auto gap-3 w-full py-2 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] select-none cursor-grab active:cursor-grabbing"
-                                                            onMouseDown={(e) => {
-                                                                e.currentTarget.dataset.isDown = "true";
-                                                                e.currentTarget.dataset.startX = e.pageX - e.currentTarget.offsetLeft;
-                                                                e.currentTarget.dataset.scrollLeft = e.currentTarget.scrollLeft;
-                                                            }}
-                                                            onMouseLeave={(e) => e.currentTarget.dataset.isDown = "false"}
-                                                            onMouseUp={(e) => e.currentTarget.dataset.isDown = "false"}
-                                                            onMouseMove={(e) => {
-                                                                if (e.currentTarget.dataset.isDown !== "true") return;
-                                                                e.preventDefault();
-                                                                const x = e.pageX - e.currentTarget.offsetLeft;
-                                                                const walk = (x - parseFloat(e.currentTarget.dataset.startX)) * 2; // 拖曳速度乘數
-                                                                e.currentTarget.scrollLeft = parseFloat(e.currentTarget.dataset.scrollLeft) - walk;
-                                                            }}
-                                                            onWheel={(e) => {
-                                                                if (e.deltaY !== 0) {
-                                                                    e.currentTarget.scrollLeft += e.deltaY;
-                                                                }
-                                                            }}
-                                                        >
-                                                            <button
-                                                                onClick={() => setActiveDamagedCategory('全部')}
-                                                                className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${activeDamagedCategory === '全部' ? 'bg-slate-800 text-white dark:bg-blue-500 shadow-md shadow-slate-400/30 dark:shadow-blue-500/20 transform scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
-                                                            >
-                                                                全部顯示
-                                                            </button>
-                                                            {groupedDamagedItems.map(([category]) => (
-                                                                <button
-                                                                    key={`tab-${category}`}
-                                                                    onClick={() => setActiveDamagedCategory(category)}
-                                                                    className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${activeDamagedCategory === category ? 'bg-slate-800 text-white dark:bg-blue-500 shadow-md shadow-slate-400/30 dark:shadow-blue-500/20 transform scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
-                                                                >
-                                                                    {category}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-
-                                                        {/* 搜尋過濾框 (改為滿版) */}
-                                                        <div className="relative w-full group">
-                                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors">
-                                                                <i className="fa-solid fa-filter text-slate-400 text-sm group-focus-within:text-blue-500 transition-colors"></i>
-                                                            </div>
-                                                            <input
-                                                                type="text" value={damagedSearch} onChange={(e) => setDamagedSearch(e.target.value)}
-                                                                className="w-full pl-10 pr-4 py-3 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm dark:text-white"
-                                                                placeholder="過濾條碼或品名..."
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* 右側明細清單 */}
-                                                    <div className="flex-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-y-auto custom-scrollbar transition-colors">
-                                                        <div className="flex flex-col divide-y divide-slate-100 dark:border-slate-700">
-                                                            {groupedDamagedItems.filter(([cat]) => activeDamagedCategory === '全部' || cat === activeDamagedCategory).map(([category, items]) => (
-                                                                <div key={category} className="animate-scale-in">
-
-                                                                    {activeDamagedCategory === '全部' && (
-                                                                        <div className="bg-slate-50 dark:bg-slate-800/90 px-6 py-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center sticky top-0 z-10 backdrop-blur-md">
-                                                                            <h4 className="font-bold text-slate-700 dark:text-slate-200 text-sm">{category}</h4>
-                                                                            <span className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 text-xs px-2 py-1 rounded-md font-bold shadow-sm">{items.reduce((sum, item) => sum + item.quantity, 0)} 件</span>
-                                                                        </div>
-                                                                    )}
-
-                                                                    <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                                                                        {items.map((item) => (
-                                                                            <div key={item.id} className="p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between hover:bg-blue-50/30 dark:hover:bg-slate-700/30 transition-colors gap-3 md:gap-4 group">
-
-                                                                                {/* 品名區塊 (永遠在最上/最左) */}
-                                                                                <div className="flex-1 w-full min-w-0">
-                                                                                    <div className="mb-1"><EditableItemName item={item} onSave={(id, bc, name) => handleUpdateItemName('damaged', id, bc, name)} /></div>
-                                                                                    {/* 大螢幕時顯示的條碼 */}
-                                                                                    <div className="hidden md:flex text-sm text-slate-400 dark:text-slate-500 font-mono items-center mt-1">
-                                                                                        <i className="fa-solid fa-barcode mr-1.5 opacity-70"></i>{item.barcode}
-                                                                                    </div>
-                                                                                </div>
-
-                                                                                {/* ✨ 空間魔法：手機版時，條碼與操作按鈕放在「同一排」填補空白 */}
-                                                                                <div className="flex items-center justify-between w-full md:w-auto gap-3 shrink-0">
-                                                                                    {/* 手機版時才顯示的縮小型條碼 */}
-                                                                                    <div className="md:hidden text-xs text-slate-500 dark:text-slate-400 font-mono flex items-center bg-slate-50 dark:bg-slate-900/50 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                                                                                        <i className="fa-solid fa-barcode mr-1.5 opacity-70"></i>{item.barcode}
-                                                                                    </div>
-
-                                                                                    {/* 操作按鈕群 */}
-                                                                                    <div className="flex items-center gap-3 ml-auto">
-                                                                                        <div className="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden p-1">
-                                                                                            <button onClick={() => updateQuantity(item.id, -1)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-colors shadow-sm"><i className="fa-solid fa-minus text-xs"></i></button>
-                                                                                            <div className="w-10 text-center font-bold text-slate-800 dark:text-slate-100 text-base">{item.quantity}</div>
-                                                                                            <button onClick={() => updateQuantity(item.id, 1)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-colors shadow-sm"><i className="fa-solid fa-plus text-xs"></i></button>
-                                                                                        </div>
-
-                                                                                        <button onClick={() => removeDamagedItem(item.id)} className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0">
-                                                                                            <i className="fa-solid fa-trash-can text-lg"></i>
-                                                                                        </button>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
+                                                <div className={`flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50/50 dark:bg-transparent rounded-b-2xl ${isDamagedOverviewExpanded ? 'block' : 'hidden lg:block'}`}>
+                                                    <div className="flex flex-col gap-3">
+                                                        {groupedDamagedItems.length === 0 ? (
+                                                            <p className="text-center text-sm text-slate-400 py-4">無符合的資料</p>
+                                                        ) : (
+                                                            groupedDamagedItems.map(([category, items]) => (
+                                                                <div key={`overview-${category}`} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm animate-scale-in">
+                                                                    <h5 className="font-bold text-slate-700 dark:text-slate-300 mb-3 border-b border-slate-100 dark:border-slate-700 pb-2 flex justify-between items-end">
+                                                                        <span className="text-sm">{category}</span>
+                                                                        <span className="text-blue-600 dark:text-blue-400 font-black text-sm">{items.reduce((s, i) => s + i.quantity, 0)} 件</span>
+                                                                    </h5>
+                                                                    <ul className="space-y-2">
+                                                                        {items.map(item => (
+                                                                            <li key={`overview-item-${item.id}`} className="flex justify-between items-start text-sm">
+                                                                                <span className="text-slate-600 dark:text-slate-400 pr-3 leading-snug flex-1 text-sm">{item.name}</span>
+                                                                                <span className="font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600 shadow-sm text-xs">x {item.quantity}</span>
+                                                                            </li>
                                                                         ))}
-                                                                    </div>
+                                                                    </ul>
                                                                 </div>
-                                                            ))}
-                                                        </div>
-
-                                                        {/* 防呆：空狀態 */}
-                                                        {groupedDamagedItems.filter(([cat]) => activeDamagedCategory === '全部' || cat === activeDamagedCategory).length === 0 && (
-                                                            <div className="p-10 text-center text-slate-400 font-medium flex flex-col items-center justify-center h-48 animate-scale-in">
-                                                                <i className={`fa-solid ${damagedSearch ? 'fa-magnifying-glass-minus text-blue-200 dark:text-blue-900' : 'fa-folder-open'} text-4xl mb-4`}></i>
-                                                                {damagedSearch ? (
-                                                                    <span>找不到包含 <span className="text-blue-500 mx-1">{damagedSearch}</span> 的商品</span>
-                                                                ) : (
-                                                                    '此分類目前沒有商品'
-                                                                )}
-                                                            </div>
+                                                            ))
                                                         )}
                                                     </div>
                                                 </div>
                                             </div>
-                                        </>
+
+                                            <div className="lg:col-span-8 flex flex-col h-[500px] sm:h-[600px] lg:h-[calc(100vh-16rem)]">
+                                                <div className="flex flex-col gap-3 mb-5 shrink-0">
+                                                    <div className="flex overflow-x-auto gap-3 w-full py-2 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] select-none cursor-grab active:cursor-grabbing"
+                                                        onMouseDown={(e) => { e.currentTarget.dataset.isDown = "true"; e.currentTarget.dataset.startX = e.pageX - e.currentTarget.offsetLeft; e.currentTarget.dataset.scrollLeft = e.currentTarget.scrollLeft; }}
+                                                        onMouseLeave={(e) => e.currentTarget.dataset.isDown = "false"}
+                                                        onMouseUp={(e) => e.currentTarget.dataset.isDown = "false"}
+                                                        onMouseMove={(e) => { if (e.currentTarget.dataset.isDown !== "true") return; e.preventDefault(); const x = e.pageX - e.currentTarget.offsetLeft; const walk = (x - parseFloat(e.currentTarget.dataset.startX)) * 2; e.currentTarget.scrollLeft = parseFloat(e.currentTarget.dataset.scrollLeft) - walk; }}
+                                                        onWheel={(e) => { if (e.deltaY !== 0) { e.currentTarget.scrollLeft += e.deltaY; } }}
+                                                    >
+                                                        <button onClick={() => setActiveDamagedCategory('全部')} className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${activeDamagedCategory === '全部' ? 'bg-slate-800 text-white dark:bg-blue-500 shadow-md shadow-slate-400/30 dark:shadow-blue-500/20 transform scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>全部顯示</button>
+                                                        {groupedDamagedItems.map(([category]) => (
+                                                            <button key={`tab-${category}`} onClick={() => setActiveDamagedCategory(category)} className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${activeDamagedCategory === category ? 'bg-slate-800 text-white dark:bg-blue-500 shadow-md shadow-slate-400/30 dark:shadow-blue-500/20 transform scale-105' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>{category}</button>
+                                                        ))}
+                                                    </div>
+                                                    <div className="relative w-full group">
+                                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors"><i className="fa-solid fa-filter text-slate-400 text-sm group-focus-within:text-blue-500 transition-colors"></i></div>
+                                                        <input type="text" value={damagedSearch} onChange={(e) => setDamagedSearch(e.target.value)} className="w-full pl-10 pr-4 py-3 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm dark:text-white" placeholder="過濾條碼或品名..." />
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-y-auto custom-scrollbar transition-colors">
+                                                    <div className="flex flex-col divide-y divide-slate-100 dark:border-slate-700">
+                                                        {groupedDamagedItems.filter(([cat]) => activeDamagedCategory === '全部' || cat === activeDamagedCategory).map(([category, items]) => (
+                                                            <div key={category} className="animate-scale-in">
+                                                                {activeDamagedCategory === '全部' && (
+                                                                    <div className="bg-slate-50 dark:bg-slate-800/90 px-6 py-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center sticky top-0 z-10 backdrop-blur-md">
+                                                                        <h4 className="font-bold text-slate-700 dark:text-slate-200 text-sm">{category}</h4>
+                                                                        <span className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 text-xs px-2 py-1 rounded-md font-bold shadow-sm">{items.reduce((sum, item) => sum + item.quantity, 0)} 件</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
+                                                                    {items.map((item) => (
+                                                                        <div key={item.id} className="p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between hover:bg-blue-50/30 dark:hover:bg-slate-700/30 transition-colors gap-3 md:gap-4 group">
+                                                                            <div className="flex-1 w-full min-w-0">
+                                                                                <div className="mb-1"><EditableItemName item={item} onSave={(id, bc, name) => handleUpdateItemName('damaged', id, bc, name)} /></div>
+                                                                                <div className="hidden md:flex text-sm text-slate-400 dark:text-slate-500 font-mono items-center mt-1"><i className="fa-solid fa-barcode mr-1.5 opacity-70"></i>{item.barcode}</div>
+                                                                            </div>
+                                                                            <div className="flex items-center justify-between w-full md:w-auto gap-3 shrink-0">
+                                                                                <div className="md:hidden text-xs text-slate-500 dark:text-slate-400 font-mono flex items-center bg-slate-50 dark:bg-slate-900/50 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700"><i className="fa-solid fa-barcode mr-1.5 opacity-70"></i>{item.barcode}</div>
+                                                                                <div className="flex items-center gap-3 ml-auto">
+                                                                                    <div className="flex items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden p-1">
+                                                                                        <button onClick={() => updateQuantity(item.id, -1)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-colors shadow-sm"><i className="fa-solid fa-minus text-xs"></i></button>
+                                                                                        <div className="w-10 text-center font-bold text-slate-800 dark:text-slate-100 text-base">{item.quantity}</div>
+                                                                                        <button onClick={() => updateQuantity(item.id, 1)} className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 transition-colors shadow-sm"><i className="fa-solid fa-plus text-xs"></i></button>
+                                                                                    </div>
+                                                                                    <button onClick={() => removeDamagedItem(item.id)} className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0"><i className="fa-solid fa-trash-can text-lg"></i></button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    {groupedDamagedItems.filter(([cat]) => activeDamagedCategory === '全部' || cat === activeDamagedCategory).length === 0 && (
+                                                        <div className="p-10 text-center text-slate-400 font-medium flex flex-col items-center justify-center h-48 animate-scale-in">
+                                                            <i className={`fa-solid ${damagedSearch ? 'fa-magnifying-glass-minus text-blue-200 dark:text-blue-900' : 'fa-folder-open'} text-4xl mb-4`}></i>
+                                                            {damagedSearch ? (<span>找不到包含 <span className="text-blue-500 mx-1">{damagedSearch}</span> 的商品</span>) : ('此分類目前沒有商品')}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             )}
 
                             {/* =========================================
-                        分頁 3: 陳列品典藏庫 (120% 螢幕縮放適配版)
-                    ========================================= */}
+                                分頁 3: 陳列品典藏庫
+                            ========================================= */}
                             {activeTab === 'display-items' && (
                                 <div className="w-full space-y-6 pb-10 animate-scale-in">
-
-                                    {/* 頂部掃描與控制區 (縮回精緻尺寸) */}
                                     <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden transition-colors">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-bl-full -z-10"></div>
-
                                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5">
                                             <div>
-                                                <h2 className="text-lg font-bold flex items-center dark:text-slate-100 tracking-tight">
-                                                    <i className="fa-solid fa-gem text-amber-500 mr-2.5"></i>陳列品紀錄
-                                                </h2>
-                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed hidden sm:block">
-                                                    陳列品建檔，輕鬆管理櫃上陳列中與撤下的品項。
-                                                </p>
+                                                <h2 className="text-lg font-bold flex items-center dark:text-slate-100 tracking-tight"><i className="fa-solid fa-gem text-amber-500 mr-2.5"></i>陳列品紀錄</h2>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed hidden sm:block">陳列品建檔，輕鬆管理櫃上陳列中與撤下的品項。</p>
                                             </div>
-
                                             <div className="flex items-center gap-2.5 w-full md:w-auto">
-                                                {/* 匯出按鈕縮小為適中尺寸 */}
-                                                <button onClick={() => exportToExcel(displayItems, '陳列品清單')} className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg text-xs font-bold transition-colors shadow-sm border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center">
-                                                    <i className="fa-solid fa-file-excel mr-1.5"></i>匯出 Excel
-                                                </button>
-
-                                                {/* 質感切換 Tab */}
+                                                <button onClick={() => exportToExcel(displayItems, '陳列品清單')} className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-lg text-xs font-bold transition-colors shadow-sm border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center"><i className="fa-solid fa-file-excel mr-1.5"></i>匯出 Excel</button>
                                                 <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg shadow-inner w-full md:w-auto">
-                                                    <button onClick={() => setDisplayFilter('stored')} className={`flex-1 md:w-28 py-1.5 text-xs font-bold rounded-md transition-all duration-300 ${displayFilter === 'stored' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                                                        <i className="fa-solid fa-box-archive mr-1.5"></i>已撤下
-                                                    </button>
-                                                    <button onClick={() => setDisplayFilter('displayed')} className={`flex-1 md:w-28 py-1.5 text-xs font-bold rounded-md transition-all duration-300 ${displayFilter === 'displayed' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                                                        <i className="fa-solid fa-lightbulb mr-1.5"></i>陳列中
-                                                    </button>
+                                                    <button onClick={() => setDisplayFilter('stored')} className={`flex-1 md:w-28 py-1.5 text-xs font-bold rounded-md transition-all duration-300 ${displayFilter === 'stored' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}><i className="fa-solid fa-box-archive mr-1.5"></i>已撤下</button>
+                                                    <button onClick={() => setDisplayFilter('displayed')} className={`flex-1 md:w-28 py-1.5 text-xs font-bold rounded-md transition-all duration-300 ${displayFilter === 'displayed' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}><i className="fa-solid fa-lightbulb mr-1.5"></i>陳列中</button>
                                                 </div>
                                             </div>
                                         </div>
-
-                                        {/* 輸入框表單 */}
                                         <form onSubmit={handleDisplayScanSubmit} className="relative group flex gap-2">
                                             <div className="relative flex-1">
-                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-transform group-focus-within:scale-110">
-                                                    <i className="fa-solid fa-barcode text-amber-500/70 text-lg"></i>
-                                                </div>
-                                                <input
-                                                    ref={displayInputRef} type="text" value={displayBarcodeInput} onChange={(e) => setDisplayBarcodeInput(e.target.value)}
-                                                    className="block w-full pl-12 pr-4 py-3 md:py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500/50 dark:text-white text-base transition-all outline-none shadow-inner font-mono"
-                                                    placeholder="掃描陳列品建檔..." autoFocus
-                                                />
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-transform group-focus-within:scale-110"><i className="fa-solid fa-barcode text-amber-500/70 text-lg"></i></div>
+                                                <input ref={displayInputRef} type="text" value={displayBarcodeInput} onChange={(e) => setDisplayBarcodeInput(e.target.value)} className="block w-full pl-12 pr-4 py-3 md:py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500/50 dark:text-white text-base transition-all outline-none shadow-inner font-mono" placeholder="掃描陳列品建檔..." autoFocus />
                                             </div>
-                                            <button type="button" onClick={() => { setScannerTarget('display'); setScannerOpen(true); }} className="px-5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-amber-500 dark:hover:text-amber-400 rounded-xl transition-colors shadow-sm flex items-center justify-center">
-                                                <i className="fa-solid fa-camera text-xl"></i>
-                                            </button>
-                                            <button type="submit" className="px-6 bg-slate-800 dark:bg-slate-700 text-white hover:bg-amber-500 dark:hover:bg-amber-500 rounded-xl font-bold transition-colors shadow-sm">
-                                                登錄
-                                            </button>
+                                            <button type="button" onClick={() => { setScannerTarget('display'); setScannerOpen(true); }} className="px-5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-amber-500 dark:hover:text-amber-400 rounded-xl transition-colors shadow-sm flex items-center justify-center"><i className="fa-solid fa-camera text-xl"></i></button>
+                                            <button type="submit" className="px-6 bg-slate-800 dark:bg-slate-700 text-white hover:bg-amber-500 dark:hover:bg-amber-500 rounded-xl font-bold transition-colors shadow-sm">登錄</button>
                                         </form>
                                     </div>
 
-                                    {/* 典藏品網格呈現 (全寬度版：增加 xl:grid-cols-4) */}
                                     {displayItems.filter(item => item.status === displayFilter).length === 0 ? (
                                         <div className="text-center py-20 bg-white/50 dark:bg-slate-800/30 rounded-2xl border border-slate-200 dark:border-slate-700 border-dashed transition-colors">
                                             <i className={`fa-solid ${displayFilter === 'stored' ? 'fa-box-open text-slate-300' : 'fa-store-slash text-amber-500/30'} text-5xl mb-4 block`}></i>
@@ -1743,45 +1567,30 @@
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                                             {displayItems.filter(item => item.status === displayFilter).map((item) => (
                                                 <div key={item.id} className={`group relative bg-white dark:bg-slate-800 rounded-2xl p-5 border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${item.status === 'displayed' ? 'border-amber-200 dark:border-amber-500/30 shadow-amber-500/5' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500/50'}`}>
-
                                                     <button onClick={() => toggleDisplayStatus(item.id, item.status)} className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm ${item.status === 'displayed' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-400 hover:bg-blue-100 hover:text-blue-600'}`} title={item.status === 'displayed' ? '收回典藏' : '轉為陳列'}>
                                                         <i className={`fa-solid ${item.status === 'displayed' ? 'fa-boxes-packing' : 'fa-lightbulb'} text-xs`}></i>
                                                     </button>
-
                                                     <div className="pr-10 mb-4">
-                                                        <div className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1 flex items-center gap-1.5">
-                                                            <i className="fa-solid fa-tag"></i>
-                                                            <span>數量: <strong className={`text-base ${item.status === 'displayed' ? 'text-amber-500' : 'text-blue-500'}`}>{item.quantity}</strong></span>
-                                                        </div>
+                                                        <div className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1 flex items-center gap-1.5"><i className="fa-solid fa-tag"></i><span>數量: <strong className={`text-base ${item.status === 'displayed' ? 'text-amber-500' : 'text-blue-500'}`}>{item.quantity}</strong></span></div>
                                                         <div className="mb-2"><EditableItemName item={item} onSave={(id, bc, name) => handleUpdateItemName('display', id, bc, name)} /></div>
-
                                                         <div className="mt-1.5">
                                                             <button onClick={() => toggleBarcodeVisibility(item.id)} className="text-xs font-mono text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 flex items-center transition-colors bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">
-                                                                <i className={`fa-solid ${revealedBarcodes[item.id] ? 'fa-eye-slash' : 'fa-barcode'} mr-1.5`}></i>
-                                                                {revealedBarcodes[item.id] ? item.barcode : '顯示條碼'}
+                                                                <i className={`fa-solid ${revealedBarcodes[item.id] ? 'fa-eye-slash' : 'fa-barcode'} mr-1.5`}></i>{revealedBarcodes[item.id] ? item.barcode : '顯示條碼'}
                                                             </button>
                                                         </div>
                                                     </div>
-
                                                     <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700/50">
                                                         <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
                                                             <button onClick={() => updateDisplayQuantity(item.id, -1)} className="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 transition-colors shadow-sm"><i className="fa-solid fa-minus text-[10px]"></i></button>
                                                             <div className="w-8 text-center font-bold text-slate-700 dark:text-slate-200 text-sm">{item.quantity}</div>
                                                             <button onClick={() => updateDisplayQuantity(item.id, 1)} className="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 transition-colors shadow-sm"><i className="fa-solid fa-plus text-[10px]"></i></button>
                                                         </div>
-
                                                         <div className="flex items-center gap-1.5">
                                                             <button onClick={() => {
                                                                 const textToCopy = `${item.barcode}\t${item.name}`;
-                                                                if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製條碼與品名！')).catch(fallbackCopy); } else { fallbackCopy(); }
-                                                                function fallbackCopy() { const textArea = document.createElement("textarea"); textArea.value = textToCopy; textArea.style.position = "fixed"; textArea.style.opacity = "0"; document.body.appendChild(textArea); textArea.focus(); textArea.select(); try { document.execCommand('copy'); showToast('📋 已複製條碼與品名！'); } catch (err) { showToast('❌ 複製失敗，請手手動複製'); } document.body.removeChild(textArea); }
-                                                            }} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors" title="複製條碼與品名">
-                                                                <i className="fa-solid fa-copy"></i>
-                                                            </button>
-
-                                                            <button onClick={() => removeDisplayItem(item.id)} className="w-9 h-9 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors" title="移除此陳列品">
-                                                                <i className="fa-solid fa-trash-can"></i>
-                                                            </button>
+                                                                if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製條碼與品名！')).catch(() => {}); }
+                                                            }} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors" title="複製條碼與品名"><i className="fa-solid fa-copy"></i></button>
+                                                            <button onClick={() => removeDisplayItem(item.id)} className="w-9 h-9 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors" title="移除此陳列品"><i className="fa-solid fa-trash-can"></i></button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1792,42 +1601,26 @@
                             )}
 
                             {/* =========================================
-                        分頁 4: 條碼列印中心 (統一 4:8 雙欄佈局)
-                    ========================================= */}
+                                分頁 4: 條碼列印中心
+                            ========================================= */}
                             {activeTab === 'barcode-print' && (
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full pb-10 animate-scale-in mt-2 w-full">
-
-                                    {/* 👈 左側：輸入與控制區 (Col-span-4) */}
                                     <div className="lg:col-span-4 space-y-6">
                                         <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
                                             <div className="mb-5">
-                                                <div className="w-11 h-11 bg-blue-50 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400 rounded-lg flex items-center justify-center mb-3">
-                                                    <i className="fa-solid fa-barcode text-xl"></i>
-                                                </div>
+                                                <div className="w-11 h-11 bg-blue-50 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400 rounded-lg flex items-center justify-center mb-3"><i className="fa-solid fa-barcode text-xl"></i></div>
                                                 <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">連續條碼掃描</h3>
                                             </div>
                                             <form onSubmit={handleBarcodePrintScan} className="relative mb-2 flex gap-2">
                                                 <div className="relative flex-1 group">
-                                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-transform group-focus-within:scale-110">
-                                                        <i className="fa-solid fa-magnifying-glass text-slate-400"></i>
-                                                    </div>
-                                                    <input
-                                                        ref={barcodeInputRef} type="text" value={barcodePrintInput} onChange={(e) => setBarcodePrintInput(e.target.value)}
-                                                        className="block w-full pl-11 pr-4 py-3 md:py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:text-white transition-all font-mono text-base outline-none"
-                                                        placeholder="掃描或輸入..." autoFocus
-                                                    />
+                                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-transform group-focus-within:scale-110"><i className="fa-solid fa-magnifying-glass text-slate-400"></i></div>
+                                                    <input ref={barcodeInputRef} type="text" value={barcodePrintInput} onChange={(e) => setBarcodePrintInput(e.target.value)} className="block w-full pl-11 pr-4 py-3 md:py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:text-white transition-all font-mono text-base outline-none" placeholder="掃描或輸入..." autoFocus />
                                                 </div>
-                                                <button type="button" onClick={() => { setScannerTarget('print'); setScannerOpen(true); }} className="px-4 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-colors shadow-sm flex items-center justify-center">
-                                                    <i className="fa-solid fa-camera text-xl"></i>
-                                                </button>
-                                                <button type="submit" className="px-5 bg-slate-800 dark:bg-blue-600 text-white hover:bg-slate-900 dark:hover:bg-blue-700 rounded-xl font-bold transition-colors shadow-sm">
-                                                    加入
-                                                </button>
+                                                <button type="button" onClick={() => { setScannerTarget('print'); setScannerOpen(true); }} className="px-4 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-colors shadow-sm flex items-center justify-center"><i className="fa-solid fa-camera text-xl"></i></button>
+                                                <button type="submit" className="px-5 bg-slate-800 dark:bg-blue-600 text-white hover:bg-slate-900 dark:hover:bg-blue-700 rounded-xl font-bold transition-colors shadow-sm">加入</button>
                                             </form>
                                         </div>
                                     </div>
-
-                                    {/* 👉 右側：待印清單明細 (Col-span-8) */}
                                     <div className="lg:col-span-8 relative flex flex-col h-[calc(100vh-16rem)]">
                                         <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 flex flex-col h-full transition-colors">
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 shrink-0 gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
@@ -1836,20 +1629,10 @@
                                                     <span className="ml-3 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs px-2 py-0.5 rounded font-medium">{barcodeItems.length} 筆</span>
                                                 </h2>
                                                 <div className="flex items-center gap-2.5 w-full sm:w-auto">
-                                                    {barcodeItems.length > 0 && (
-                                                        <button onClick={() => executePrint('barcode-all')} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center whitespace-nowrap">
-                                                            <i className="fa-solid fa-print mr-1.5"></i>全部列印
-                                                        </button>
-                                                    )}
-                                                    {barcodeItems.length > 0 && (
-                                                        <div className="relative flex-1 sm:w-48 group">
-                                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i className="fa-solid fa-filter text-slate-400 text-xs group-focus-within:text-blue-500"></i></div>
-                                                            <input type="text" value={barcodeSearch} onChange={e => setBarcodeSearch(e.target.value)} className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 transition-shadow" placeholder="過濾清單..." />
-                                                        </div>
-                                                    )}
+                                                    {barcodeItems.length > 0 && (<button onClick={() => executePrint('barcode-all')} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center whitespace-nowrap"><i className="fa-solid fa-print mr-1.5"></i>全部列印</button>)}
+                                                    {barcodeItems.length > 0 && (<div className="relative flex-1 sm:w-48 group"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i className="fa-solid fa-filter text-slate-400 text-xs group-focus-within:text-blue-500"></i></div><input type="text" value={barcodeSearch} onChange={e => setBarcodeSearch(e.target.value)} className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 transition-shadow" placeholder="過濾清單..." /></div>)}
                                                 </div>
                                             </div>
-
                                             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                                                 {barcodeItems.length === 0 ? (
                                                     <div className="h-full flex flex-col items-center justify-center border-2 border-slate-100 dark:border-slate-700 border-dashed rounded-xl bg-slate-50/50 dark:bg-slate-900/50">
@@ -1863,9 +1646,7 @@
                                                         {filteredBarcodeItems.map(item => (
                                                             <div key={item.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:border-blue-200 dark:hover:border-blue-500/50 transition-colors">
                                                                 <div className="flex-1 flex items-center gap-4 w-full">
-                                                                    <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-700 hidden md:block shrink-0">
-                                                                        <BarcodeImage value={item.barcode} printMode={false} mini={true} />
-                                                                    </div>
+                                                                    <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-700 hidden md:block shrink-0"><BarcodeImage value={item.barcode} printMode={false} mini={true} /></div>
                                                                     <div className="flex-1 w-full">
                                                                         <EditableItemName item={item} onSave={(id, bc, name) => handleUpdateItemName('barcode', id, bc, name)} />
                                                                         <div className="text-xs text-slate-400 font-mono mt-1 flex items-center"><i className="fa-solid fa-barcode mr-1 opacity-50"></i>{item.barcode}</div>
@@ -1893,144 +1674,78 @@
                             )}
 
                             {/* =========================================
-                        分頁 5: 系統設定
-                    ========================================= */}
+                                分頁 5: 系統設定
+                            ========================================= */}
                             {activeTab === 'settings' && (
                                 <div className="max-w-4xl mx-auto space-y-6 pb-10 animate-scale-in">
-
-                                    {/* 區塊 1：系統資料備份與還原 */}
                                     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
                                         <div className="flex items-center gap-3 mb-6 border-b border-slate-100 dark:border-slate-700 pb-6">
-                                            <div className="p-3 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl flex-shrink-0">
-                                                <i className="fa-solid fa-cloud-arrow-down text-2xl"></i>
-                                            </div>
+                                            <div className="p-3 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl flex-shrink-0"><i className="fa-solid fa-cloud-arrow-down text-2xl"></i></div>
                                             <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">系統資料備份與還原</h3>
                                         </div>
-
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-start">
-                                                <button onClick={handleExportData} className="w-full px-4 py-2 bg-slate-800 dark:bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-slate-900 dark:hover:bg-blue-700 transition-colors shadow-sm">
-                                                    <i className="fa-solid fa-box-archive mr-2"></i> 下載備份檔
-                                                </button>
+                                                <button onClick={handleExportData} className="w-full px-4 py-2 bg-slate-800 dark:bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-slate-900 dark:hover:bg-blue-700 transition-colors shadow-sm"><i className="fa-solid fa-box-archive mr-2"></i> 下載備份檔</button>
                                             </div>
                                             <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-start">
-                                                <label className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm cursor-pointer text-center">
-                                                    <i className="fa-solid fa-folder-open mr-2"></i> 選擇備份檔並還原
-                                                    <input type="file" className="hidden" accept=".json" onChange={handleImportData} />
-                                                </label>
+                                                <label className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm cursor-pointer text-center"><i className="fa-solid fa-folder-open mr-2"></i> 選擇備份檔並還原<input type="file" className="hidden" accept=".json" onChange={handleImportData} /></label>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* 區塊 2：自動分類規則 (支援點擊編輯與大小寫脫勾) */}
                                     <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
                                         <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2 flex items-center"><i className="fa-solid fa-layer-group text-blue-500 mr-2"></i>自動分類規則</h3>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
-                                            系統會自動忽略大小寫。點擊下方已有規則可直接<strong className="text-blue-500 ml-1">修改名稱或關鍵字</strong>。
-                                        </p>
-
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">系統會自動忽略大小寫。點擊下方已有規則可直接<strong className="text-blue-500 ml-1">修改名稱或關鍵字</strong>。</p>
                                         <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-blue-50/50 dark:bg-blue-500/5 p-4 rounded-xl border border-blue-100 dark:border-blue-500/20">
                                             <input type="text" className="w-full sm:w-1/3 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-bold" placeholder="新分類名稱" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} />
                                             <input type="text" className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" placeholder="關鍵字 (請用半形逗號 , 分隔)" value={newCatKeys} onChange={(e) => setNewCatKeys(e.target.value)} />
                                             <button onClick={handleAddCategory} className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 shadow-sm font-bold flex items-center justify-center"><i className="fa-solid fa-plus mr-2"></i>新增</button>
                                         </div>
-
                                         <div className="space-y-3">
                                             {settings.customCategories.map(cat => (
-                                                <EditableCategoryItem
-                                                    key={cat.id}
-                                                    cat={cat}
-                                                    onSave={(id, newName, newKeywords) => {
-                                                        const updatedCategories = settings.customCategories.map(c =>
-                                                            c.id === id ? { ...c, name: newName, keywords: newKeywords } : c
-                                                        );
-                                                        updateCloudData('settings', { ...settings, customCategories: updatedCategories }, `已更新分類：${newName}`);
-                                                    }}
-                                                    onDelete={(id) => {
-                                                        const catToDelete = settings.customCategories.find(c => c.id === id);
-                                                        const newCategories = settings.customCategories.filter(c => c.id !== id);
-                                                        updateCloudData('settings', { ...settings, customCategories: newCategories });
-                                                        if (catToDelete) triggerUndo(`已刪除分類規則：${catToDelete.name}`, () => {
-                                                            updateCloudData('settings', { ...settings, customCategories: [...newCategories, catToDelete] });
-                                                        });
-                                                    }}
+                                                <EditableCategoryItem key={cat.id} cat={cat}
+                                                    onSave={(id, newName, newKeywords) => { const updatedCategories = settings.customCategories.map(c => c.id === id ? { ...c, name: newName, keywords: newKeywords } : c); updateCloudData('settings', { ...settings, customCategories: updatedCategories }, `已更新分類：${newName}`); }}
+                                                    onDelete={(id) => { const catToDelete = settings.customCategories.find(c => c.id === id); const newCategories = settings.customCategories.filter(c => c.id !== id); updateCloudData('settings', { ...settings, customCategories: newCategories }); if (catToDelete) triggerUndo(`已刪除分類規則：${catToDelete.name}`, () => { updateCloudData('settings', { ...settings, customCategories: [...newCategories, catToDelete] }); }); }}
                                                 />
                                             ))}
                                         </div>
                                     </div>
 
-                                    {/* =========================================
-                            區塊 3：整合版共用字典庫管理 (折疊 + 分頁)
-                        ========================================= */}
                                     <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
-
-                                        {/* 標題區 (加入點擊折疊功能) */}
-                                        <div
-                                            className={`flex items-center justify-between cursor-pointer group transition-all ${isDictExpanded ? 'mb-6 border-b border-slate-100 dark:border-slate-700 pb-6' : ''}`}
-                                            onClick={() => setIsDictExpanded(!isDictExpanded)}
-                                        >
+                                        <div className={`flex items-center justify-between cursor-pointer group transition-all ${isDictExpanded ? 'mb-6 border-b border-slate-100 dark:border-slate-700 pb-6' : ''}`} onClick={() => setIsDictExpanded(!isDictExpanded)}>
                                             <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-teal-50 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner group-hover:scale-105 transition-transform">
-                                                    <i className="fa-solid fa-book-open text-xl"></i>
-                                                </div>
+                                                <div className="w-12 h-12 bg-teal-50 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner group-hover:scale-105 transition-transform"><i className="fa-solid fa-book-open text-xl"></i></div>
                                                 <div className="flex flex-col">
                                                     <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">共用字典庫管理</h3>
                                                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 hidden sm:block">管理並匯入條碼對應的中文品名，全設備即時同步。</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 md:gap-3">
-                                                {/* ✨ 新增：一鍵轉移按鈕，只有當系統有偷記資料時才會顯示 */}
                                                 {Object.keys(settings.barcodeMap || {}).length > 0 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMergeBarcodeMap(); }}
-                                                        className="flex items-center px-3 py-1.5 bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/40 rounded-lg text-sm font-bold shadow-sm transition-colors whitespace-nowrap"
-                                                        title="將系統自動學起來的名稱轉為正式字典"
-                                                    >
+                                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMergeBarcodeMap(); }} className="flex items-center px-3 py-1.5 bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/40 rounded-lg text-sm font-bold shadow-sm transition-colors whitespace-nowrap" title="將系統自動學起來的名稱轉為正式字典">
                                                         <i className="fa-solid fa-wand-magic-sparkles sm:mr-1.5"></i>
                                                         <span className="hidden sm:inline">收編系統記憶 </span>
                                                         <span className="sm:hidden ml-1">收編 </span>
                                                         ({Object.keys(settings.barcodeMap || {}).length})
                                                     </button>
                                                 )}
-
-                                                <span className="bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-400 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap">
-                                                    共 {Object.keys(settings.customNameMap).length} 筆
-                                                </span>
-                                                <div className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors">
-                                                    <i className={`fa-solid fa-chevron-${isDictExpanded ? 'up' : 'down'} transition-transform duration-300`}></i>
-                                                </div>
+                                                <span className="bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-400 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap">共 {Object.keys(settings.customNameMap).length} 筆</span>
+                                                <div className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors"><i className={`fa-solid fa-chevron-${isDictExpanded ? 'up' : 'down'} transition-transform duration-300`}></i></div>
                                             </div>
                                         </div>
 
-                                        {/* 展開後的內容區 (左右分欄) */}
                                         {isDictExpanded && (() => {
-                                            // --- 分頁邏輯計算 ---
-                                            const filteredDict = Object.entries(settings.customNameMap)
-                                                .filter(([bc, name]) => bc.includes(dictSearch) || name.toLowerCase().includes(dictSearch.toLowerCase()));
-
+                                            const filteredDict = Object.entries(settings.customNameMap).filter(([bc, name]) => bc.includes(dictSearch) || name.toLowerCase().includes(dictSearch.toLowerCase()));
                                             const ITEMS_PER_PAGE = 5;
                                             const dictTotalPages = Math.max(1, Math.ceil(filteredDict.length / ITEMS_PER_PAGE));
                                             const paginatedDict = filteredDict.slice((dictCurrentPage - 1) * ITEMS_PER_PAGE, dictCurrentPage * ITEMS_PER_PAGE);
-
                                             return (
                                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-scale-in origin-top">
-
-                                                    {/* 左側：視覺化管理與搜尋 */}
                                                     <div className="flex flex-col h-full">
                                                         <div className="mb-4 relative group">
                                                             <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors"></i>
-                                                            <input
-                                                                type="text" placeholder="搜尋已建檔之條碼或品名..."
-                                                                value={dictSearch}
-                                                                onChange={e => {
-                                                                    setDictSearch(e.target.value);
-                                                                    setDictCurrentPage(1); // 搜尋時自動重置回第一頁
-                                                                }}
-                                                                className="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-teal-500/50 transition-shadow text-sm font-medium"
-                                                            />
+                                                            <input type="text" placeholder="搜尋已建檔之條碼或品名..." value={dictSearch} onChange={e => { setDictSearch(e.target.value); setDictCurrentPage(1); }} className="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-teal-500/50 transition-shadow text-sm font-medium" />
                                                         </div>
-
                                                         <div className="flex-1 flex flex-col border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 overflow-hidden">
                                                             <div className="flex-1 divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto">
                                                                 {paginatedDict.map(([bc, name]) => (
@@ -2045,18 +1760,10 @@
                                                                             delete newMap[bc];
                                                                             updateCloudData('settings', { ...settings, customNameMap: newMap });
                                                                             if (paginatedDict.length === 1 && dictCurrentPage > 1) setDictCurrentPage(p => p - 1);
-
-                                                                            // ✨ 觸發復原
-                                                                            triggerUndo(`已刪除字典：${name}`, () => {
-                                                                                updateCloudData('settings', { ...settings, customNameMap: backupMap });
-                                                                            });
-                                                                        }} className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 lg:opacity-0 group-hover:opacity-100 transition-all shadow-sm">
-                                                                            <i className="fa-solid fa-trash-can"></i>
-                                                                        </button>
+                                                                            triggerUndo(`已刪除字典：${name}`, () => { updateCloudData('settings', { ...settings, customNameMap: backupMap }); });
+                                                                        }} className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 lg:opacity-0 group-hover:opacity-100 transition-all shadow-sm"><i className="fa-solid fa-trash-can"></i></button>
                                                                     </div>
                                                                 ))}
-
-                                                                {/* 查無資料或空狀態 */}
                                                                 {filteredDict.length === 0 && (
                                                                     <div className="flex flex-col items-center justify-center text-slate-400 text-sm font-medium p-8 h-full min-h-[200px]">
                                                                         <i className={`fa-solid ${dictSearch ? 'fa-magnifying-glass-minus' : 'fa-box-open'} text-4xl text-slate-200 dark:text-slate-700 mb-3`}></i>
@@ -2064,76 +1771,35 @@
                                                                     </div>
                                                                 )}
                                                             </div>
-
-                                                            {/* ✨ 分頁控制列 */}
                                                             {dictTotalPages > 1 && (
                                                                 <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
-                                                                    <button
-                                                                        disabled={dictCurrentPage === 1}
-                                                                        onClick={() => setDictCurrentPage(p => Math.max(1, p - 1))}
-                                                                        className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center"
-                                                                    >
-                                                                        <i className="fa-solid fa-angle-left mr-1.5"></i> 上一頁
-                                                                    </button>
-                                                                    <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
-                                                                        第 {dictCurrentPage} / {dictTotalPages} 頁
-                                                                    </span>
-                                                                    <button
-                                                                        disabled={dictCurrentPage === dictTotalPages}
-                                                                        onClick={() => setDictCurrentPage(p => Math.min(dictTotalPages, p + 1))}
-                                                                        className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center"
-                                                                    >
-                                                                        下一頁 <i className="fa-solid fa-angle-right ml-1.5"></i>
-                                                                    </button>
+                                                                    <button disabled={dictCurrentPage === 1} onClick={() => setDictCurrentPage(p => Math.max(1, p - 1))} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center"><i className="fa-solid fa-angle-left mr-1.5"></i> 上一頁</button>
+                                                                    <span className="text-sm font-bold text-slate-500 dark:text-slate-400">第 {dictCurrentPage} / {dictTotalPages} 頁</span>
+                                                                    <button disabled={dictCurrentPage === dictTotalPages} onClick={() => setDictCurrentPage(p => Math.min(dictTotalPages, p + 1))} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center">下一頁 <i className="fa-solid fa-angle-right ml-1.5"></i></button>
                                                                 </div>
                                                             )}
                                                         </div>
                                                     </div>
-
-                                                    {/* 右側：批量匯入區塊 */}
                                                     <div className="flex flex-col h-full bg-teal-50/50 dark:bg-teal-500/5 rounded-2xl border border-teal-100 dark:border-teal-500/20 p-5 md:p-6">
-                                                        <label className="block text-base font-bold text-teal-800 dark:text-teal-400 mb-2 flex items-center">
-                                                            <i className="fa-solid fa-paste mr-2"></i>批量匯入 (覆寫/新增)
-                                                        </label>
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                                                            請貼上 Excel 內容，格式需為：<br /><strong className="text-teal-600 dark:text-teal-500">「條碼 [Tab或逗號或空格] 品名」</strong>，每行一筆。
-                                                        </p>
-
-                                                        <textarea className="w-full flex-1 px-4 py-4 border border-teal-200/60 dark:border-teal-500/30 rounded-xl outline-none min-h-[140px] text-sm font-mono whitespace-pre dark:bg-slate-900/80 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 transition-shadow resize-none" placeholder="6941313089877	DIMOO 隱藏版&#10;6941313071988	SKULLPANDA 盒玩..." value={dictInput} onChange={(e) => setDictInput(e.target.value)}></textarea>
-
+                                                        <label className="block text-base font-bold text-teal-800 dark:text-teal-400 mb-2 flex items-center"><i className="fa-solid fa-paste mr-2"></i>批量匯入 (覆寫/新增)</label>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">請貼上 Excel 內容，格式需為：<br /><strong className="text-teal-600 dark:text-teal-500">「條碼 [Tab或逗號或空格] 品名」</strong>，每行一筆。</p>
+                                                        <textarea className="w-full flex-1 px-4 py-4 border border-teal-200/60 dark:border-teal-500/30 rounded-xl outline-none min-h-[140px] text-sm font-mono whitespace-pre dark:bg-slate-900/80 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 transition-shadow resize-none" placeholder={`6941313089877\tDIMOO 隱藏版\n6941313071988\tSKULLPANDA 盒玩...`} value={dictInput} onChange={(e) => setDictInput(e.target.value)}></textarea>
                                                         <div className="flex flex-wrap justify-end mt-5 gap-3">
-                                                            <button onClick={() => {
-                                                                const backupMap = { ...settings.customNameMap };
-                                                                updateCloudData('settings', { ...settings, customNameMap: {} });
-                                                                setDictCurrentPage(1);
-
-                                                                // ✨ 觸發復原
-                                                                triggerUndo('已清空翻譯字典', () => {
-                                                                    updateCloudData('settings', { ...settings, customNameMap: backupMap });
-                                                                });
-                                                            }} className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
-                                                                清空字典
-                                                            </button>
-                                                            <button onClick={handleImportDict} className="flex-1 sm:flex-none px-6 py-2.5 bg-teal-500 text-white text-sm font-bold rounded-xl hover:bg-teal-600 shadow-lg shadow-teal-500/20 transition-all active:scale-95 flex items-center justify-center">
-                                                                <i className="fa-solid fa-cloud-arrow-up mr-2"></i> 同步至雲端
-                                                            </button>
+                                                            <button onClick={() => { const backupMap = { ...settings.customNameMap }; updateCloudData('settings', { ...settings, customNameMap: {} }); setDictCurrentPage(1); triggerUndo('已清空翻譯字典', () => { updateCloudData('settings', { ...settings, customNameMap: backupMap }); }); }} className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">清空字典</button>
+                                                            <button onClick={handleImportDict} className="flex-1 sm:flex-none px-6 py-2.5 bg-teal-500 text-white text-sm font-bold rounded-xl hover:bg-teal-600 shadow-lg shadow-teal-500/20 transition-all active:scale-95 flex items-center justify-center"><i className="fa-solid fa-cloud-arrow-up mr-2"></i> 同步至雲端</button>
                                                         </div>
                                                     </div>
-
                                                 </div>
                                             );
                                         })()}
                                     </div>
-
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* ✨ 全新：底部 Navigation Dock (整合控制膠囊與漢堡選單) */}
+                    {/* 底部導覽 Dock */}
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-2xl rounded-full p-2 flex items-center z-50 no-print transition-all duration-300">
-
-                        {/* 左側：主要分頁按鈕 */}
                         <div className="flex items-center gap-2 sm:gap-3 px-2">
                             <button onClick={() => { setActiveTab('daily-report'); setIsMobileMenuOpen(false); }} className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'daily-report' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="銷售日報"><i className="fa-solid fa-file-invoice text-lg"></i></button>
                             <button onClick={() => { setActiveTab('damaged-box'); setIsMobileMenuOpen(false); }} className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'damaged-box' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="盒損登記"><i className="fa-solid fa-box-open text-lg"></i></button>
@@ -2141,41 +1807,19 @@
                             <button onClick={() => { setActiveTab('barcode-print'); setIsMobileMenuOpen(false); }} className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'barcode-print' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="條碼列印"><i className="fa-solid fa-barcode text-lg"></i></button>
                             <button onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }} className={`w-11 h-11 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all ${activeTab === 'settings' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700'}`} title="系統設定"><i className="fa-solid fa-gear text-lg"></i></button>
                         </div>
-
-                        {/* 中間：分隔線 (僅桌機/平板顯示) */}
                         <div className="hidden sm:block w-px h-8 bg-slate-200 dark:bg-slate-700 mx-2"></div>
-
-                        {/* 右側：控制膠囊 (僅桌機/平板顯示) */}
                         <div className="hidden sm:flex items-center gap-3 pr-2">
-                            <div className={`text-xs font-bold px-3 py-1.5 rounded-full ${dbStatus.includes('同步') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
-                                {dbStatus}
-                            </div>
-                            <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-11 h-11 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-700 text-amber-500 hover:scale-110 transition-transform">
-                                <i className={`fa-solid ${isDarkMode ? 'fa-moon' : 'fa-sun'}`}></i>
-                            </button>
-                            <button onClick={handleLogout} className="w-11 h-11 rounded-full flex items-center justify-center bg-rose-50 dark:bg-rose-500/20 text-rose-500 hover:scale-110 transition-transform" title="登出">
-                                <i className="fa-solid fa-arrow-right-from-bracket"></i>
-                            </button>
+                            <div className={`text-xs font-bold px-3 py-1.5 rounded-full ${dbStatus.includes('同步') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>{dbStatus}</div>
+                            <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-11 h-11 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-700 text-amber-500 hover:scale-110 transition-transform"><i className={`fa-solid ${isDarkMode ? 'fa-moon' : 'fa-sun'}`}></i></button>
+                            <button onClick={handleLogout} className="w-11 h-11 rounded-full flex items-center justify-center bg-rose-50 dark:bg-rose-500/20 text-rose-500 hover:scale-110 transition-transform" title="登出"><i className="fa-solid fa-arrow-right-from-bracket"></i></button>
                         </div>
-
-                        {/* 右側：漢堡選單按鈕 (僅手機顯示) */}
                         <div className="sm:hidden relative ml-1 pr-1">
-                            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isMobileMenuOpen ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
-                                <i className={`fa-solid ${isMobileMenuOpen ? 'fa-xmark' : 'fa-bars'} text-lg`}></i>
-                            </button>
-
-                            {/* 手機專用彈出選單 (Popover) */}
+                            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isMobileMenuOpen ? 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}><i className={`fa-solid ${isMobileMenuOpen ? 'fa-xmark' : 'fa-bars'} text-lg`}></i></button>
                             {isMobileMenuOpen && (
                                 <div className="absolute bottom-16 right-0 mb-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-3 flex flex-col gap-3 min-w-[160px] animate-scale-in origin-bottom-right">
-                                    <div className={`text-xs text-center font-bold px-3 py-2 rounded-full ${dbStatus.includes('同步') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
-                                        {dbStatus}
-                                    </div>
-                                    <button onClick={() => { setIsDarkMode(!isDarkMode); setIsMobileMenuOpen(false); }} className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold rounded-xl active:scale-95 transition-transform">
-                                        <i className={`fa-solid ${isDarkMode ? 'fa-moon' : 'fa-sun'} text-amber-500`}></i> {isDarkMode ? '深色模式' : '淺色模式'}
-                                    </button>
-                                    <button onClick={handleLogout} className="flex items-center justify-center gap-2 w-full py-2.5 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold rounded-xl active:scale-95 transition-transform">
-                                        <i className="fa-solid fa-arrow-right-from-bracket"></i> 安全登出
-                                    </button>
+                                    <div className={`text-xs text-center font-bold px-3 py-2 rounded-full ${dbStatus.includes('同步') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>{dbStatus}</div>
+                                    <button onClick={() => { setIsDarkMode(!isDarkMode); setIsMobileMenuOpen(false); }} className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-bold rounded-xl active:scale-95 transition-transform"><i className={`fa-solid ${isDarkMode ? 'fa-moon' : 'fa-sun'} text-amber-500`}></i> {isDarkMode ? '深色模式' : '淺色模式'}</button>
+                                    <button onClick={handleLogout} className="flex items-center justify-center gap-2 w-full py-2.5 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold rounded-xl active:scale-95 transition-transform"><i className="fa-solid fa-arrow-right-from-bracket"></i> 安全登出</button>
                                 </div>
                             )}
                         </div>
@@ -2199,83 +1843,44 @@
                         </div>
                     )}
 
-                    {/* ✨ 極簡美化版：相機掃描器彈出視窗 */}
                     {scannerOpen && (
                         <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-[70] flex flex-col items-center justify-center animate-scale-in no-print">
-
-                            <style>
-                                {`
-                              /* 強制將影片填滿並裁切成圓角 */
-                              #reader video { object-fit: cover; border-radius: 1.5rem; width: 100%; height: 100%; }
-                              /* 科技感掃描線動畫 */
-                              @keyframes scanline {
-                                  0% { transform: translateY(-100px); opacity: 0; }
-                                  10% { opacity: 1; }
-                                  90% { opacity: 1; }
-                                  100% { transform: translateY(100px); opacity: 0; }
-                              }
-                              .animate-scanline { animation: scanline 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
-                          `}
-                            </style>
-
-                            {/* 頂部標題列 (懸浮) */}
+                            <style>{`
+                                #reader video { object-fit: cover; border-radius: 1.5rem; width: 100%; height: 100%; }
+                                @keyframes scanline { 0% { transform: translateY(-100px); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(100px); opacity: 0; } }
+                                .animate-scanline { animation: scanline 2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+                            `}</style>
                             <div className="absolute top-0 inset-x-0 p-6 flex justify-between items-center z-10 max-w-md mx-auto">
                                 <div className="text-white font-bold text-sm flex items-center bg-white/10 px-4 py-2 rounded-full backdrop-blur-lg border border-white/10 shadow-lg">
                                     <i className="fa-solid fa-barcode text-blue-400 mr-2"></i>
                                     {scannerTarget === 'damaged' ? '自動登錄：盒損品' : scannerTarget === 'display' ? '自動登錄：陳列品' : '自動登錄：列印清單'}
                                 </div>
-                                <button onClick={() => setScannerOpen(false)} className="w-11 h-11 rounded-full bg-white/10 text-white hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-lg border border-white/10">
-                                    <i className="fa-solid fa-xmark text-lg"></i>
-                                </button>
+                                <button onClick={() => setScannerOpen(false)} className="w-11 h-11 rounded-full bg-white/10 text-white hover:bg-white/20 flex items-center justify-center transition-colors backdrop-blur-lg border border-white/10"><i className="fa-solid fa-xmark text-lg"></i></button>
                             </div>
-
-                            {/* 中央相機畫面區 */}
                             <div className="relative w-full max-w-sm px-6 mt-12">
                                 <div className="relative overflow-hidden rounded-[1.5rem] border border-white/20 shadow-[0_0_50px_rgba(99,102,241,0.15)] bg-black/50 aspect-[3/4] flex items-center justify-center">
-                                    {/* 相機影像會注入在此 */}
                                     <div id="reader" className="absolute inset-0 w-full h-full"></div>
-
-                                    {/* 半透明遮罩 (營造出中間亮、四周暗的掃描框視覺) */}
                                     <div className="absolute inset-0 border-[40px] border-black/40 rounded-[1.5rem] pointer-events-none mix-blend-multiply"></div>
-
-                                    {/* 掃描線特效 */}
                                     <div className="absolute inset-x-0 top-1/2 h-0.5 bg-blue-500 shadow-[0_0_15px_2px_rgba(99,102,241,0.8)] animate-scanline pointer-events-none z-10"></div>
                                 </div>
-
-                                <p className="text-center text-slate-400 text-sm mt-8 font-medium tracking-wide">
-                                    將條碼對準畫面中央<br />系統掃描後將<strong className="text-blue-400 font-bold ml-1">自動送出</strong>
-                                </p>
+                                <p className="text-center text-slate-400 text-sm mt-8 font-medium tracking-wide">將條碼對準畫面中央<br />系統掃描後將<strong className="text-blue-400 font-bold ml-1">自動送出</strong></p>
                             </div>
                         </div>
                     )}
 
-
-
-                    {/* ✨ 質感底色 ＋ 紅色進度條 Undo 復原介面 (修復手機版擠壓與 24px 邊距) */}
                     {undoData && (
                         <div className="fixed bottom-28 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] md:w-auto md:min-w-[360px] max-w-md bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 p-4 md:px-6 md:py-4 rounded-2xl shadow-2xl flex items-center justify-between gap-4 z-[80] overflow-hidden animate-slide-up-fade border border-slate-200 dark:border-slate-700 no-print transition-colors">
-                            <span className="text-sm font-bold tracking-wide flex items-center flex-1 leading-snug min-w-0">
-                                <i className="fa-solid fa-circle-exclamation text-rose-500 mr-2.5 shrink-0"></i>
-                                <span className="line-clamp-2">{undoData.message}</span>
-                            </span>
-                            <button onClick={handleUndoAction} className="shrink-0 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2 transition-all cursor-pointer shadow-sm border border-slate-200 dark:border-slate-600">
-                                <i className="fa-solid fa-rotate-left"></i> 復原
-                            </button>
-                            {/* 5 秒直線倒數進度條 */}
+                            <span className="text-sm font-bold tracking-wide flex items-center flex-1 leading-snug min-w-0"><i className="fa-solid fa-circle-exclamation text-rose-500 mr-2.5 shrink-0"></i><span className="line-clamp-2">{undoData.message}</span></span>
+                            <button onClick={handleUndoAction} className="shrink-0 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-xl font-bold text-sm active:scale-95 flex items-center gap-2 transition-all cursor-pointer shadow-sm border border-slate-200 dark:border-slate-600"><i className="fa-solid fa-rotate-left"></i> 復原</button>
                             <div className="absolute bottom-0 left-0 h-1.5 bg-rose-500 animate-shrink-x origin-left w-full shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
                         </div>
                     )}
 
-                    {/* ✨ 全域綠色 Toast 提示 (修復手機版寬度與 24px 邊距) */}
                     {toast && (
-                        <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] sm:w-auto max-w-md z-[60] bg-emerald-500 text-white px-6 py-3.5 rounded-2xl shadow-xl font-bold animate-slide-up-fade no-print flex items-center justify-center text-center text-sm md:text-base leading-snug">
-                            {toast}
-                        </div>
+                        <div className="fixed top-24 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] sm:w-auto max-w-md z-[60] bg-emerald-500 text-white px-6 py-3.5 rounded-2xl shadow-xl font-bold animate-slide-up-fade no-print flex items-center justify-center text-center text-sm md:text-base leading-snug">{toast}</div>
                     )}
 
-                    {/* =========================================
-                  列印渲染區域 (Print Only DOM)
-              ========================================= */}
+                    {/* 列印渲染區 */}
                     <div className="print-only">
                         {printContext === 'damaged' && (
                             <div id="print-area-damaged">
@@ -2292,31 +1897,19 @@
                                                     <div className="pr-2 flex-1"><div className="font-bold text-[14px]">{item.name}</div></div>
                                                     <div className="font-bold text-[16px] whitespace-nowrap">x {item.quantity}</div>
                                                 </div>
-                                                <div className="mt-1 flex justify-center w-full">
-                                                    <BarcodeImage value={item.barcode} printMode={false} hideName={true} />
-                                                </div>
+                                                <div className="mt-1 flex justify-center w-full"><BarcodeImage value={item.barcode} printMode={false} hideName={true} /></div>
                                             </div>
                                         ))}
                                     </div>
                                 ))}
-                                <div className="border-t border-black pt-3 mt-4 text-center text-[14px] font-bold">
-                                    本次盤點總件數: {damagedItems.reduce((sum, item) => sum + item.quantity, 0)} 件
-                                </div>
+                                <div className="border-t border-black pt-3 mt-4 text-center text-[14px] font-bold">本次盤點總件數: {damagedItems.reduce((sum, item) => sum + item.quantity, 0)} 件</div>
                             </div>
                         )}
-
                         {printContext === 'barcode-all' && (
-                            <div id="print-area-barcode">
-                                {barcodeItems.map(item => (
-                                    <BarcodeImage key={item.id} value={item.barcode} name={item.name} quantity={item.quantity} printMode={true} />
-                                ))}
-                            </div>
+                            <div id="print-area-barcode">{barcodeItems.map(item => (<BarcodeImage key={item.id} value={item.barcode} name={item.name} quantity={item.quantity} printMode={true} />))}</div>
                         )}
-
                         {printContext?.type === 'barcode-single' && (
-                            <div id="print-area-barcode">
-                                <BarcodeImage value={printContext.item.barcode} name={printContext.item.name} quantity={printContext.item.quantity} printMode={true} />
-                            </div>
+                            <div id="print-area-barcode"><BarcodeImage value={printContext.item.barcode} name={printContext.item.name} quantity={printContext.item.quantity} printMode={true} /></div>
                         )}
                     </div>
 
