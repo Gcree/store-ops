@@ -9,6 +9,7 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 body {
     padding-bottom: env(safe-area-inset-bottom);
     -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 button {
@@ -168,11 +169,6 @@ button:active {
     background: #94a3b8;
 }
 
-body {
-    padding-bottom: 80px;
-    transition: background-color 0.3s ease, color 0.3s ease;
-}
-
 #reader {
     border: none !important;
     border-radius: 1rem;
@@ -199,14 +195,13 @@ body {
 
 /* --- 這是全新的輕量一體成型標籤 CSS --- */
 .custom-print-label {
-            width: 72mm; /* 從 76mm 縮小到 72mm，避開裁切區 */
-            padding: 0 2mm; /* 增加左右安全留白 */
-            margin: 0 auto 5mm auto;
-            page-break-inside: avoid;
-            font-family: sans-serif;
-            color: black !important;
-            background: white !important;
-        }
+    width: 76mm;
+    margin: 0 auto 5mm auto;
+    page-break-inside: avoid;
+    font-family: sans-serif;
+    color: black !important;
+    background: white !important;
+}
 
 .custom-print-container {
     border: 2px solid #000;
