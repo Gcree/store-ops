@@ -27,3 +27,19 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+// 啟動階段：清除舊版本的快取 (Cache Busting)
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          // 如果手機裡的快取名稱跟現在的 CACHE_NAME 不一樣，就刪除舊的
+          if (cacheName !== CACHE_NAME) {
+            console.log('刪除舊快取:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+});
