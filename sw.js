@@ -1,4 +1,4 @@
-const CACHE_NAME = 'p-ops-cache-v1';
+const CACHE_NAME = 'p-ops-cache-v2';
 // 這裡放你要讓手機「離線下載」的檔案清單
 const urlsToCache = [
   './',
