@@ -1,4 +1,4 @@
-const CACHE_NAME = 'p-ops-cache-v2';
+const CACHE_NAME = 'p-ops-cache-v3';
 // 這裡放你要讓手機「離線下載」的檔案清單
 const urlsToCache = [
   './',
@@ -17,13 +17,22 @@ self.addEventListener('install', event => {
   );
 });
 
-// 2. 攔截請求階段：當沒有網路時，就從快取拿檔案出來
+// 2. 攔截請求階段 (改為 Network First 網路優先策略)
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // 如果快取裡有這個檔案，就直接給快取；沒有的話才去網路抓
-        return response || fetch(event.request);
+    // 步驟一：先嘗試去網路上抓最新版本的檔案
+    fetch(event.request)
+      .then(networkResponse => {
+        // 如果抓成功了，就把最新版「偷偷更新」到手機的快取裡
+        return caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse; // 然後把最新畫面呈現給使用者
+        });
+      })
+      .catch(() => {
+        // 步驟二：如果 catch 觸發（代表沒網路、離線），才從快取拿出舊檔案來應急
+        console.log('目前處於離線狀態，載入快取檔案');
+        return caches.match(event.request);
       })
   );
 });
