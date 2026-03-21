@@ -17,25 +17,26 @@ self.addEventListener('install', event => {
   );
 });
 
-// 2. 攔截請求階段 (改為 Network First 網路優先策略)
+// 2. 攔截請求階段 (Network First 網路優先策略)
 self.addEventListener('fetch', event => {
+  // 👇 加入這行：只允許快取 GET 請求，放行所有 Firebase 的 POST API 請求
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    // 步驟一：先嘗試去網路上抓最新版本的檔案
     fetch(event.request)
       .then(networkResponse => {
-        // 如果抓成功了，就把最新版「偷偷更新」到手機的快取裡
         return caches.open(CACHE_NAME).then(cache => {
           cache.put(event.request, networkResponse.clone());
-          return networkResponse; // 然後把最新畫面呈現給使用者
+          return networkResponse;
         });
       })
       .catch(() => {
-        // 步驟二：如果 catch 觸發（代表沒網路、離線），才從快取拿出舊檔案來應急
         console.log('目前處於離線狀態，載入快取檔案');
         return caches.match(event.request);
       })
   );
 });
+
 // 啟動階段：清除舊版本的快取 (Cache Busting)
 self.addEventListener('activate', event => {
   event.waitUntil(
