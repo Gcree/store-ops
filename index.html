@@ -9,6 +9,7 @@
     <meta name="apple-mobile-web-app-title" content="P-ops">
     <title>P-ops 懶人系統</title>
     <link rel="stylesheet" href="./style.css">
+    <link rel="manifest" href="./manifest.json">
     <link rel="preconnect" href="https://firestore.googleapis.com">
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
     <link rel="preconnect" href="https://securetoken.googleapis.com">
@@ -1993,6 +1994,19 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('SW 註冊成功，範圍：', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('SW 註冊失敗：', err);
+                    });
+            });
+        }
     </script>
 </body>
 
