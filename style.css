@@ -199,13 +199,14 @@ body {
 
 /* --- 這是全新的輕量一體成型標籤 CSS --- */
 .custom-print-label {
-    width: 76mm;
-    margin: 0 auto 5mm auto;
-    page-break-inside: avoid;
-    font-family: sans-serif;
-    color: black !important;
-    background: white !important;
-}
+            width: 72mm; /* 從 76mm 縮小到 72mm，避開裁切區 */
+            padding: 0 2mm; /* 增加左右安全留白 */
+            margin: 0 auto 5mm auto;
+            page-break-inside: avoid;
+            font-family: sans-serif;
+            color: black !important;
+            background: white !important;
+        }
 
 .custom-print-container {
     border: 2px solid #000;
