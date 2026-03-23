@@ -894,19 +894,19 @@
                 const mega400qty = todayStats.bigToys?.['400']?.qty || 0;
 
                 const templates = [
-                    { tags: ['上架秒殺'], text: `今天是週${weekdayStr}，「${top1.name}」一上架就被搶購一空，售完後還是不斷有客人來問還有沒有貨，今日佔業績 ${top1Percent}%，完全感受到這款的人氣有多高。\n\n「${top2.name}」緊接在後拿下今日第二名，佔比 ${top2Percent}%，今天整體買氣相當不錯，收穫滿滿。` },
-                    { tags: ['上架秒殺'], text: `今天週${weekdayStr}補進了「${top1.name}」，一上架不到幾分鐘就幾乎被搶光，現場氣氛非常熱烈，售完後還是有許多客人陸續來詢問，可見這款的人氣真的非常高，大家都很期待能入手。\n\n今日銷售第二名是「${top2.name}」，佔比 ${top2Percent}%，整體業績在補貨助攻下表現相當亮眼。` },
+                    { tags: ['突襲商品','客人端盒'], text: `今天是週${weekdayStr}，「${top1.name}」一上架就吸引許多人興趣，許多人在現場詢問是否有一中盒可以購買，佔今日業績 ${top1Percent}%，完全感受到這款的人氣有多高。\n\n「${top2.name}」則拿下今日第二名，佔比 ${top2Percent}%，今天整體買氣相當不錯，收穫滿滿。` },
+                    { tags: ['補貨熱銷'], text: `今天週${weekdayStr}補進了「${top1.name}」，一上架不到幾分鐘就有許多人結帳，現場氣氛非常熱烈，有許多客人購買了不少的散盒，只為抽到自己想要的款式，可見這款的人氣之高，大家都很開心能入手。\n\n今日銷售第二名是「${top2.name}」，佔比 ${top2Percent}%，整體業績在補貨商品的加持下表現得相當亮眼。` },
                     { tags: ['假日人潮'], text: `今天是週${weekdayStr}，許多家長帶著小朋友來台茂逛街，人潮比平日明顯多了許多。「${top1.name}」吸引了大批客人的目光，現場不時傳來抽到喜歡款的驚喜聲，今日售出 ${top1.quantity} 件，佔業績 ${top1Percent}%。\n\n「${top2.name}」同樣深受喜愛，佔比 ${top2Percent}%，今天整個賣場充滿歡樂的氣氛，能看到客人滿載而歸真的很開心。` },
-                    { tags: ['假日人潮', '客人端盒'], text: `今天是週${weekdayStr}，假日人潮絡繹不絕，家庭客群特別多。讓人印象深刻的是有幾組客人直接以中盒為單位購買「${top1.name}」，就是衝著要湊套來的，帶動了整體買氣，這款佔今日業績 ${top1Percent}%，拿下今日冠軍。\n\n「${top2.name}」在假日人潮的帶動下也有 ${top2Percent}% 的好表現，今天業績相當豐收！` },
+                    { tags: ['假日人潮', '客人端盒'], text: `今天是週${weekdayStr}，假日人潮絡繹不絕，家庭客群特別多。讓人印象深刻的是有幾組客人直接以中盒為單位購買「${top1.name}」，帶動了整體買氣，這款佔今日業績 ${top1Percent}%，拿下今日冠軍。\n\n「${top2.name}」在假日人潮的帶動下也有 ${top2Percent}% 的好表現，今天業績相當豐收！` },
                     { tags: ['天氣不佳'], text: `今天週${weekdayStr}天氣不太好，但門市的客人沒有因此少，還是一樣很熱絡。很多客人都詢問現場沒貨的商品，得知沒有庫存後還會再問陳列品能不能賣，看來客人對於心中喜歡的商品沒得到手真的不善罷甘休。\n\n今天熱銷第一名是「${top1.name}」，佔了整體業績 ${top1Percent}%，「${top2.name}」緊接其後，佔比 ${top2Percent}%，今天業績整體表現撐得住。` },
                     { tags: ['天氣不佳'], text: `今天週${weekdayStr}外面比前幾天還冷，不過門市的人潮沒有因此減少，到了晚餐時間人流甚至明顯變多了。今天有不少客人一進門就直接鎖定「${top1.name}」，今日佔業績 ${top1Percent}%，成為當日銷售冠軍。\n\n「${top2.name}」今天表現也相當穩定，佔比 ${top2Percent}%，整體業績比預期好，算是不錯的一天。` },
                     { tags: ['天氣不佳', '大排長龍'], text: `今天週${weekdayStr}外面一直下著雨，但這完全擋不住大家出門的熱情，一開店門口就已經有客人在等了，就是衝著「${top1.name}」的補貨來的！最終這款佔了今日業績 ${top1Percent}%，雨天照樣賣到缺貨。\n\n「${top2.name}」同樣表現不俗，拿下第二名、佔比 ${top2Percent}%，今天天氣差但業績好，非常值得！` },
                     { tags: ['客人端盒'], text: `今天週${weekdayStr}出現了一位很豪氣的客人，直接把「${top1.name}」整中盒帶走，旁邊的客人看到之後也跟著手癢起來，陸續跟進，帶動了整體買氣，這款最終佔了今日業績 ${top1Percent}%，登上銷售冠軍。\n\n「${top2.name}」今天也有不錯的表現，佔比 ${top2Percent}%，今天整體業績表現扎實，收穫滿滿。` },
                     { tags: ['客人端盒'], text: `今天週${weekdayStr}傍晚來了一個家庭，大人帶著小朋友一起挑「${top1.name}」，每開一盒就全家人一起猜款式，抽到重複款時小孩雖然有點失望，但大人還是笑著再買一盒，那個氛圍真的很溫馨，最後這款佔了今日業績 ${top1Percent}%，成為銷售冠軍。\n\n「${top2.name}」今天佔比 ${top2Percent}%，今天整個門市都是這樣充滿溫暖的畫面。` },
-                    { tags: ['客人端盒', '補貨熱銷'], text: `今天週${weekdayStr}補了「${top1.name}」的貨，上架沒多久就有客人直接端盒帶走，其他客人看到之後也紛紛跟進，補進來的量下午就快見底了，整日佔了業績 ${top1Percent}%，補貨節奏很順，去化速度讓人驚喜。\n\n「${top2.name}」今天同樣有 ${top2Percent}% 的好表現，今天整體業績超出預期，補貨策略押對了！` },
-                    { tags: ['大單出現'], text: `今天週${weekdayStr}出現了一位剛辦會員就大手筆消費的新客人，一口氣帶走了好幾款，消費金額相當驚人，成為今天的大客戶，真的很開心我們的商品能吸引到他！\n\n今日銷售冠軍是「${top1.name}」，佔業績 ${top1Percent}%，第二名「${top2.name}」佔比 ${top2Percent}%，在大單助攻下今天業績相當漂亮。` },
+                    { tags: ['客人端盒', '補貨熱銷'], text: `今天週${weekdayStr}補了「${top1.name}」的貨，上架沒多久就有客人直接端盒帶走，其他客人看到之後也紛紛跟進，補進來的量下午就快見底了，整日佔了業績 ${top1Percent}%，補貨節奏很順，去化速度讓人驚喜。\n\n「${top2.name}」今天同樣有 ${top2Percent}% 的好表現，今天整體業績超出預期。` },
+                    { tags: ['大單出現'], text: `今天週${weekdayStr}出現了一位大手筆消費的新客人，一口氣帶走了好幾款，消費金額相當驚人，成為今天的大客戶。\n\n今日銷售冠軍是「${top1.name}」，佔業績 ${top1Percent}%，第二名「${top2.name}」佔比 ${top2Percent}%，也因這位客人的出現，讓今天的業績表現不錯。` },
                     { tags: ['大單出現', '客人端盒'], text: `今天週${weekdayStr}客單價表現亮眼，有好幾位客人是以中盒為單位在購買「${top1.name}」，其中一位更是加購了多款散盒一起帶走，光這位客人的消費就已經非常驚人，今日這款佔業績 ${top1Percent}%，穩坐冠軍。\n\n「${top2.name}」佔比達 ${top2Percent}%，今天算是質量遠大於數量的一天，客單價拉得很好！` },
-                    { tags: ['MEGA熱銷'], text: `今天週${weekdayStr}最讓人驚喜的是 MEGA 系列的表現，店內陸續賣出了 ${mega400qty} 隻 400%，每位帶走的客人都超興奮，有幾位說沒抽到目標款可能還會再來挑戰，大家對這系列的熱情真的很難抵擋。\n\n盲盒方面「${top1.name}」依然是今日業績擔當，佔比 ${top1Percent}%，「${top2.name}」緊接在後，整體業績相當亮眼，收穫滿滿 💪` },
+                    { tags: ['MEGA熱銷'], text: `今天週${weekdayStr}最讓人驚喜的是 MEGA 系列的表現，賣出了 ${mega400qty} 隻 400%，每位帶走的客人都很開心，大家對這系列的熱情真的很難抵擋。\n\n盲盒方面「${top1.name}」是今日業績擔當，佔比 ${top1Percent}%，「${top2.name}」緊接在後，整體業績相當亮眼，收穫滿滿。` },
                     { tags: ['MEGA熱銷'], text: `今天週${weekdayStr}有客人特地來詢問想要的 MEGA 款式，連續買了好幾隻都沒有抽到，雖然有點失望，但還是很有禮貌地來問能不能和店裡展示品交換，看到這樣的場景真的感受到大家對這系列有多喜愛。今日 MEGA 400% 共售出 ${mega400qty} 隻，表現不俗。\n\n盲盒方面「${top1.name}」今日佔比 ${top1Percent}%，成為今天的銷售冠軍，業績整體令人滿意。` },
                     { tags: ['MEGA熱銷', '大單出現'], text: `今天週${weekdayStr}出現了幾位專程來買 MEGA 的客人，今日共賣出 ${mega400qty} 隻 400%，直接帶走好幾隻，連旁邊的顧客都忍不住停下來看，現場氣氛非常嗨！光 MEGA 系列就為業績貢獻了相當可觀的金額。\n\n盲盒方面「${top1.name}」同樣表現出色，佔比 ${top1Percent}%，今天大單與盲盒雙雙發威，業績非常漂亮 🎉` },
                     { tags: ['大排長龍'], text: `今天週${weekdayStr}一開店門口就有客人在等候，主要都是衝著「${top1.name}」來的！一開賣現場氣氛非常熱烈，很多人就算沒抽到喜歡的款也繼續追，完全停不下來，這款售出 ${top1.quantity} 件，佔業績 ${top1Percent}%，集客力超強。\n\n「${top2.name}」承接了下午的人潮，銷售穩定，佔比 ${top2Percent}%，今天客流從早到晚沒有停過，業績相當豐收。` },
@@ -916,8 +916,8 @@
                     { tags: ['假日人潮', '天氣不佳'], text: `今天週${weekdayStr}天氣稍涼，但家長帶著小朋友來台茂逛街的人潮一點都不少，很多客人都詢問現場沒貨的商品，得知沒有庫存後還問陳列品能不能賣，看來客人對心儀的商品真的不善罷甘休。\n\n今天銷售第一名是「${top1.name}」，佔了整體業績 ${top1Percent}%，「${top2.name}」緊接其後，佔比 ${top2Percent}%，今天業績整體表現相當穩健。` },
                     { tags: ['假日人潮', '補貨熱銷'], text: `今天是週${weekdayStr}，許多家長帶著小朋友來台茂逛街。今天補進了「${top1.name}」，一上架馬上就吸引到親子客群搶購，大人小孩都圍在一起，現場歡樂的氣氛非常熱烈，這款今日佔業績 ${top1Percent}%。\n\n「${top2.name}」也在今天的假日氣氛帶動下有 ${top2Percent}% 的好表現，整體業績相當不錯！` },
                     { tags: ['上架秒殺', 'MEGA熱銷'], text: `今天週${weekdayStr}真的是雙喜臨門，「${top1.name}」一上架就直接秒殺，售出 ${top1.quantity} 件、佔比 ${top1Percent}%，根本沒有留給人猶豫的空間；同時 MEGA 400% 系列今日共賣出 ${mega400qty} 隻，很多客人買完大隻的還順手帶走一堆盲盒，消費力超強。\n\n「${top2.name}」在今天的強勢氛圍帶動下同樣有 ${top2Percent}% 的亮眼表現，整天買氣高漲，今天算是本月數一數二的好日子！` },
-                    { tags: ['客人端盒', '假日人潮', '大單出現'], text: `今天是週${weekdayStr}，假日家庭客群特別多，現場不時傳來一家人一起開盒、抽到喜歡款的歡呼聲，氣氛非常熱鬧。其中還出現一位剛加入會員就消費了相當驚人金額的新客人，真的很開心我們的商品能吸引到他，成為今天的大客戶。\n\n今日銷售冠軍是「${top1.name}」，佔業績 ${top1Percent}%；第二名「${top2.name}」佔比 ${top2Percent}%，今天業績非常漂亮 🎉` },
-                    { tags: ['天氣不佳', '補貨熱銷', '客人端盒'], text: `今天週${weekdayStr}外面下著雨，不過完全擋不住大家衝來補貨的熱情！「${top1.name}」一補進來馬上就有消息靈通的顧客出現，甚至有客人直接以中盒為單位下手，售出 ${top1.quantity} 件，業績佔比 ${top1Percent}%，雨天照樣搶購，讓人感動。\n\n「${top2.name}」今天也有不錯的表現，佔比 ${top2Percent}%，雖然天氣差讓客流少了一點，但今天進來的客人買氣都超強，整體業績比預期好！` }
+                    { tags: ['客人端盒', '假日人潮', '大單出現'], text: `今天是週${weekdayStr}，假日家庭客群特別多，現場不時傳來一家人一起開盒、抽到喜歡款的歡呼聲，氣氛非常熱鬧。其中還出現一位剛加入會員就消費了相當驚人金額的新客人，真的很開心我們的商品能吸引到他，成為今天的大客戶。\n\n今日銷售冠軍是「${top1.name}」，佔業績 ${top1Percent}%；第二名「${top2.name}」佔比 ${top2Percent}%，今天業績非常漂亮。` },
+                    { tags: ['天氣不佳', '補貨熱銷', '客人端盒'], text: `今天週${weekdayStr}外面下著雨，不過完全擋不住大家衝來購物的熱情！「${top1.name}」一補進來馬上就有消息靈通的顧客出現，不少客人直接以中盒為單位下手，售出 ${top1.quantity} 件，業績佔比 ${top1Percent}%，雨天照樣搶購，讓人感動。\n\n「${top2.name}」今天也有不錯的表現，佔比 ${top2Percent}%，雖然天氣差讓客流少了一點，但今天進來的客人買氣都超強，帶來不俗的表現。` }
                 ];
 
                 const activeKeywords = Array.from(selectedKeywords);
@@ -1202,7 +1202,9 @@
                                             <div className="mb-6 w-full md:w-1/2">
                                                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">選定月份業績目標 (萬)</label>
                                                 <div className="relative">
-                                                    <input type="number" className="w-full pl-4 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-900 dark:text-white" value={settings.targetAmount} onChange={(e) => updateCloudData('settings', { ...settings, targetAmount: Number(e.target.value) })} />
+                                                    <input type="number" inputMode="numeric"     /* 👈 新增這行：強制手機叫出數字九宮格鍵盤 */
+                                                    pattern="[0-9]*"        /* 👈 新增這行：確保 iOS 乖乖聽話 */
+                                                    min="1" className="w-full pl-4 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-900 dark:text-white" value={settings.targetAmount} onChange={(e) => updateCloudData('settings', { ...settings, targetAmount: Number(e.target.value) })} />
                                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-slate-500">萬</span></div>
                                                 </div>
                                             </div>
@@ -1210,7 +1212,9 @@
                                                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">追蹤的新品 Barcode</label>
                                                 <div className="flex flex-col sm:flex-row gap-2 mb-3">
                                                     <input type="text" className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="輸入條碼..." value={newBarcodeStr} onChange={(e) => setNewBarcodeStr(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addNewBarcode()} />
-                                                    <div className="relative w-full sm:w-32"><input type="number" className="w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="端盒數量" value={newBoxSize} onChange={(e) => setNewBoxSize(Number(e.target.value))} min="1" /><div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-slate-500 text-xs">入/盒</span></div></div>
+                                                    <div className="relative w-full sm:w-32"><input type="number" inputMode="numeric"     /* 👈 新增這行：強制手機叫出數字九宮格鍵盤 */
+                                                        pattern="[0-9]*"        /* 👈 新增這行：確保 iOS 乖乖聽話 */
+                                                        min="1" className="w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="端盒數量" value={newBoxSize} onChange={(e) => setNewBoxSize(Number(e.target.value))} min="1" /><div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-slate-500 text-xs">入/盒</span></div></div>
                                                     <button onClick={addNewBarcode} className="px-4 py-2 bg-slate-800 dark:bg-blue-600 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-blue-700 transition-colors"><i className="fa-solid fa-plus mr-1"></i> 新增</button>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
@@ -1249,7 +1253,7 @@
                                                         )}
                                                     </div>
                                                     <div className="flex flex-wrap gap-2">
-                                                        {['上架秒殺', '客人端盒', '大排長龍', 'MEGA熱銷', '大單出現', '天氣不佳', '補貨熱銷', '假日人潮'].map(kw => (
+                                                        {['上架秒殺','突襲商品', '客人端盒', '大排長龍', 'MEGA熱銷', '大單出現', '天氣不佳', '補貨熱銷', '假日人潮'].map(kw => (
                                                             <button
                                                                 key={kw}
                                                                 type="button"
@@ -1670,7 +1674,9 @@
                                                                     <div className="flex items-center justify-between w-full pt-3 border-t border-slate-100 dark:border-slate-700/50">
                                                                         <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
                                                                             <button onClick={() => updateDisplayQuantity(item.id, -1)} className="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 transition-colors shadow-sm"><i className="fa-solid fa-minus text-[10px]"></i></button>
-                                                                            <input type="number" min="1" value={item.quantity} onChange={(e) => setDisplayItemQuantity(item.id, e.target.value)} onFocus={(e) => e.target.select()} className="w-10 text-center font-bold text-slate-700 dark:text-slate-200 text-sm bg-transparent outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-amber-500 transition-all rounded px-1 hide-arrows" />
+                                                                            <input type="number" inputMode="numeric"     /* 👈 新增這行：強制手機叫出數字九宮格鍵盤 */
+                                                                            pattern="[0-9]*"        /* 👈 新增這行：確保 iOS 乖乖聽話 */
+                                                                            min="1" value={item.quantity} onChange={(e) => setDisplayItemQuantity(item.id, e.target.value)} onFocus={(e) => e.target.select()} className="w-10 text-center font-bold text-slate-700 dark:text-slate-200 text-sm bg-transparent outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-amber-500 transition-all rounded px-1 hide-arrows" />
                                                                             <button onClick={() => updateDisplayQuantity(item.id, 1)} className="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 transition-colors shadow-sm"><i className="fa-solid fa-plus text-[10px]"></i></button>
                                                                         </div>
 
