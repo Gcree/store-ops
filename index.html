@@ -74,6 +74,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5"></script>
 
 
 </head>
@@ -336,10 +337,17 @@
         }
 
         function BarcodeScannerInput({ target, placeholder, iconClass, onSubmit, onOpenCamera, allDictEntries, settings }) {
-            const { useState, useMemo, useRef } = React;
+            const { useState, useMemo, useRef, useEffect } = React;
             const [inputValue, setInputValue] = useState('');
             const [isFocused, setIsFocused] = useState(false);
             const inputRef = useRef(null);
+
+            useEffect(() => {
+                if (inputRef.current) {
+                    inputRef.current.style.height = 'auto';
+                    inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+                }
+            }, [inputValue]);
 
             const searchSuggestions = useMemo(() => {
                 const input = String(inputValue || '').trim().toLowerCase();
@@ -369,7 +377,7 @@
                 const str = String(inputStr || '').trim();
                 if (!str) return;
 
-                const rawInputs = str.split(/[\n\t,]+/).filter(b => b.trim() !== '');
+                const rawInputs = str.split(/[\n\t, \u3000]+/).filter(b => b.trim() !== '');
                 const items = rawInputs.map(rawInput => {
                     const barcode = getBarcodeFromInput(rawInput);
                     let dictName = findNameInDict(barcode, settings.customNameMap);
@@ -397,21 +405,27 @@
 
             return (
                 <div className="relative w-full">
-                    <form onSubmit={handleSubmit} className="relative flex gap-2 z-20">
+                    <form onSubmit={handleSubmit} className="relative flex items-start gap-2 z-20">
                         <div className="relative flex-1 group">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-transform group-focus-within:scale-110">
+                            <div className="absolute top-0 left-0 pl-4 h-12 md:h-14 flex items-center pointer-events-none transition-transform group-focus-within:scale-110">
                                 <i className={`fa-solid ${iconClass} text-slate-400 group-focus-within:text-blue-500`}></i>
                             </div>
-                            <input
+                            <textarea
                                 ref={inputRef}
-                                type="text"
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSubmit(e);
+                                    }
+                                }}
                                 onFocus={() => setIsFocused(true)}
                                 onBlur={() => setIsFocused(false)}
-                                className="block w-full h-12 md:h-14 pl-11 pr-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:text-white transition-all font-mono text-sm md:text-base outline-none"
+                                className="block w-full min-h-[48px] md:min-h-[56px] pl-11 pr-4 py-3 md:py-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:text-white transition-shadow font-mono text-sm md:text-base outline-none resize-none overflow-y-auto custom-scrollbar max-h-[200px]"
                                 placeholder={placeholder}
                                 autoComplete="off"
+                                rows="1"
                             />
                         </div>
                         <button type="button" onClick={() => onOpenCamera(target)} className="h-12 md:h-14 w-12 md:w-14 shrink-0 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-colors shadow-sm flex items-center justify-center">
@@ -1121,6 +1135,68 @@
                 if (skipCount > 0) toastMsg += ` (略過 ${skipCount} 筆重複)`;
                 updateCloudData('settings', { ...settings, customNameMap: newDict }, toastMsg);
                 setDictInput('');
+            };
+
+            const handleImportExcelDict = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setIsProcessing(true);
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const workbook = window.XLSX.read(new Uint8Array(event.target.result), { type: 'array' });
+                        const rows = window.XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+
+                        if (rows.length < 2) {
+                            showToast('⚠️ 檔案格式錯誤，或無資料');
+                            return;
+                        }
+
+                        const headers = rows[0].map(h => String(h || '').trim().toUpperCase());
+                        const idxBarcode = headers.indexOf('BARCODE');
+                        const idxDesc = headers.indexOf('DESCRIPTION_CN');
+
+                        if (idxBarcode === -1 || idxDesc === -1) {
+                            showToast('⚠️ 找不到 BARCODE 或 DESCRIPTION_CN 欄位');
+                            return;
+                        }
+
+                        let newDict = { ...settings.customNameMap };
+                        let newCount = 0, updateCount = 0, skipCount = 0;
+                        const converter = window.OpenCC ? window.OpenCC.Converter({ from: 'cn', to: 'tw' }) : (s => s);
+
+                        for (let i = 1; i < rows.length; i++) {
+                            const row = rows[i];
+                            const rawBc = row[idxBarcode];
+                            // Check for undefined and ensure it is treated as a string, e.g. exponential notation issues. String(val) is safe.
+                            if (rawBc === undefined || rawBc === null) continue;
+                            const bc = String(rawBc).trim();
+                            const rawName = String(row[idxDesc] || '').trim();
+
+                            if (!bc || !rawName) continue;
+
+                            const name = converter(rawName);
+                            if (bc === name) { skipCount++; }
+                            else if (newDict[bc] === name) { skipCount++; }
+                            else { if (newDict[bc]) { updateCount++; } else { newCount++; } newDict[bc] = name; }
+                        }
+
+                        if (newCount === 0 && updateCount === 0) {
+                            showToast(`⚠️ 沒有匯入新資料 (皆為重複或無效資料)`);
+                        } else {
+                            let toastMsg = `✅ Excel 成功新增 ${newCount} 筆`;
+                            if (updateCount > 0) toastMsg += `，更新 ${updateCount} 筆`;
+                            if (skipCount > 0) toastMsg += ` (略過 ${skipCount} 筆)`;
+                            updateCloudData('settings', { ...settings, customNameMap: newDict }, toastMsg);
+                        }
+                    } catch (error) {
+                        showToast('讀取失敗，請確認檔案格式');
+                    } finally {
+                        setIsProcessing(false);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                e.target.value = null;
             };
 
             const handleMergeBarcodeMap = () => {
@@ -2098,156 +2174,195 @@
 
                             {/* 分頁 5: 系統設定 */}
                             {activeTab === 'settings' && (
-                                <div className="max-w-4xl mx-auto space-y-6 pb-10 animate-scale-in">
+                                <div className="w-full max-w-7xl mx-auto pb-10 animate-scale-in space-y-6">
 
-                                    {/* 備份與還原卡片 */}
-                                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
-                                        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 dark:border-slate-700 pb-6">
-                                            <div className="p-3 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl flex-shrink-0"><i className="fa-solid fa-cloud-arrow-down text-2xl"></i></div>
-                                            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">系統資料備份與還原</h3>
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                                        {/* 左上角：系統資料管理 & 自動分類規則 */}
+                                        <div className="lg:col-span-4 flex flex-col gap-6">
+                                            {/* 備份與還原卡片 */}
+                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors flex flex-col">
+                                                <div className="flex flex-col mb-4">
+                                                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">系統資料管理</h3>
+                                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">備份或還原您的系統設定檔案。</p>
+                                            </div>
+                                            <div className="flex flex-col gap-4 mt-4">
+                                                <button onClick={handleExportData} className="group flex items-center w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all text-left overflow-hidden active:scale-[0.98]">
+                                                    <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform shrink-0">
+                                                        <i className="fa-solid fa-cloud-arrow-up text-xl"></i>
+                                                    </div>
+                                                    <div className="flex flex-col ml-4 flex-1 min-w-0">
+                                                        <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">備份資料</h4>
+                                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">狀態: {dbStatus.includes('目前為最新') ? '最新備份' : '建議備份'}</div>
+                                                    </div>
+                                                </button>
+
+                                                <label className="group flex items-center w-full p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500 transition-all text-left overflow-hidden cursor-pointer active:scale-[0.98]">
+                                                    <input type="file" className="hidden" accept=".json" onChange={handleImportData} />
+                                                    <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform shrink-0">
+                                                        <i className="fa-solid fa-clock-rotate-left text-xl"></i>
+                                                    </div>
+                                                    <div className="flex flex-col ml-4 flex-1 min-w-0">
+                                                        <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">本地還原</h4>
+                                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">支援 .json 格式</div>
+                                                    </div>
+                                                </label>
+                                            </div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-start">
-                                                <button onClick={handleExportData} className="w-full px-4 py-2 bg-slate-800 dark:bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-slate-900 dark:hover:bg-blue-700 transition-colors shadow-sm"><i className="fa-solid fa-box-archive mr-2"></i> 下載備份檔</button>
+
+                                        {/* 自動分類規則卡片 */}
+                                        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors flex flex-col min-w-0">
+                                            <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer group transition-all gap-4 ${isCategoryExpanded ? 'mb-5 border-b border-slate-100 dark:border-slate-700 pb-5' : ''}`} onClick={() => setIsCategoryExpanded(!isCategoryExpanded)}>
+                                                <div className="flex items-center gap-4 min-w-0">
+                                                    <div className="w-12 h-12 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner group-hover:scale-105 transition-transform"><i className="fa-solid fa-layer-group text-xl"></i></div>
+                                                    <div className="flex flex-col min-w-0">
+                                                        <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight truncate">自動分類規則</h3>
+                                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 hidden sm:block truncate">匯入歷史報表時，自動依關鍵字歸類群組。</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+                                                    <span className="bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 px-3 py-1 rounded-xl text-sm font-bold shadow-sm whitespace-nowrap inline-flex items-center justify-center min-w-[70px]">共 {settings.customCategories.length} 筆</span>
+                                                    <div className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors"><i className={`fa-solid fa-chevron-${isCategoryExpanded ? 'up' : 'down'} transition-transform duration-300`}></i></div>
+                                                </div>
                                             </div>
-                                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-start">
-                                                <label className="w-full px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm cursor-pointer text-center"><i className="fa-solid fa-folder-open mr-2"></i> 選擇備份檔並還原<input type="file" className="hidden" accept=".json" onChange={handleImportData} /></label>
-                                            </div>
+
+                                            {isCategoryExpanded && (
+                                                <div className="animate-scale-in origin-top flex flex-col min-w-0">
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed sm:hidden block">系統自動忽略大小寫。點擊下方已有規則可直接修改。</p>
+                                                    <div className="flex flex-col sm:flex-row gap-2 mb-4 bg-blue-50/50 dark:bg-blue-500/10 p-3 rounded-2xl border border-blue-100 dark:border-blue-500/20 w-full">
+                                                        <input type="text" className="w-full sm:w-1/4 px-3 py-2 border border-white dark:border-slate-700 rounded-xl outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm shadow-sm" placeholder="分類名稱" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} />
+                                                        <input type="text" className="flex-1 px-3 py-2 border border-white dark:border-slate-700 rounded-xl outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 text-sm shadow-sm min-w-0" placeholder="關鍵字 (半形逗號 , 分隔)" value={newCatKeys} onChange={(e) => setNewCatKeys(e.target.value)} />
+                                                        <button onClick={handleAddCategory} className="px-5 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 shadow-sm text-sm font-bold flex items-center justify-center transition-colors shrink-0"><i className="fa-solid fa-plus sm:mr-1.5 text-xs"></i><span className="hidden sm:inline">新增</span></button>
+                                                    </div>
+                                                    <div className="space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-1 min-w-0">
+                                                        {settings.customCategories.map(cat => (
+                                                            <EditableCategoryItem key={cat.id} cat={cat}
+                                                                onSave={(id, newName, newKeywords) => { const updatedCategories = settings.customCategories.map(c => c.id === id ? { ...c, name: newName, keywords: newKeywords } : c); updateCloudData('settings', { ...settings, customCategories: updatedCategories }, `已更新分類：${newName}`); }}
+                                                                onDelete={(id) => { const catToDelete = settings.customCategories.find(c => c.id === id); const newCategories = settings.customCategories.filter(c => c.id !== id); updateCloudData('settings', { ...settings, customCategories: newCategories }); if (catToDelete) triggerUndo(`已刪除分類規則：${catToDelete.name}`, () => { updateCloudData('settings', { ...settings, customCategories: [...newCategories, catToDelete] }); }); }}
+                                                            />
+                                                        ))}
+                                                        {settings.customCategories.length === 0 && (
+                                                            <div className="text-center py-6 text-slate-400 text-sm font-medium border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">目前尚未設定任何分類規則</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* 自動分類規則卡片 (✨已升級為可摺疊的精緻卡片風格) */}
-                                    <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
-                                        <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer group transition-all gap-4 ${isCategoryExpanded ? 'mb-6 border-b border-slate-100 dark:border-slate-700 pb-6' : ''}`} onClick={() => setIsCategoryExpanded(!isCategoryExpanded)}>
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner group-hover:scale-105 transition-transform">
-                                                    <i className="fa-solid fa-layer-group text-xl"></i>
+                                    {/* 右上角：批量匯入 */}
+                                    <div className="lg:col-span-8 flex flex-col gap-6 w-full min-w-0">
+
+                                        {/* 批量匯入卡片 */}
+                                        <div className="bg-teal-50/40 dark:bg-teal-900/10 p-6 rounded-3xl border border-teal-100/60 dark:border-teal-500/20 shadow-sm flex-1 h-full flex flex-col min-w-0">
+                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                                                    <label className="text-lg font-bold text-teal-800 dark:text-teal-400 flex items-center shrink-0">
+                                                        <i className="fa-solid fa-paste mr-2"></i>批量匯入字典庫 (覆寫/新增)
+                                                    </label>
+                                                    <label className={`cursor-pointer px-4 py-2 bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-400 border border-teal-100 dark:border-teal-500/30 text-sm font-bold rounded-xl hover:bg-teal-50 dark:hover:bg-slate-700 transition-colors shadow-sm flex items-center justify-center shrink-0 w-full sm:w-auto ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                        <i className={`fa-solid ${isProcessing ? 'fa-spinner fa-spin' : 'fa-file-excel'} mr-2`}></i> {isProcessing ? '處理中...' : '匯入 Excel (.xlsx)'}
+                                                        <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImportExcelDict} disabled={isProcessing} />
+                                                    </label>
                                                 </div>
-                                                <div className="flex flex-col">
-                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">自動分類規則</h3>
-                                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 hidden sm:block">系統自動忽略大小寫。點擊下方已有規則可直接修改。</p>
+                                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">請貼上文字內容，格式需為：<br /><strong className="text-teal-600 dark:text-teal-500">「條碼 品名」</strong>，或直接點擊上方按鈕匯入 Excel 檔案。</p>
+                                                <textarea className="w-full flex-1 px-4 py-4 border border-teal-200/50 dark:border-teal-500/30 rounded-xl outline-none min-h-[120px] text-sm font-mono whitespace-pre dark:bg-slate-900/80 dark:text-slate-200 focus:ring-2 focus:ring-teal-500/50 transition-shadow resize-none" placeholder={`6941313089877\tDIMOO 隱藏版\n6941313071988\tSKULLPANDA 盒玩...`} value={dictInput} onChange={(e) => setDictInput(e.target.value)}></textarea>
+                                                <div className="flex flex-wrap justify-end mt-4 gap-3">
+                                                    <button onClick={() => { const backupMap = { ...settings.customNameMap }; updateCloudData('settings', { ...settings, customNameMap: {} }); setDictCurrentPage(1); triggerUndo('已清空翻譯字典', () => { updateCloudData('settings', { ...settings, customNameMap: backupMap }); }); }} className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm flex-1 sm:flex-none">清空字典</button>
+                                                    <button onClick={handleImportDict} className="flex-1 sm:flex-none px-6 py-2.5 bg-teal-500 text-white text-sm font-bold rounded-xl hover:bg-teal-600 shadow-lg shadow-teal-500/20 transition-all active:scale-95 flex items-center justify-center"><i className="fa-solid fa-cloud-arrow-up mr-2"></i> 同步至雲端</button>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 md:gap-3 self-end sm:self-auto">
-                                                <span className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap">
-                                                    共 {settings.customCategories.length} 筆
-                                                </span>
-                                                <div className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors">
-                                                    <i className={`fa-solid fa-chevron-${isCategoryExpanded ? 'up' : 'down'} transition-transform duration-300`}></i>
-                                                </div>
-                                            </div>
+
                                         </div>
-
-                                        {isCategoryExpanded && (
-                                            <div className="animate-scale-in origin-top">
-                                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed sm:hidden">系統自動忽略大小寫。點擊下方已有規則可直接修改。</p>
-
-                                                <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-blue-50/50 dark:bg-blue-500/5 p-4 rounded-xl border border-blue-100 dark:border-blue-500/20">
-                                                    <input type="text" className="w-full sm:w-1/3 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-bold" placeholder="新分類名稱" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} />
-                                                    <input type="text" className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" placeholder="關鍵字 (請用半形逗號 , 分隔)" value={newCatKeys} onChange={(e) => setNewCatKeys(e.target.value)} />
-                                                    <button onClick={handleAddCategory} className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 shadow-sm font-bold flex items-center justify-center transition-colors"><i className="fa-solid fa-plus mr-2"></i>新增</button>
-                                                </div>
-
-                                                <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar pr-1">
-                                                    {settings.customCategories.map(cat => (
-                                                        <EditableCategoryItem key={cat.id} cat={cat}
-                                                            onSave={(id, newName, newKeywords) => { const updatedCategories = settings.customCategories.map(c => c.id === id ? { ...c, name: newName, keywords: newKeywords } : c); updateCloudData('settings', { ...settings, customCategories: updatedCategories }, `已更新分類：${newName}`); }}
-                                                            onDelete={(id) => { const catToDelete = settings.customCategories.find(c => c.id === id); const newCategories = settings.customCategories.filter(c => c.id !== id); updateCloudData('settings', { ...settings, customCategories: newCategories }); if (catToDelete) triggerUndo(`已刪除分類規則：${catToDelete.name}`, () => { updateCloudData('settings', { ...settings, customCategories: [...newCategories, catToDelete] }); }); }}
-                                                        />
-                                                    ))}
-                                                    {settings.customCategories.length === 0 && (
-                                                        <div className="text-center py-8 text-slate-400 text-sm font-medium border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
-                                                            目前尚未設定任何分類規則
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
 
-                                    {/* 字典庫管理卡片 */}
-                                    <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors">
-                                        <div className={`flex items-center justify-between cursor-pointer group transition-all ${isDictExpanded ? 'mb-6 border-b border-slate-100 dark:border-slate-700 pb-6' : ''}`} onClick={() => setIsDictExpanded(!isDictExpanded)}>
-                                            <div className="flex items-center gap-4">
+                                    {/* 中下方：共用字典庫管理 */}
+                                    <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors w-full min-w-0 flex flex-col">
+
+                                        {/* 標題與操作列 */}
+                                        <div className={`flex flex-col lg:flex-row lg:items-center justify-between group transition-all gap-4 ${isDictExpanded ? 'mb-5 border-b border-slate-100 dark:border-slate-700 pb-5' : ''}`}>
+                                            <div className="flex items-center gap-4 min-w-0 cursor-pointer w-full lg:w-auto" onClick={() => setIsDictExpanded(!isDictExpanded)}>
                                                 <div className="w-12 h-12 bg-teal-50 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner group-hover:scale-105 transition-transform"><i className="fa-solid fa-book-open text-xl"></i></div>
-                                                <div className="flex flex-col">
-                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">共用字典庫管理</h3>
-                                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 hidden sm:block">管理並匯入條碼對應的中文品名，全設備即時同步。</p>
+                                                <div className="flex flex-col min-w-0 flex-1">
+                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight truncate">共用字典庫管理</h3>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 hidden sm:block truncate">包含被收編的未知商品與手動建立的對應資料。</p>
                                                 </div>
+                                                <div className="lg:hidden w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400 transition-colors shrink-0"><i className={`fa-solid fa-chevron-${isDictExpanded ? 'up' : 'down'} transition-transform duration-300`}></i></div>
                                             </div>
-                                            <div className="flex items-center gap-2 md:gap-3">
-                                                {Object.keys(settings.barcodeMap || {}).length > 0 && (
-                                                    <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMergeBarcodeMap(); }} className="flex items-center px-3 py-1.5 bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/40 rounded-lg text-sm font-bold shadow-sm transition-colors whitespace-nowrap" title="將系統自動學起來的名稱轉為正式字典">
-                                                        <i className="fa-solid fa-wand-magic-sparkles sm:mr-1.5"></i>
-                                                        <span className="hidden sm:inline">收編系統記憶 </span>
-                                                        <span className="sm:hidden ml-1">收編 </span>
-                                                        ({Object.keys(settings.barcodeMap || {}).length})
-                                                    </button>
+
+                                            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto mt-2 lg:mt-0">
+                                                {isDictExpanded && (
+                                                    <div className="relative group flex-1 lg:w-48 min-w-[140px]">
+                                                        <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors text-xs"></i>
+                                                        <input type="text" placeholder="搜尋條碼或品名..." value={dictSearch} onChange={e => { setDictSearch(e.target.value); setDictCurrentPage(1); }} className="w-full pl-8 pr-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-xl dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-teal-500/50 transition-shadow text-sm font-medium bg-slate-50/50 dark:bg-slate-900/50 shadow-inner" />
+                                                    </div>
                                                 )}
-                                                <span className="bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-400 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm whitespace-nowrap">共 {Object.keys(settings.customNameMap).length} 筆</span>
-                                                <div className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors"><i className={`fa-solid fa-chevron-${isDictExpanded ? 'up' : 'down'} transition-transform duration-300`}></i></div>
+
+                                                <div className="flex items-center gap-3 ml-auto shrink-0">
+                                                    {Object.keys(settings.barcodeMap || {}).length > 0 && (
+                                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMergeBarcodeMap(); }} className="flex items-center px-3 py-1.5 bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/30 rounded-xl text-sm font-bold shadow-sm transition-colors whitespace-nowrap border border-amber-200/50" title="將系統自動學起來的名稱轉為正式字典">
+                                                            <i className="fa-solid fa-wand-magic-sparkles sm:mr-1.5 text-xs"></i>
+                                                            <span className="hidden sm:inline">收編系統記憶 </span>
+                                                            <span className="sm:hidden ml-1">收編 </span>
+                                                            ({Object.keys(settings.barcodeMap || {}).length})
+                                                        </button>
+                                                    )}
+                                                    <span className="bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400 px-3 py-1.5 rounded-xl text-sm font-bold shadow-sm whitespace-nowrap inline-flex items-center justify-center min-w-[70px]">共 {Object.keys(settings.customNameMap).length} 筆</span>
+                                                    <div className="hidden lg:flex w-8 h-8 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700 text-slate-500 transition-colors cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => setIsDictExpanded(!isDictExpanded)}><i className={`fa-solid fa-chevron-${isDictExpanded ? 'up' : 'down'} transition-transform duration-300`}></i></div>
+                                                </div>
                                             </div>
                                         </div>
 
                                         {isDictExpanded && (() => {
                                             const filteredDict = Object.entries(settings.customNameMap).filter(([bc, name]) => bc.includes(dictSearch) || name.toLowerCase().includes(dictSearch.toLowerCase()));
-                                            const ITEMS_PER_PAGE = 5;
+                                            const ITEMS_PER_PAGE = 10;
                                             const dictTotalPages = Math.max(1, Math.ceil(filteredDict.length / ITEMS_PER_PAGE));
                                             const paginatedDict = filteredDict.slice((dictCurrentPage - 1) * ITEMS_PER_PAGE, dictCurrentPage * ITEMS_PER_PAGE);
                                             return (
-                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-scale-in origin-top">
-                                                    <div className="flex flex-col h-full">
-                                                        <div className="mb-4 relative group">
-                                                            <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors"></i>
-                                                            <input type="text" placeholder="搜尋已建檔之條碼或品名..." value={dictSearch} onChange={e => { setDictSearch(e.target.value); setDictCurrentPage(1); }} className="w-full pl-11 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-teal-500/50 transition-shadow text-sm font-medium" />
-                                                        </div>
-                                                        <div className="flex-1 flex flex-col border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 overflow-hidden">
-                                                            <div className="flex-1 divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto">
-                                                                {paginatedDict.map(([bc, name]) => (
-                                                                    <div key={bc} className="p-3 px-5 flex justify-between items-center hover:bg-white dark:hover:bg-slate-800 transition-colors group">
-                                                                        <div className="pr-4">
-                                                                            <div className="font-bold text-slate-700 dark:text-slate-200 text-sm mb-1 leading-tight">{name}</div>
-                                                                            <div className="text-xs font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 inline-block px-1.5 py-0.5 rounded">{bc}</div>
+                                                <div className="animate-scale-in origin-top">
+                                                    <div className="border border-slate-200 dark:border-slate-700 flex flex-col rounded-2xl bg-white dark:bg-slate-900/40 shadow-sm overflow-hidden">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2">
+                                                            {paginatedDict.map(([bc, name], idx) => (
+                                                                <div key={bc} className={`flex flex-row items-center justify-between p-4 gap-3 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group ${idx < ITEMS_PER_PAGE - 2 ? 'md:border-b md:border-slate-100 md:dark:border-slate-700/50' : (idx === ITEMS_PER_PAGE - 2 && paginatedDict.length > ITEMS_PER_PAGE - 1 ? 'border-b md:border-b-0 border-slate-100 dark:border-slate-700/50' : '')} ${(idx % 2 === 0) ? 'md:border-r md:border-slate-100 md:dark:border-slate-700/50' : ''} ${idx !== paginatedDict.length - 1 || idx % 2 === 1 ? 'border-b md:border-b-0 border-slate-100 dark:border-slate-700/50' : ''}`}>
+                                                                    <div className="flex-1 min-w-0 pr-2 flex flex-col items-start gap-1">
+                                                                        <div className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-snug w-full truncate">{name}</div>
+                                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                                            <span className="text-[11px] font-mono font-semibold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 border border-teal-100 dark:border-teal-500/20 px-2 py-0.5 rounded-md inline-flex items-center shadow-sm tracking-wide">
+                                                                                {bc}
+                                                                            </span>
+                                                                            <button onClick={() => { navigator.clipboard.writeText(bc).then(() => showToast('📋 已複製條碼！')); }} className="px-1.5 py-[1px] text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:text-teal-400 dark:hover:bg-teal-500/20 rounded transition-colors inline-flex items-center justify-center shrink-0" title="複製條碼">
+                                                                                <i className="fa-regular fa-copy text-xs"></i>
+                                                                            </button>
                                                                         </div>
-                                                                        <button onClick={() => {
-                                                                            const backupMap = { ...settings.customNameMap };
-                                                                            const newMap = { ...settings.customNameMap };
-                                                                            delete newMap[bc];
-                                                                            updateCloudData('settings', { ...settings, customNameMap: newMap });
-                                                                            if (paginatedDict.length === 1 && dictCurrentPage > 1) setDictCurrentPage(p => p - 1);
-                                                                            triggerUndo(`已刪除字典：${name}`, () => { updateCloudData('settings', { ...settings, customNameMap: backupMap }); });
-                                                                        }} className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 lg:opacity-0 group-hover:opacity-100 transition-all shadow-sm"><i className="fa-solid fa-trash-can"></i></button>
                                                                     </div>
-                                                                ))}
-                                                                {filteredDict.length === 0 && (
-                                                                    <div className="flex flex-col items-center justify-center text-slate-400 text-sm font-medium p-8 h-full min-h-[200px]">
-                                                                        <i className={`fa-solid ${dictSearch ? 'fa-magnifying-glass-minus' : 'fa-box-open'} text-4xl text-slate-200 dark:text-slate-700 mb-3`}></i>
-                                                                        {dictSearch ? '找不到相符的字典資料' : '字典庫目前是空的\n請由右側匯入資料'}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            {dictTotalPages > 1 && (
-                                                                <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
-                                                                    <button disabled={dictCurrentPage === 1} onClick={() => setDictCurrentPage(p => Math.max(1, p - 1))} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center"><i className="fa-solid fa-angle-left mr-1.5"></i> 上一頁</button>
-                                                                    <span className="text-sm font-bold text-slate-500 dark:text-slate-400">第 {dictCurrentPage} / {dictTotalPages} 頁</span>
-                                                                    <button disabled={dictCurrentPage === dictTotalPages} onClick={() => setDictCurrentPage(p => Math.min(dictTotalPages, p + 1))} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center">下一頁 <i className="fa-solid fa-angle-right ml-1.5"></i></button>
+                                                                    <button onClick={() => {
+                                                                        const backupMap = { ...settings.customNameMap };
+                                                                        const newMap = { ...settings.customNameMap };
+                                                                        delete newMap[bc];
+                                                                        updateCloudData('settings', { ...settings, customNameMap: newMap });
+                                                                        if (paginatedDict.length === 1 && dictCurrentPage > 1) setDictCurrentPage(p => p - 1);
+                                                                        triggerUndo(`已刪除字典：${name}`, () => { updateCloudData('settings', { ...settings, customNameMap: backupMap }); });
+                                                                    }} className="w-9 h-9 flex-shrink-0 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 rounded-lg lg:opacity-0 group-hover:opacity-100 transition-all shadow-sm active:scale-95"><i className="fa-solid fa-trash-can text-sm"></i></button>
+                                                                </div>
+                                                            ))}
+                                                            {filteredDict.length === 0 && (
+                                                                <div className="col-span-1 md:col-span-2 flex flex-col items-center justify-center text-slate-400 text-sm font-medium p-8 min-h-[200px] bg-slate-50/30 dark:bg-slate-800/30">
+                                                                    <i className={`fa-solid ${dictSearch ? 'fa-magnifying-glass-minus' : 'fa-box-open'} text-3xl text-slate-300 dark:text-slate-600 mb-3`}></i>
+                                                                    {dictSearch ? '找不到相符的字典資料' : '字典庫目前是空的\n請由上方匯入資料'}
                                                                 </div>
                                                             )}
                                                         </div>
-                                                    </div>
-                                                    <div className="flex flex-col h-full bg-teal-50/50 dark:bg-teal-500/5 rounded-2xl border border-teal-100 dark:border-teal-500/20 p-5 md:p-6">
-                                                        <label className="block text-base font-bold text-teal-800 dark:text-teal-400 mb-2 flex items-center"><i className="fa-solid fa-paste mr-2"></i>批量匯入 (覆寫/新增)</label>
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">請貼上 Excel 內容，格式需為：<br /><strong className="text-teal-600 dark:text-teal-500">「條碼 [Tab或逗號或空格] 品名」</strong>，每行一筆。</p>
-                                                        <textarea className="w-full flex-1 px-4 py-4 border border-teal-200/60 dark:border-teal-500/30 rounded-xl outline-none min-h-[140px] text-sm font-mono whitespace-pre dark:bg-slate-900/80 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 transition-shadow resize-none" placeholder={`6941313089877\tDIMOO 隱藏版\n6941313071988\tSKULLPANDA 盒玩...`} value={dictInput} onChange={(e) => setDictInput(e.target.value)}></textarea>
-                                                        <div className="flex flex-wrap justify-end mt-5 gap-3">
-                                                            <button onClick={() => { const backupMap = { ...settings.customNameMap }; updateCloudData('settings', { ...settings, customNameMap: {} }); setDictCurrentPage(1); triggerUndo('已清空翻譯字典', () => { updateCloudData('settings', { ...settings, customNameMap: backupMap }); }); }} className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">清空字典</button>
-                                                            <button onClick={handleImportDict} className="flex-1 sm:flex-none px-6 py-2.5 bg-teal-500 text-white text-sm font-bold rounded-xl hover:bg-teal-600 shadow-lg shadow-teal-500/20 transition-all active:scale-95 flex items-center justify-center"><i className="fa-solid fa-cloud-arrow-up mr-2"></i> 同步至雲端</button>
-                                                        </div>
+                                                        {dictTotalPages > 1 && (
+                                                            <div className="flex items-center justify-between p-3.5 bg-slate-50/80 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700/80 mt-auto">
+                                                                <button disabled={dictCurrentPage === 1} onClick={() => setDictCurrentPage(p => Math.max(1, p - 1))} className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center active:scale-95"><i className="fa-solid fa-angle-left mr-2"></i> 上一頁</button>
+                                                                <span className="text-sm font-bold text-slate-500 dark:text-slate-400">第 {dictCurrentPage} / {dictTotalPages} 頁</span>
+                                                                <button disabled={dictCurrentPage === dictTotalPages} onClick={() => setDictCurrentPage(p => Math.min(dictTotalPages, p + 1))} className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center active:scale-95">下一頁 <i className="fa-solid fa-angle-right ml-2"></i></button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
                                         })()}
                                     </div>
+
                                 </div>
                             )}
                         </div>
