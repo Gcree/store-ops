@@ -45,6 +45,7 @@ button:active {
 
 .hide-arrows {
     -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 @media print {
@@ -61,6 +62,7 @@ button:active {
         margin: 0;
         padding: 0 !important;
         -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
 
     .h-screen,
@@ -433,4 +435,37 @@ button:active {
     letter-spacing: 4px;
     /* 拉大字距，防看錯 */
     margin-top: 4px;
+}
+
+/* =========================================
+   交班計算機列印專用樣式 (現代簡潔風)
+========================================= */
+.cash-receipt-container {
+    width: 72mm;
+    margin: 0 auto;
+    padding-bottom: 15mm !important;
+    font-family: "SF Pro Text", "Helvetica Neue", "Microsoft JhengHei", sans-serif;
+    /* 改用更現代的無襯線字體 */
+    color: #000;
+    background: #fff;
+}
+
+.print-section {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #000;
+    /* 加粗分隔線增加層級感 */
+}
+
+.print-section-title {
+    font-size: 14px;
+    font-weight: 900;
+    margin: 0 0 8px 0;
+    letter-spacing: 1px;
+}
+
+.print-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
