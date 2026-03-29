@@ -2904,85 +2904,103 @@
                                 </div>
                             </div>
                         )}
+                        {/* ✨ 交班單列印區塊 (改回外部 CSS 寫法) */}
                         {printContext === 'cash-register' && (
-                            <div className="cash-receipt-container">
-
+                            <div className="cr-container">
+                                
                                 {/* 標題區 */}
-                                <div className="text-center mb-6">
-                                    <h2 className="font-black text-[22px] tracking-widest mb-1">收銀交班總覽</h2>
-                                    <div className="text-[10px] text-gray-500 font-bold">列印時間：{new Date().toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}</div>
-                                    <div className="text-[12px] font-black mt-2">交班人員：{handoverPerson || '未填寫'}</div>
-                                </div>
-
-                                {/* 帳務結算區 */}
-                                <div className="print-section">
-                                    <h3 className="print-section-title">帳務結算</h3>
-                                    <div className="print-row text-[14px]">
-                                        <span className="font-bold">預設零用金</span>
-                                        <span className="font-mono font-bold">${pettyCashTarget}</span>
-                                    </div>
-                                    <div className="print-row text-[16px] my-2">
-                                        <span className="font-black">實際總現金</span>
-                                        <span className="font-mono font-black">${currentTotalCash}</span>
-                                    </div>
-                                    <div className="print-row text-[14px]">
-                                        <span className="font-bold">帳務差異</span>
-                                        <span className="font-mono font-bold">{cashDifference > 0 ? '+' : ''}{cashDifference}</span>
+                                <div className="cr-header">
+                                    <h2 className="cr-title">收銀交班總覽</h2>
+                                    <div className="cr-time">列印時間：{new Date().toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}</div>
+                                    <div className="cr-person">交班人員：{handoverPerson || '未填寫'}</div>
+                                    <div className="cr-row mt-2">
+                                        <span className="cr-label">預設零用金</span>
+                                        <span className="cr-val">${pettyCashTarget}</span>
                                     </div>
                                 </div>
 
-                                {/* 面額清點區 */}
-                                <div className="print-section">
-                                    <h3 className="print-section-title">面額清點</h3>
-                                    {denominations.filter(d => cashCounts[d] > 0).map(denom => (
-                                        <div key={`print-cash-${denom}`} className="print-row text-[12px] mb-1">
-                                            <span className="font-bold w-12 text-right inline-block">${denom}</span>
-                                            <span className="text-gray-600 font-mono mx-2">x {cashCounts[denom]}</span>
-                                            <span className="font-mono font-bold flex-1 text-right">${denom * cashCounts[denom]}</span>
+                                {/* 1. 面額清點區 (細項放前面) */}
+                                <div className="cr-section">
+                                    <h3 className="cr-section-title">零用金數量</h3>
+                                    
+                                    <div className="cr-items">
+                                        {denominations.filter(d => cashCounts[d] > 0).map(denom => (
+                                            <div key={`print-cash-${denom}`} className="cr-row">
+                                                <div className="cr-left">
+                                                    <span className="cr-denom">${denom}</span>
+                                                    <span className="cr-qty">x {cashCounts[denom]}</span>
+                                                </div>
+                                                <span className="cr-amt">${denom * cashCounts[denom]}</span>
+                                            </div>
+                                        ))}
+                                        <div className="cr-row cr-total">
+                                            <span>實際零用金</span>
+                                            <span>${currentTotalCash}</span>
                                         </div>
-                                    ))}
+    
+                                    </div>
                                 </div>
 
-                                {/* 換鈔建議區 */}
-                                {(changeSuggestions.deficits.length > 0 || changeSuggestions.surpluses.length > 0) && (
-                                    <div className="print-section !border-b-0">
-                                        <h3 className="print-section-title">換鈔建議</h3>
+                                {/* 2. 帳務結算區 (總和放後面) */}
+                                <div className="cr-section">
+                                    <h3 className="cr-section-title">結算</h3>    
+                                    
+                                    {/* 差異金額強化顯示 */}
+                                    <div className={`cr-row cr-diff ${cashDifference !== 0 ? 'has-diff' : ''}`}>
+                                        <span>帳務差異</span>
+                                        <span>
+                                            {cashDifference === 0 ? '無差異' : (cashDifference > 0 ? `溢收 +${cashDifference}` : `短收 ${cashDifference}`)}
+                                        </span>
+                                    </div>
+                                </div>
 
+                                {/* 3. 換鈔建議區 (用語更直白) */}
+                                {(changeSuggestions.deficits.length > 0 || changeSuggestions.surpluses.length > 0) && (
+                                    <div className="cr-section">
+                                        <h3 className="cr-section-title !mb-3 !w-full !border-b-2 !border-black !bg-transparent !text-black !pb-1 !px-0">換錢建議</h3>
+                                        
                                         {changeSuggestions.deficits.length > 0 && (
-                                            <div className="mb-3">
-                                                <div className="font-black text-[12px] mb-1">[換入] 應補足面額</div>
+                                            <div className="cr-sub-section">
+                                                <div className="cr-sub-title">補齊</div>
                                                 {changeSuggestions.deficits.map((s, idx) => (
-                                                    <div key={`print-def-${idx}`} className="print-row text-[12px] border-b border-dotted border-gray-300 pb-1 mb-1 last:border-0">
-                                                        <span className="font-bold">${s.denom} <span className="font-mono font-normal">(+{s.qty})</span></span>
-                                                        <span className="font-mono font-bold">${s.amt}</span>
+                                                    <div key={`print-def-${idx}`} className="cr-row">
+                                                        <div className="cr-left">
+                                                            <span className="cr-denom">${s.denom}</span> 
+                                                            <span className="cr-qty">(+{s.qty})</span>
+                                                        </div>
+                                                        <span className="cr-amt">${s.amt}</span>
                                                     </div>
                                                 ))}
-                                                <div className="print-row text-[12px] mt-1 pt-1 border-t border-black">
-                                                    <span className="font-bold text-gray-600">小計</span>
-                                                    <span className="font-mono font-black">${changeSuggestions.totalNeeded}</span>
+                                                <div className="cr-row cr-subtotal">
+                                                    <span>小計</span>
+                                                    <span>${changeSuggestions.totalNeeded}</span>
                                                 </div>
                                             </div>
                                         )}
 
                                         {changeSuggestions.surpluses.length > 0 && (
-                                            <div>
-                                                <div className="font-black text-[12px] mb-1 mt-2">[抽出] 多餘面額</div>
+                                            <div className="cr-sub-section">
+                                                {/* ✨ 將「抽出」改為更明確的「存入銀行」 */}
+                                                <div className="cr-sub-title mt-4">拿去換</div>
                                                 {changeSuggestions.surpluses.map((s, idx) => (
-                                                    <div key={`print-sur-${idx}`} className="print-row text-[12px] border-b border-dotted border-gray-300 pb-1 mb-1 last:border-0">
-                                                        <span className="font-bold">${s.denom} <span className="font-mono font-normal">(-{s.qty})</span></span>
-                                                        <span className="font-mono font-bold">${s.amt}</span>
+                                                    <div key={`print-sur-${idx}`} className="cr-row">
+                                                        <div className="cr-left">
+                                                            <span className="cr-denom">${s.denom}</span> 
+                                                            <span className="cr-qty">(-{s.qty})</span>
+                                                        </div>
+                                                        <span className="cr-amt">${s.amt}</span>
                                                     </div>
                                                 ))}
-                                                <div className="print-row text-[12px] mt-1 pt-1 border-t border-black">
-                                                    <span className="font-bold text-gray-600">小計</span>
-                                                    <span className="font-mono font-black">${changeSuggestions.totalSurplus}</span>
+                                                <div className="cr-row cr-subtotal">
+                                                    <span>小計</span>
+                                                    <span>${changeSuggestions.totalSurplus}</span>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
                                 )}
 
-                                <div className="text-center text-[12px] font-bold text-gray-500 mt-6 pt-4 border-t-2 border-dashed border-gray-400">
+                                <div className="cr-footer">
                                     ---- 報表結束 ----
                                 </div>
                             </div>
