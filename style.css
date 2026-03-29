@@ -438,34 +438,163 @@ button:active {
 }
 
 /* =========================================
-   交班計算機列印專用樣式 (現代簡潔風)
+   交班總覽列印專用樣式 (cr = Cash Register)
 ========================================= */
-.cash-receipt-container {
+.cr-container {
     width: 72mm;
     margin: 0 auto;
-    padding-bottom: 15mm !important;
-    font-family: "SF Pro Text", "Helvetica Neue", "Microsoft JhengHei", sans-serif;
-    /* 改用更現代的無襯線字體 */
+    padding-bottom: 15mm !important; /* 裁刀安全距離 */
+    font-family: "Helvetica Neue", Helvetica, "Microsoft JhengHei", Arial, sans-serif;
     color: #000;
     background: #fff;
 }
 
-.print-section {
-    margin-bottom: 16px;
-    padding-bottom: 12px;
+.cr-header {
+    text-align: center;
+    margin-bottom: 20px;
     border-bottom: 2px solid #000;
-    /* 加粗分隔線增加層級感 */
+    padding-bottom: 12px;
 }
 
-.print-section-title {
+.cr-title {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    margin: 0 0 6px 0;
+}
+
+.cr-time {
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+}
+
+.cr-person {
     font-size: 14px;
     font-weight: 900;
-    margin: 0 0 8px 0;
-    letter-spacing: 1px;
+    margin-top: 4px;
 }
 
-.print-row {
+.cr-section {
+    margin-bottom: 20px;
+}
+
+/* 黑底白字的反白標題，增加層級對比 */
+.cr-section-title {
+    font-size: 16px;
+    font-weight: 900;
+    background-color: #000;
+    color: #fff;
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 0 0 10px 0;
+}
+
+.cr-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    font-size: 14px;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.cr-left {
+    display: flex;
+    align-items: baseline;
+}
+
+/* 鎖死寬度 45px，確保所有金錢符號絕對靠左對齊 */
+.cr-denom {
+    font-weight: bold;
+    width: 45px; 
+    text-align: left;
+}
+
+/* 次要資訊 (數量) 變小變灰 */
+.cr-qty {
+    color: #666;
+    font-family: monospace;
+    font-size: 12px;
+    margin-left: 4px;
+}
+
+.cr-amt {
+    font-family: monospace;
+    font-weight: bold;
+}
+
+.cr-label {
+    font-weight: bold;
+    color: #444;
+}
+
+.cr-val {
+    font-family: monospace;
+    font-weight: bold;
+    color: #444;
+}
+
+/* 實際總現金：放大加粗 */
+.cr-total {
+    font-size: 18px;
+    font-weight: 900;
+    padding-top: 6px;
+    border-top: 1px solid #999;
+    margin-top: 6px;
+    margin-bottom: 8px;
+}
+
+/* 差異金額邏輯：有差異時變黑加粗，無差異時變灰 */
+.cr-diff {
+    font-size: 14px;
+    font-weight: bold;
+    color: #555;
+    padding-top: 8px;
+    margin-top: 8px;
+}
+
+.cr-diff.has-diff {
+    font-size: 16px;
+    color: #000;
+}
+
+.cr-diff.has-diff span:last-child {
+    font-size: 18px;
+    font-family: monospace;
+}
+
+.cr-sub-section {
+    margin-bottom: 12px;
+}
+
+.cr-sub-title {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+/* 換鈔小計 */
+.cr-subtotal {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #999;
+    font-weight: bold;
+    color: #444;
+}
+
+.cr-subtotal span:last-child {
+    font-weight: 900;
+    font-size: 15px;
+    color: #000;
+}
+
+.cr-footer {
+    text-align: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: #888;
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px dashed #ccc;
 }
