@@ -1306,10 +1306,10 @@
 
                         const headers = rows[0].map(h => String(h || '').trim().toUpperCase());
                         const idxBarcode = headers.indexOf('BARCODE');
-                        const idxDesc = headers.indexOf('DESCRIPTION_CN');
+                        const idxDesc = headers.indexOf('CNDESCRIPTION');
 
                         if (idxBarcode === -1 || idxDesc === -1) {
-                            showToast('⚠️ 找不到 BARCODE 或 DESCRIPTION_CN 欄位');
+                            showToast('⚠️ 找不到 BARCODE 或 CNDESCRIPTION 欄位');
                             return;
                         }
 
