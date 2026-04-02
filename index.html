@@ -1701,10 +1701,43 @@
                                                     <div className="relative w-full sm:w-32"><input type="number" className="w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="端盒數量" value={newBoxSize} onChange={(e) => setNewBoxSize(Number(e.target.value))} min="1" /><div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-slate-500 text-xs">入/盒</span></div></div>
                                                     <button onClick={addNewBarcode} className="px-4 py-2 bg-slate-800 dark:bg-blue-600 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-blue-700 transition-colors"><i className="fa-solid fa-plus mr-1"></i> 新增</button>
                                                 </div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {settings.newBarcodes.map(code => (
-                                                        <span key={code} className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-sm font-medium">{code} <span className="text-xs ml-1 opacity-60 font-normal">({settings.boxSizeMap[code] || 6}入)</span><button onClick={() => removeBarcode(code)} className="ml-2 hover:text-red-500"><i className="fa-solid fa-xmark"></i></button></span>
-                                                    ))}
+                                               {/* ✨ 新品追蹤區塊：精緻緊湊型標籤網格 (Compact Tags) */}
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2.5 mt-3">
+                                                    {settings.newBarcodes.map(code => {
+                                                        let dictName = findNameInDict(code, settings.customNameMap);
+                                                        const name = dictName || settings.barcodeMap?.[code] || '未知商品 (尚未建檔)';
+                                                        const boxSize = settings.boxSizeMap[code] || 6;
+                                                        
+                                                        return (
+                                                            <div key={code} className="flex items-center justify-between p-2 rounded-lg bg-blue-50/50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 shadow-sm transition-colors group hover:border-blue-300 dark:hover:border-blue-400/50 animate-scale-in">
+                                                                <div className="flex flex-col min-w-0 flex-1 pr-2">
+                                                                    {/* 品名：縮小為 text-xs，維持 truncate 防破版 */}
+                                                                    <div className={`text-xs font-bold truncate leading-tight mb-1 ${name.includes('未知商品') ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'}`} title={name}>
+                                                                        {name}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 tracking-tight">
+                                                                            {code}
+                                                                        </span>
+                                                                        <span className="text-[9px] font-bold bg-white dark:bg-slate-800 text-blue-500 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 px-1 py-0.5 rounded shadow-sm shrink-0 leading-none">
+                                                                            {boxSize} 入
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                {/* 按鈕輕量化：改為小叉叉 */}
+                                                                <button onClick={() => removeBarcode(code)} className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all shrink-0 focus:outline-none">
+                                                                    <i className="fa-solid fa-xmark text-sm"></i>
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    
+                                                    {/* 防呆空狀態也跟著微調高度 */}
+                                                    {settings.newBarcodes.length === 0 && (
+                                                        <div className="col-span-full py-4 text-center text-xs font-medium text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+                                                            目前尚未追蹤任何新品
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 
