@@ -1467,8 +1467,8 @@
                 let report = `桃園台茂店 銷售日報（TWD）\n`;
                 recordsToPrint.forEach(r => report += `${r.date}（${r.weekday}）$${formatMoney(r.sales)}\n`);
                 report += `\nTotal: $${formatMoney(totalSales)}\n\n（點數兌換: $${formatMoney(totalPoints)})\n`;
-                report += `（1000%：$${formatMoney(sumBigToy('1000', 'amt'))}， ${sumBigToy('1000', 'qty')}隻${sumBigToy('1000', 'giftQty') > 0 ? `，贈品 ${sumBigToy('1000', 'giftQty')}隻` : ''}）\n`;
-                report += `（400%：$${formatMoney(sumBigToy('400', 'amt'))}， ${sumBigToy('400', 'qty')}隻${sumBigToy('400', 'giftQty') > 0 ? `，贈品 ${sumBigToy('400', 'giftQty')}隻` : ''}）\n\n`;
+                report += `（1000%：$${formatMoney(sumBigToy('1000', 'amt'))}， ${sumBigToy('1000', 'qty')}隻）\n`;
+                report += `（400%：$${formatMoney(sumBigToy('400', 'amt'))}， ${sumBigToy('400', 'qty')}隻）\n\n`;                
                 report += `目標：${settings.targetAmount}萬\n達成率：${achievement}%\n\n銷售狀況分享：\n`;
 
                 const isTodaySelected = todayStats && (formatDateStr(todayStats.dateStr).split('/')[0] === selectedMonth);
