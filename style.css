@@ -443,7 +443,8 @@ button:active {
 .cr-container {
     width: 72mm;
     margin: 0 auto;
-    padding-bottom: 15mm !important; /* 裁刀安全距離 */
+    padding-bottom: 15mm !important;
+    /* 裁刀安全距離 */
     font-family: "Helvetica Neue", Helvetica, "Microsoft JhengHei", Arial, sans-serif;
     color: #000;
     background: #fff;
@@ -507,7 +508,7 @@ button:active {
 /* 鎖死寬度 45px，確保所有金錢符號絕對靠左對齊 */
 .cr-denom {
     font-weight: bold;
-    width: 45px; 
+    width: 45px;
     text-align: left;
 }
 
