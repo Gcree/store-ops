@@ -883,7 +883,7 @@
                 } else {
                     setBarcodeItems(prev => prev.map(i => i.id === id ? { ...i, name: newName } : i));
                 }
-                updateCloudData('settings', { ...settings, customNameMap: { ...settings.customNameMap, [barcode]: newName } }, `已更新字典！`);
+                updateCloudData('settings', { ...settings, customNameMap: { ...settings.customNameMap, [barcode]: newName } }, `已更新條碼商品！`);
             };
 
             const triggerUndo = (message, onUndoCallback) => {
@@ -1385,7 +1385,7 @@
             // ✨ 以下為防呆加固版邏輯
             // ==========================================
 
-            // ✨ 輔助 1：將字典轉為物件陣列 (防呆：確保全部強制當作字串處理)
+            // ✨ 輔助 1：將條碼商品轉為物件陣列 (防呆：確保全部強制當作字串處理)
             const allDictEntries = useMemo(() => {
                 const map = { ...settings.barcodeMap, ...settings.customNameMap };
                 const uniqueMap = new Map();
@@ -1699,7 +1699,7 @@
                 });
                 const backupMap = { ...memoryMap };
                 const backupCustomMap = { ...settings.customNameMap };
-                updateCloudData('settings', { ...settings, customNameMap: newDict, barcodeMap: {} }, `🎉 成功收編 ${count} 筆資料至正式字典！`);
+                updateCloudData('settings', { ...settings, customNameMap: newDict, barcodeMap: {} }, `🎉 成功收編 ${count} 筆資料至正式條碼商品！`);
                 triggerUndo(`已清空並收編 ${currentMemoryKeys.length} 筆系統記憶`, () => {
                     updateCloudData('settings', { ...settings, customNameMap: backupCustomMap, barcodeMap: backupMap });
                 });
@@ -2966,7 +2966,7 @@
                                             <div className="bg-teal-50/40 dark:bg-teal-900/10 p-6 rounded-3xl border border-teal-100/60 dark:border-teal-500/20 shadow-sm flex-1 h-full flex flex-col min-w-0">
                                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
                                                     <label className="text-lg font-bold text-teal-800 dark:text-teal-400 flex items-center shrink-0">
-                                                        <i className="fa-solid fa-paste mr-2"></i>批量匯入字典庫 (覆寫/新增)
+                                                        <i className="fa-solid fa-paste mr-2"></i>批量匯入條碼商品庫 (覆寫/新增)
                                                     </label>
                                                     <label className={`cursor-pointer px-4 py-2 bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-400 border border-teal-100 dark:border-teal-500/30 text-sm font-bold rounded-xl hover:bg-teal-50 dark:hover:bg-slate-700 transition-colors shadow-sm flex items-center justify-center shrink-0 w-full sm:w-auto ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
                                                         <i className={`fa-solid ${isProcessing ? 'fa-spinner fa-spin' : 'fa-file-excel'} mr-2`}></i> {isProcessing ? '處理中...' : '匯入 Excel (.xlsx)'}
@@ -2976,7 +2976,7 @@
                                                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">請貼上文字內容，格式需為：<br /><strong className="text-teal-600 dark:text-teal-500">「條碼 品名」</strong>，或直接點擊上方按鈕匯入 Excel 檔案。</p>
                                                 <textarea className="w-full flex-1 px-4 py-4 border border-teal-200/50 dark:border-teal-500/30 rounded-xl outline-none min-h-[120px] text-sm font-mono whitespace-pre dark:bg-slate-900/80 dark:text-slate-200 focus:ring-2 focus:ring-teal-500/50 transition-shadow resize-none" placeholder={`6941313089877\tDIMOO 隱藏版\n6941313071988\tSKULLPANDA 盒玩...`} value={dictInput} onChange={(e) => setDictInput(e.target.value)}></textarea>
                                                 <div className="flex flex-wrap justify-end mt-4 gap-3">
-                                                    <button onClick={() => { const backupMap = { ...settings.customNameMap }; updateCloudData('settings', { ...settings, customNameMap: {} }); setDictCurrentPage(1); triggerUndo('已清空翻譯字典', () => { updateCloudData('settings', { ...settings, customNameMap: backupMap }); }); }} className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm flex-1 sm:flex-none">清空字典</button>
+                                                    <button onClick={() => { const backupMap = { ...settings.customNameMap }; updateCloudData('settings', { ...settings, customNameMap: {} }); setDictCurrentPage(1); triggerUndo('已清空翻譯條碼商品', () => { updateCloudData('settings', { ...settings, customNameMap: backupMap }); }); }} className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm flex-1 sm:flex-none">清空條碼商品</button>
                                                     <button onClick={handleImportDict} className="flex-1 sm:flex-none px-6 py-2.5 bg-teal-500 text-white text-sm font-bold rounded-xl hover:bg-teal-600 shadow-lg shadow-teal-500/20 transition-all active:scale-95 flex items-center justify-center"><i className="fa-solid fa-cloud-arrow-up mr-2"></i> 同步至雲端</button>
                                                 </div>
                                             </div>
@@ -2984,7 +2984,7 @@
                                         </div>
                                     </div>
 
-                                    {/* 中下方：共用字典庫管理 */}
+                                    {/* 中下方：商品條碼庫管理 */}
                                     <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors w-full min-w-0 flex flex-col">
 
                                         {/* 標題與操作列 */}
@@ -2992,7 +2992,7 @@
                                             <div className="flex items-center gap-4 min-w-0 cursor-pointer w-full lg:w-auto" onClick={() => setIsDictExpanded(!isDictExpanded)}>
                                                 <div className="w-12 h-12 bg-teal-50 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner group-hover:scale-105 transition-transform"><i className="fa-solid fa-book-open text-xl"></i></div>
                                                 <div className="flex flex-col min-w-0 flex-1">
-                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight truncate">共用字典庫管理</h3>
+                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight truncate">商品條碼庫管理</h3>
                                                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 hidden sm:block truncate">包含被收編的未知商品與手動建立的對應資料。</p>
                                                 </div>
                                                 <div className="lg:hidden w-8 h-8 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-700 text-slate-400 transition-colors shrink-0"><i className={`fa-solid fa-chevron-${isDictExpanded ? 'up' : 'down'} transition-transform duration-300`}></i></div>
@@ -3008,7 +3008,7 @@
 
                                                 <div className="flex items-center gap-3 ml-auto shrink-0">
                                                     {Object.keys(settings.barcodeMap || {}).length > 0 && (
-                                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMergeBarcodeMap(); }} className="flex items-center px-3 py-1.5 bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/30 rounded-xl text-sm font-bold shadow-sm transition-colors whitespace-nowrap border border-amber-200/50" title="將系統自動學起來的名稱轉為正式字典">
+                                                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMergeBarcodeMap(); }} className="flex items-center px-3 py-1.5 bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/30 rounded-xl text-sm font-bold shadow-sm transition-colors whitespace-nowrap border border-amber-200/50" title="將系統自動學起來的名稱轉為正式條碼商品">
                                                             <i className="fa-solid fa-wand-magic-sparkles sm:mr-1.5 text-xs"></i>
                                                             <span className="hidden sm:inline">收編系統記憶 </span>
                                                             <span className="sm:hidden ml-1">收編 </span>
@@ -3062,8 +3062,8 @@
                                                                             delete newMap[bc];
                                                                             updateCloudData('settings', { ...settings, customNameMap: newMap });
                                                                             if (paginatedDict.length === 1 && dictCurrentPage > 1) setDictCurrentPage(p => p - 1);
-                                                                            triggerUndo(`已刪除字典：${name}`, () => { updateCloudData('settings', { ...settings, customNameMap: backupMap }); });
-                                                                        }} className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 rounded-lg transition-all shadow-sm active:scale-95" title="刪除此字典">
+                                                                            triggerUndo(`已刪除條碼商品：${name}`, () => { updateCloudData('settings', { ...settings, customNameMap: backupMap }); });
+                                                                        }} className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 rounded-lg transition-all shadow-sm active:scale-95" title="刪除此條碼商品">
                                                                             <i className="fa-solid fa-trash-can text-sm"></i>
                                                                         </button>
                                                                     </div>
@@ -3072,7 +3072,7 @@
                                                             {filteredDict.length === 0 && (
                                                                 <div className="col-span-1 md:col-span-2 flex flex-col items-center justify-center text-slate-400 text-sm font-medium p-8 min-h-[200px] bg-slate-50/30 dark:bg-slate-800/30">
                                                                     <i className={`fa-solid ${dictSearch ? 'fa-magnifying-glass-minus' : 'fa-box-open'} text-3xl text-slate-300 dark:text-slate-600 mb-3`}></i>
-                                                                    {dictSearch ? '找不到相符的字典資料' : '字典庫目前是空的\n請由上方匯入資料'}
+                                                                    {dictSearch ? '找不到相符的條碼商品資料' : '條碼商品庫目前是空的\n請由上方匯入資料'}
                                                                 </div>
                                                             )}
                                                         </div>
