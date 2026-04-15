@@ -606,7 +606,7 @@ button:active {
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
 
 .popmart-wrapper {
-    width: 72mm; /* ✨ 關鍵修復2：整體寬度從 72mm 縮小到 66mm，絕對防裁切 */
+    width: 70mm; /* ✨ 關鍵修復2：整體寬度從 72mm 縮小到 66mm，絕對防裁切 */
     margin: 0 auto;
     padding: 0 0 8mm 0; 
     color: #000;
@@ -664,7 +664,7 @@ button:active {
     font-weight: 900;
     margin-top: 2px;
     line-height: 1.1;
-    color: #e5e7eb;
+    color: #404040;
     letter-spacing: -0.5px;
 }
 
