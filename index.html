@@ -153,7 +153,42 @@
             return key ? dict[key] : null;
         };
 
-        function BarcodeImage({ value, name, printMode = false, mini = false, hideName = false, quantity = 1 }) {
+        // ✨ 自動縮放單行文字元件 (防止文字撐破表格)
+        function AutoFitText({ text }) {
+            const containerRef = React.useRef(null);
+            const textRef = React.useRef(null);
+            const [scale, setScale] = React.useState(1);
+
+            React.useEffect(() => {
+                const timer = setTimeout(() => {
+                    if (containerRef.current && textRef.current) {
+                        const containerWidth = containerRef.current.clientWidth;
+                        const textWidth = textRef.current.scrollWidth;
+                        // 當文字寬度大於容器時，計算縮放比例
+                        if (textWidth > containerWidth && containerWidth > 0) {
+                            setScale(containerWidth / textWidth);
+                        } else {
+                            setScale(1);
+                        }
+                    }
+                }, 100); // 給予足夠的渲染緩衝
+                return () => clearTimeout(timer);
+            }, [text]);
+
+            return (
+                <div ref={containerRef} className="w-full overflow-hidden whitespace-nowrap">
+                    <div
+                        ref={textRef}
+                        className="inline-block whitespace-nowrap origin-left transition-transform duration-75"
+                        style={{ transform: `scale(${scale})`, display: 'inline-block' }}
+                    >
+                        {text}
+                    </div>
+                </div>
+            );
+        }
+
+        function BarcodeImage({ value, name, printMode = false, mini = false, hideName = false, quantity = 1, printStyle = 'default' }) {
             const svgRef = useRef(null);
 
             useEffect(() => {
@@ -179,6 +214,64 @@
 
             // ✨ 列印專用版型 (完美套用你手動更新的結構)
             if (printMode) {
+                // ✨ 整合版：POP MART 公司公版 (導入自動縮放功能)
+                if (printStyle === 'popmart') {
+                    return (
+                        <div className="popmart-wrapper">
+                            <div className="popmart-header">POP MART陳列樣品明細</div>
+                            <div className="popmart-table">
+                                {/* 第一列：品項 (導入 AutoFitText) */}
+                                <div className="popmart-row">
+                                    <div className="popmart-label-col">
+                                        <div className="popmart-label">品項:</div>
+                                        <div className="popmart-sub">填寫全名</div>
+                                    </div>
+                                    <div className="popmart-val-col">
+                                        <div className="popmart-val">
+                                            <AutoFitText text={name || ''} />
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* 第二列：條碼 */}
+                                <div className="popmart-row">
+                                    <div className="popmart-label-col">
+                                        <div className="popmart-label">條碼:</div>
+                                        <div className="popmart-sub">正確69碼</div>
+                                    </div>
+                                    <div className="popmart-val-col">
+                                        <div className="popmart-barcode-wrapper">
+                                            <svg ref={svgRef}></svg>
+                                        </div>
+                                        <div className="popmart-barcode-text">{value}</div>
+                                    </div>
+                                </div>
+                                {/* 第三列：備註 */}
+                                <div className="popmart-row">
+                                    <div className="popmart-label-col">
+                                        <div className="popmart-label">備註:</div>
+                                        <div className="popmart-sub">樣品損壞or缺件等情況</div>
+                                    </div>
+                                    <div className="popmart-val-col">
+                                        <div className="popmart-val">
+                                            {quantity > 1 ? `系統帶入數量: ${quantity} 件` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* 第四列：門市 */}
+                                <div className="popmart-row">
+                                    <div className="popmart-label-col">
+                                        <div className="popmart-label">門市:</div>
+                                        <div className="popmart-sub">門市全名</div>
+                                    </div>
+                                    <div className="popmart-val-col">
+                                        <div className="popmart-val">桃園台茂店</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
                 return (
                     <div className="custom-print-label">
                         <div className="custom-print-container">
@@ -458,7 +551,7 @@
             }, [onScan, threshold]);
         }
 
-        function BarcodeScannerInput({ target, placeholder, iconClass, onSubmit, onOpenCamera, allDictEntries, settings }) {
+        function BarcodeScannerInput({ target, placeholder, iconClass, onSubmit, onOpenCamera, allDictEntries, settings, extraInput }) {
             const { useState, useMemo, useRef, useEffect } = React;
             const [inputValue, setInputValue] = useState('');
             const [isFocused, setIsFocused] = useState(false);
@@ -575,6 +668,7 @@
                             <button type="button" onClick={() => onOpenCamera(target)} className="h-12 md:h-14 w-12 md:w-14 shrink-0 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-colors shadow-sm flex items-center justify-center">
                                 <i className="fa-solid fa-camera text-xl"></i>
                             </button>
+                            {extraInput}
                             <button type="submit" className={`h-12 md:h-14 px-5 md:px-6 shrink-0 text-white rounded-xl font-bold transition-all shadow-sm text-sm md:text-base whitespace-nowrap ${multiplier > 1 ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/30' : 'bg-slate-800 dark:bg-blue-600 hover:bg-slate-900 dark:hover:bg-blue-700'}`}>
                                 加入 {multiplier > 1 ? `x${multiplier}` : ''}
                             </button>
@@ -739,6 +833,8 @@
             const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
             const [toast, setToast] = useState('');
             const [printContext, setPrintContext] = useState(null);
+            const [printStyle, setPrintStyle] = useState('default');
+            const [top5SortBy, setTop5SortBy] = useState('qty');
             // ✨ 新增：用於控制陳列品轉移 Modal 的狀態
             const [displayTransferModal, setDisplayTransferModal] = useState(null);
 
@@ -1811,7 +1907,7 @@
                 if (isTodaySelected && todayStats.itemStats) {
                     const top5 = Object.values(todayStats.itemStats)
                         .filter(item => item.desc && item.desc.trim() !== '' && item.top5Amt > 0)
-                        .sort((a, b) => b.top5Qty - a.top5Qty || b.top5Amt - a.top5Amt)
+                        .sort((a, b) => top5SortBy === 'qty' ? (b.top5Qty - a.top5Qty || b.top5Amt - a.top5Amt) : (b.top5Amt - a.top5Amt || b.top5Qty - a.top5Qty))
                         .slice(0, 5);
                     if (top5.length > 0) { top5.forEach((item, idx) => { report += `${idx + 1}. ${item.desc}\n`; }); }
                     else { report += `(今日無銷售商品可產生 Top 5)\n`; }
@@ -1835,7 +1931,7 @@
             }, [dailyRecords, todayStats, settings, story, currentStore, selectedMonth]);
 
             const currentMonthRecords = useMemo(() => dailyRecords.filter(r => r.date.split('/')[0] === selectedMonth).sort((a, b) => b.date.localeCompare(a.date)), [dailyRecords, selectedMonth]);
-            const visibleRecords = isHistoryExpanded ? currentMonthRecords : currentMonthRecords.slice(0, 3);
+            const visibleRecords = currentMonthRecords;
 
             useEffect(() => {
                 if (!isQRCodeModalOpen || !reportContent) return;
@@ -1975,9 +2071,6 @@
                                                     )}
                                                 </div>
                                                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                                                    {currentMonthRecords.length > 3 && (
-                                                        <button onClick={() => setIsHistoryExpanded(!isHistoryExpanded)} className={`flex-1 sm:flex-none justify-center text-sm px-3 py-1.5 rounded-lg flex items-center transition-colors ${isHistoryExpanded ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300'}`}><i className={`fa-solid ${isHistoryExpanded ? 'fa-compress' : 'fa-expand'} mr-1`}></i> {isHistoryExpanded ? '收起' : `展開全部(${currentMonthRecords.length})`}</button>
-                                                    )}
                                                     <button onClick={() => { setIsBulkImportOpen(!isBulkImportOpen); }} className={`flex-1 sm:flex-none justify-center text-sm px-3 py-1.5 rounded-lg flex items-center transition-colors ${isBulkImportOpen ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300' : 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/30'}`}><i className={`fa-solid ${isBulkImportOpen ? 'fa-xmark' : 'fa-table'} mr-1`}></i> {isBulkImportOpen ? '取消' : '批量匯入'}</button>
                                                 </div>
                                             </div>
@@ -1991,7 +2084,7 @@
                                             {visibleRecords.length === 0 ? (
                                                 <p className="text-slate-400 dark:text-slate-500 text-sm">雲端無此月份紀錄，請上傳檔案或匯入。</p>
                                             ) : (
-                                                <div className="space-y-3">
+                                                <div className="space-y-3 max-h-[350px] overflow-y-auto custom-scrollbar pr-2">
                                                     {visibleRecords.map(record => (
                                                         <div key={record.date} className="flex justify-between items-start p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 hover:border-blue-100 dark:hover:border-blue-500/50 transition-colors">
                                                             <div className="flex-1">
@@ -2032,10 +2125,40 @@
                                             </div>
                                             <div className="mb-6 pt-6 border-t border-slate-100 dark:border-slate-700/50">
                                                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">追蹤的新品 Barcode</label>
-                                                <div className="flex flex-col sm:flex-row gap-2 mb-3">
-                                                    <input type="text" className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="輸入條碼..." value={newBarcodeStr} onChange={(e) => setNewBarcodeStr(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addNewBarcode()} />
-                                                    <div className="relative w-full sm:w-32"><input type="number" className="w-full pl-3 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg outline-none dark:bg-slate-900 dark:text-white" placeholder="端盒數量" value={newBoxSize} onChange={(e) => setNewBoxSize(Number(e.target.value))} min="1" /><div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span className="text-slate-500 text-xs">入/盒</span></div></div>
-                                                    <button onClick={addNewBarcode} className="px-4 py-2 bg-slate-800 dark:bg-blue-600 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-blue-700 transition-colors"><i className="fa-solid fa-plus mr-1"></i> 新增</button>
+                                                <div className="flex flex-col xl:flex-row items-start gap-3 mb-3 w-full">
+                                                    <div className="flex-1 w-full min-w-0">
+                                                        <BarcodeScannerInput
+                                                            target="new_barcode"
+                                                            placeholder="掃描或搜尋新品名稱..."
+                                                            iconClass="fa-star"
+                                                            extraInput={(
+                                                                <div className="relative w-24 md:w-28 shrink-0 h-12 md:h-14">
+                                                                    <input type="number" className="w-full h-full pl-3 pr-9 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-900 dark:text-white font-bold hide-arrows" placeholder="數量" value={newBoxSize} onChange={(e) => setNewBoxSize(Number(e.target.value))} min="1" onClick={(e) => e.stopPropagation()} />
+                                                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                                        <span className="text-slate-500 text-xs font-bold font-mono">入/盒</span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            onSubmit={(items) => {
+                                                                let newSettings = { ...settings, newBarcodes: [...settings.newBarcodes], boxSizeMap: { ...settings.boxSizeMap } };
+                                                                let hasChanges = false;
+                                                                items.forEach(item => {
+                                                                    if (!newSettings.newBarcodes.includes(item.barcode)) {
+                                                                        newSettings.newBarcodes.push(item.barcode);
+                                                                        newSettings.boxSizeMap[item.barcode] = newBoxSize || 6;
+                                                                        hasChanges = true;
+                                                                    }
+                                                                });
+                                                                if (hasChanges) {
+                                                                    updateCloudData('settings', newSettings);
+                                                                    setNewBoxSize(6);
+                                                                }
+                                                            }}
+                                                            onOpenCamera={handleOpenCamera}
+                                                            allDictEntries={allDictEntries}
+                                                            settings={settings}
+                                                        />
+                                                    </div>
                                                 </div>
                                                 {/* ✨ 新品追蹤區塊：精緻緊湊型標籤網格 (Compact Tags) */}
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2.5 mt-3">
@@ -2162,12 +2285,16 @@
                                                 quantity: item.top5Qty || 0,
                                                 sales: item.top5Amt || 0
                                             }));
-                                            const top5Items = statsArray.sort((a, b) => b.quantity - a.quantity || b.sales - a.sales).slice(0, 5);
+                                            const top5Items = statsArray.sort((a, b) => top5SortBy === 'qty' ? (b.quantity - a.quantity || b.sales - a.sales) : (b.sales - a.sales || b.quantity - a.quantity)).slice(0, 5);
                                             if (top5Items.length === 0) return null;
                                             return (
                                                 <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors animate-scale-in">
-                                                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center">
-                                                        <i className="fa-solid fa-trophy text-amber-500 mr-2.5"></i> 今日熱銷 Top 5
+                                                    <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center flex-wrap gap-2">
+                                                        <i className="fa-solid fa-trophy text-amber-500 mr-1.5"></i> 今日熱銷 Top 5
+                                                        <div className="flex bg-slate-100 dark:bg-slate-700/50 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600">
+                                                            <button onClick={() => setTop5SortBy('qty')} className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all ${top5SortBy === 'qty' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>數量</button>
+                                                            <button onClick={() => setTop5SortBy('amt')} className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all ${top5SortBy === 'amt' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>金額</button>
+                                                        </div>
                                                         <span className="ml-auto text-xs text-slate-400 font-normal">今日總業績 ${formatMoney(todayStats.sales)}</span>
                                                     </h3>
                                                     <div className="flex flex-col gap-2">
@@ -2600,6 +2727,12 @@
                                                     <span className="ml-3 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs px-2 py-0.5 rounded font-medium">{barcodeItems.length} 筆</span>
                                                 </h2>
                                                 <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-start md:justify-end">
+
+                                                    {/* ✨ 樣式切換器 */}
+                                                    <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg shadow-inner shrink-0 mr-1">
+                                                        <button onClick={() => setPrintStyle('default')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${printStyle === 'default' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>預設標籤</button>
+                                                        <button onClick={() => setPrintStyle('popmart')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${printStyle === 'popmart' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>公版明細</button>
+                                                    </div>
                                                     {barcodeItems.length > 0 && (
                                                         <button onClick={clearAllBarcodeItems} className="px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 rounded-lg text-sm font-bold transition-colors shadow-sm flex items-center whitespace-nowrap shrink-0">
                                                             <i className="fa-solid fa-trash-can mr-1.5"></i>全部刪除
@@ -3434,10 +3567,10 @@
                             </div>
                         )}
                         {printContext === 'barcode-all' && (
-                            <div id="print-area-barcode">{barcodeItems.map(item => (<BarcodeImage key={item.id} value={item.barcode} name={item.name} quantity={item.quantity} printMode={true} />))}</div>
+                            <div id="print-area-barcode">{barcodeItems.map(item => (<BarcodeImage key={item.id} value={item.barcode} name={item.name} quantity={item.quantity} printMode={true} printStyle={printStyle} />))}</div>
                         )}
                         {printContext?.type === 'barcode-single' && (
-                            <div id="print-area-barcode"><BarcodeImage value={printContext.item.barcode} name={printContext.item.name} quantity={printContext.item.quantity} printMode={true} /></div>
+                            <div id="print-area-barcode"><BarcodeImage value={printContext.item.barcode} name={printContext.item.name} quantity={printContext.item.quantity} printMode={true} printStyle={printStyle} /></div>
                         )}
                         {/* ✨ 新增：陳列品列表列印 (套用相同排版，並依據目前的 Filter 印出陳列中或撤下) */}
                         {printContext?.type === 'display-list' && (
@@ -3445,7 +3578,7 @@
                                 {displayItems
                                     .filter(item => item.status === printContext.filter)
                                     .map(item => (
-                                        <BarcodeImage key={`print-${item.id}`} value={item.barcode} name={item.name} quantity={item.quantity} printMode={true} />
+                                        <BarcodeImage key={`print-${item.id}`} value={item.barcode} name={item.name} quantity={item.quantity} printMode={true} printStyle={printStyle} />
                                     ))
                                 }
                             </div>
@@ -3456,13 +3589,16 @@
                                 {displayItems
                                     .filter(item => selectedDisplayItems.has(item.id))
                                     .map(item => (
-                                        <BarcodeImage key={`print-selected-${item.id}`} value={item.barcode} name={item.name} quantity={item.quantity} printMode={true} />
+                                        <BarcodeImage key={`print-selected-${item.id}`} value={item.barcode} name={item.name} quantity={item.quantity} printMode={true} printStyle={printStyle} />
                                     ))
                                 }
                             </div>
                         )}
                     </div>
 
+                    <footer className="mt-auto py-6 text-center text-xs text-slate-400 dark:text-slate-500 font-mono select-none no-print">
+                        &copy; 2026 kutidesign
+                    </footer>
                 </div>
             );
         }
