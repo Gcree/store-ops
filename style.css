@@ -599,3 +599,95 @@ button:active {
     padding-top: 16px;
     border-top: 1px dashed #ccc;
 }
+
+/* =========================================
+   POP MART 公司公版陳列明細 (自動縮放整合版)
+========================================= */
+.popmart-wrapper {
+    width: 72mm;
+    margin: 0 auto 8mm auto;
+    color: #000;
+    background: #fff;
+    font-family: "Helvetica Neue", Helvetica, "Microsoft JhengHei", Arial, sans-serif;
+    page-break-inside: avoid;
+}
+
+.popmart-header {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 6px;
+}
+
+.popmart-table {
+    border: 2px solid #000;
+    display: flex;
+    flex-direction: column;
+}
+
+.popmart-row {
+    border-bottom: 1px solid #000;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    min-height: 52px; /* 增加一點高度讓縮放文字更好看 */
+    gap: 12px;
+}
+
+.popmart-row:last-child {
+    border-bottom: none;
+}
+
+.popmart-label-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    flex-shrink: 0;
+    width: 55px; /* 固定寬度確保冒號對齊 */
+}
+
+.popmart-label {
+    font-size: 15px;
+    font-weight: 900;
+    line-height: 1.1;
+}
+
+.popmart-sub {
+    font-size: 9px;
+    color: #666;
+    margin-top: 2px;
+    line-height: 1.1;
+}
+
+.popmart-val-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    min-width: 0;
+    overflow: hidden; /* ✨ 關鍵：確保內部的縮放元件不會撐破外框 */
+}
+
+.popmart-val {
+    font-size: 13px;
+    font-weight: 900;
+    width: 100%;
+    text-align: left;
+    white-space: nowrap; /* 強制不換行 */
+}
+
+.popmart-barcode-wrapper svg {
+    height: 38px !important;
+    width: auto;
+    margin-left: -4px;
+}
+
+.popmart-barcode-text {
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 2px;
+}
+
