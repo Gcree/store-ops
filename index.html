@@ -153,168 +153,106 @@
             return key ? dict[key] : null;
         };
 
-        // ✨ 自動縮放單行文字元件 (防止文字撐破表格)
-        function AutoFitText({ text }) {
-            const containerRef = React.useRef(null);
-            const textRef = React.useRef(null);
-            const [scale, setScale] = React.useState(1);
-
-            React.useEffect(() => {
-                const timer = setTimeout(() => {
-                    if (containerRef.current && textRef.current) {
-                        const containerWidth = containerRef.current.clientWidth;
-                        const textWidth = textRef.current.scrollWidth;
-                        // 當文字寬度大於容器時，計算縮放比例
-                        if (textWidth > containerWidth && containerWidth > 0) {
-                            setScale(containerWidth / textWidth);
-                        } else {
-                            setScale(1);
-                        }
-                    }
-                }, 100); // 給予足夠的渲染緩衝
-                return () => clearTimeout(timer);
-            }, [text]);
-
-            return (
-                <div ref={containerRef} className="w-full overflow-hidden whitespace-nowrap">
-                    <div
-                        ref={textRef}
-                        className="inline-block whitespace-nowrap origin-left transition-transform duration-75"
-                        style={{ transform: `scale(${scale})`, display: 'inline-block' }}
-                    >
-                        {text}
-                    </div>
-                </div>
-            );
-        }
-
-        function BarcodeImage({ value, name, printMode = false, mini = false, hideName = false, quantity = 1, printStyle = 'default' }) {
+        function BarcodeImage({ value, name, printMode = false, mini = false, quantity = 1, printStyle = 'default' }) {
             const svgRef = useRef(null);
 
             useEffect(() => {
                 if (svgRef.current && value && typeof window.JsBarcode !== 'undefined') {
                     try {
-                        const barHeight = printMode ? 45 : (mini ? 30 : 60);
+                        // ✨ 針對可掃描性進行參數優化
                         window.JsBarcode(svgRef.current, value, {
                             format: "CODE128",
-                            width: mini ? 1.5 : 2,
-                            height: barHeight,
-                            displayValue: !printMode && !mini, // 列印模式下隱藏預設文字，改用我們自己排版的文字
-                            fontSize: 16,
+                            width: printStyle === 'popmart' ? 1.8 : 2, // 稍微收緊寬度以適應表格
+                            height: printStyle === 'popmart' ? 40 : 50,
+                            displayValue: false, // 文字由我們手動排版
                             margin: 0,
                             background: "transparent",
-                            lineColor: printMode ? "#000" : "currentColor"
+                            lineColor: "#000"
                         });
                     }
-                    catch (e) { console.error("無法產生條碼:", e); }
+                    catch (e) { console.error("條碼生成失敗:", e); }
                 }
-            }, [value, printMode, mini]);
+            }, [value, printMode, printStyle]);
 
             if (mini) return <svg ref={svgRef} className="dark:invert"></svg>;
 
-            // ✨ 列印專用版型 (完美套用你手動更新的結構)
-            if (printMode) {
-                // ✨ 整合版：POP MART 公司公版 (導入自動縮放功能)
-                if (printStyle === 'popmart') {
-                    return (
-                        <div className="popmart-wrapper">
-                            <div className="popmart-header">POP MART陳列樣品明細</div>
-                            <div className="popmart-table">
-                                {/* 第一列：品項 (導入 AutoFitText) */}
-                                <div className="popmart-row">
-                                    <div className="popmart-label-col">
-                                        <div className="popmart-label">品項:</div>
-                                        <div className="popmart-sub">填寫全名</div>
-                                    </div>
-                                    <div className="popmart-val-col">
-                                        <div className="popmart-val">
-                                            <AutoFitText text={name || ''} />
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* 第二列：條碼 */}
-                                <div className="popmart-row">
-                                    <div className="popmart-label-col">
-                                        <div className="popmart-label">條碼:</div>
-                                        <div className="popmart-sub">正確69碼</div>
-                                    </div>
-                                    <div className="popmart-val-col">
-                                        <div className="popmart-barcode-wrapper">
-                                            <svg ref={svgRef}></svg>
-                                        </div>
-                                        <div className="popmart-barcode-text">{value}</div>
-                                    </div>
-                                </div>
-                                {/* 第三列：備註 */}
-                                <div className="popmart-row">
-                                    <div className="popmart-label-col">
-                                        <div className="popmart-label">備註:</div>
-                                        <div className="popmart-sub">樣品損壞or缺件等情況</div>
-                                    </div>
-                                    <div className="popmart-val-col">
-                                        <div className="popmart-val">
-                                            {quantity > 1 ? `系統帶入數量: ${quantity} 件` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* 第四列：門市 */}
-                                <div className="popmart-row">
-                                    <div className="popmart-label-col">
-                                        <div className="popmart-label">門市:</div>
-                                        <div className="popmart-sub">門市全名</div>
-                                    </div>
-                                    <div className="popmart-val-col">
-                                        <div className="popmart-val">桃園台茂店</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                }
-
+            if (printMode && printStyle === 'popmart') {
                 return (
-                    <div className="custom-print-label">
-                        <div className="custom-print-container">
-
-                            <div className="custom-print-header">
-                                <div className="custom-print-subtitle">◇ 產品名稱 ◇</div>
-                                <div className="custom-print-title">{name || '（無品名）'}</div>
-                            </div>
-
-                            <div className="custom-print-barcode-sec">
-                                <div className="custom-print-barcode-svg">
-                                    <svg ref={svgRef}></svg>
+                    <div className="popmart-wrapper">
+                        <div className="popmart-header">POP MART陳列樣品明細</div>
+                        <div className="popmart-table">
+                            <div className="popmart-row">
+                                <div className="popmart-label-col">
+                                    <div className="popmart-label">品項:</div>
+                                    <div className="popmart-sub">填寫全名</div>
                                 </div>
-                                {/* 獨立抽出來的條碼文字，確保字體與間距符合你的設計 */}
-                                <div className="custom-print-barcode-text">{value}</div>
-                            </div>
-
-                            <div className="custom-print-footer">
-                                <div className="custom-print-qty-sec">
-                                    <div className="custom-print-qty-label-1">數量</div>
-                                    <div className="custom-print-qty-label-2">QTY</div>
-                                    <div className="custom-print-qty-val">{quantity}</div>
-                                </div>
-
-                                <div className="custom-print-note-sec">
-                                    <div className="custom-print-note-label">備註 NOTE</div>
+                                <div className="popmart-val-col">
+                                    <div className="popmart-val">{name || ''}</div>
                                 </div>
                             </div>
-
+                            <div className="popmart-row">
+                                <div className="popmart-label-col">
+                                    <div className="popmart-label">條碼:</div>
+                                    <div className="popmart-sub">正確69碼</div>
+                                </div>
+                                <div className="popmart-val-col popmart-barcode-container">
+                                    <div className="popmart-barcode-wrapper"><svg ref={svgRef}></svg></div>
+                                    <div className="popmart-barcode-text">{value}</div>
+                                </div>
+                            </div>
+                            <div className="popmart-row">
+                                <div className="popmart-label-col">
+                                    <div className="popmart-label">備註:</div>
+                                    <div className="popmart-sub">樣品損壞等</div>
+                                </div>
+                                <div className="popmart-val-col">
+                                    <div className="popmart-val">{quantity > 1 ? `系統帶入數量: ${quantity} 件` : ''}</div>
+                                </div>
+                            </div>
+                            <div className="popmart-row">
+                                <div className="popmart-label-col">
+                                    <div className="popmart-label">門市:</div>
+                                    <div className="popmart-sub">門市全名</div>
+                                </div>
+                                <div className="popmart-val-col">
+                                    <div className="popmart-val">桃園台茂店</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 );
             }
 
-            // 一般網頁上的顯示排版 (維持原樣)
             return (
-                <div className="flex flex-col items-center justify-center w-full">
-                    {!hideName && (
-                        <div className="font-bold text-center text-sm mb-2 text-slate-700 dark:text-slate-200">
-                            <div>{name || '（無品名）'}</div>
+                <div className="custom-print-label">
+                    <div className="custom-print-container">
+
+                        <div className="custom-print-header">
+                            <div className="custom-print-subtitle">◇ 產品名稱 ◇</div>
+                            <div className="custom-print-title">{name || '（無品名）'}</div>
                         </div>
-                    )}
-                    <svg ref={svgRef} className="dark:invert"></svg>
+
+                        <div className="custom-print-barcode-sec">
+                            <div className="custom-print-barcode-svg">
+                                <svg ref={svgRef}></svg>
+                            </div>
+                            {/* 獨立抽出來的條碼文字，確保字體與間距符合你的設計 */}
+                            <div className="custom-print-barcode-text">{value}</div>
+                        </div>
+
+                        <div className="custom-print-footer">
+                            <div className="custom-print-qty-sec">
+                                <div className="custom-print-qty-label-1">數量</div>
+                                <div className="custom-print-qty-label-2">QTY</div>
+                                <div className="custom-print-qty-val">{quantity}</div>
+                            </div>
+
+                            <div className="custom-print-note-sec">
+                                <div className="custom-print-note-label">備註 NOTE</div>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             );
         }
