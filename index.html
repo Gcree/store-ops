@@ -209,13 +209,15 @@
                                     <div className="popmart-val">{quantity > 1 ? `系統帶入數量: ${quantity} 件` : ''}</div>
                                 </div>
                             </div>
+                            {/* 第四列：門市 */}
                             <div className="popmart-row">
                                 <div className="popmart-label-col">
                                     <div className="popmart-label">門市:</div>
                                     <div className="popmart-sub">門市全名</div>
                                 </div>
                                 <div className="popmart-val-col">
-                                    <div className="popmart-val">桃園台茂店</div>
+                                    {/* ✨ 加入 store-name 讓字體放大 */}
+                                    <div className="popmart-val store-name">桃園台茂店</div>
                                 </div>
                             </div>
                         </div>
