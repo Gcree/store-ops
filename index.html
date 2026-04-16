@@ -877,9 +877,10 @@
             const [settings, setSettings] = useState(defaultSettings);
             const [damagedItems, setDamagedItems] = useState([]);
             const [displayItems, setDisplayItems] = useState([]);
+            const [systemExhibitionItems, setSystemExhibitionItems] = useState([]);
             const [dbStatus, setDbStatus] = useState('連線中...');
-            const [dataLoaded, setDataLoaded] = useState({ records: false, settings: false, damaged: false, display: false });
-            const isDataReady = dataLoaded.records && dataLoaded.settings && dataLoaded.damaged && dataLoaded.display;
+            const [dataLoaded, setDataLoaded] = useState({ records: false, settings: false, damaged: false, display: false, systemExhibition: false });
+            const isDataReady = dataLoaded.records && dataLoaded.settings && dataLoaded.damaged && dataLoaded.display && dataLoaded.systemExhibition;
 
             useEffect(() => {
                 if (!user || !db) return;
@@ -901,7 +902,11 @@
                     if (doc.exists) setDisplayItems(doc.data().data || []);
                     if (!doc.metadata.fromCache) setDataLoaded(prev => ({ ...prev, display: true }));
                 });
-                return () => { unsubRecords(); unsubSettings(); unsubDamaged(); unsubDisplay(); };
+                const unsubSystemExhibition = db.collection('retailOps').doc('systemExhibitionItems').onSnapshot(options, doc => {
+                    if (doc.exists) setSystemExhibitionItems(doc.data().data || []);
+                    if (!doc.metadata.fromCache) setDataLoaded(prev => ({ ...prev, systemExhibition: true }));
+                });
+                return () => { unsubRecords(); unsubSettings(); unsubDamaged(); unsubDisplay(); unsubSystemExhibition(); };
             }, [user]);
 
             const updateCloudData = (docName, newData, successMsg) => {
@@ -1104,6 +1109,7 @@
             const [displayFilter, setDisplayFilter] = useState('stored');
             const [displaySearch, setDisplaySearch] = useState('');
             const [displayCurrentPage, setDisplayCurrentPage] = useState(1);
+            const [overviewCurrentPage, setOverviewCurrentPage] = useState(1);
             const [isDisplayOverviewExpanded, setIsDisplayOverviewExpanded] = useState(false);
             const [itemsPerPage, setItemsPerPage] = useState(12);
 
@@ -1188,7 +1194,7 @@
                 setDisplayItems(prev => {
                     const item = prev.find(i => i.id === id);
                     const newData = prev.filter(i => i.id !== id);
-                    if (item) triggerUndo(`已移除陳列品：${item.name}`, () => {
+                    if (item) triggerUndo(`已撤下陳列品：${item.name}`, () => {
                         setDisplayItems(current => {
                             const restored = [...current, item];
                             updateCloudData('displayItems', restored);
@@ -1247,7 +1253,7 @@
             };
 
             const handleExportData = () => {
-                const backupData = { dailyRecords, reportSettings: settings, damagedItems, displayItems };
+                const backupData = { dailyRecords, reportSettings: settings, damagedItems, displayItems, systemExhibitionItems };
                 const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url;
                 a.download = `系統備份_${new Date().getTime()}.json`; a.click(); URL.revokeObjectURL(url);
@@ -1264,6 +1270,7 @@
                             if (data.reportSettings) updateCloudData('settings', data.reportSettings);
                             if (data.damagedItems) updateCloudData('damagedItems', data.damagedItems);
                             if (data.displayItems) updateCloudData('displayItems', data.displayItems);
+                            if (data.systemExhibitionItems) updateCloudData('systemExhibitionItems', data.systemExhibitionItems);
                             showToast('還原成功！雲端已同步。');
                         }
                     } catch (error) { showToast('匯入失敗：檔案無法解析'); }
@@ -1679,6 +1686,8 @@
                         const headers = rows[0].map(h => String(h || '').trim().toUpperCase());
                         const idxBarcode = headers.indexOf('BARCODE');
                         const idxDesc = headers.indexOf('CNDESCRIPTION');
+                        const idxInventoryType = headers.indexOf('INVENTORY_TYPE');
+                        const idxQty = headers.findIndex(h => ['QTY', 'QUANTITY', 'ON_HAND_QTY', 'STOCK_QTY', 'STOCK', '應有數量', '數量'].includes(h));
 
                         if (idxBarcode === -1 || idxDesc === -1) {
                             showToast('⚠️ 找不到 BARCODE 或 CNDESCRIPTION 欄位');
@@ -1687,6 +1696,8 @@
 
                         let newDict = { ...settings.customNameMap };
                         let newCount = 0, updateCount = 0, skipCount = 0;
+                        let newExhibitionMap = new Map();
+                        let hasExhibitionData = false;
                         const converter = window.OpenCC ? window.OpenCC.Converter({ from: 'cn', to: 'tw' }) : (s => s);
 
                         for (let i = 1; i < rows.length; i++) {
@@ -1703,15 +1714,34 @@
                             if (bc === name) { skipCount++; }
                             else if (newDict[bc] === name) { skipCount++; }
                             else { if (newDict[bc]) { updateCount++; } else { newCount++; } newDict[bc] = name; }
+
+                            if (idxInventoryType !== -1 && idxQty !== -1) {
+                                const invType = String(row[idxInventoryType] || '');
+                                if (invType.includes('Exhibition') || invType.includes('陳列品')) {
+                                    hasExhibitionData = true;
+                                    const qty = parseFloat(row[idxQty]) || 0;
+                                    if (newExhibitionMap.has(bc)) {
+                                        newExhibitionMap.get(bc).expectedQuantity += qty;
+                                    } else {
+                                        newExhibitionMap.set(bc, { id: btoa(bc).substring(0, 10) + '_' + Date.now(), barcode: bc, name: name, expectedQuantity: qty });
+                                    }
+                                }
+                            }
                         }
 
                         if (newCount === 0 && updateCount === 0) {
-                            showToast(`⚠️ 沒有匯入新資料 (皆為重複或無效資料)`);
+                            showToast(`⚠️ 沒有匯入新商品名稱資料`);
                         } else {
-                            let toastMsg = `✅ Excel 成功新增 ${newCount} 筆`;
+                            let toastMsg = `✅ Excel 成功新增 ${newCount} 筆名稱`;
                             if (updateCount > 0) toastMsg += `，更新 ${updateCount} 筆`;
                             if (skipCount > 0) toastMsg += ` (略過 ${skipCount} 筆)`;
                             updateCloudData('settings', { ...settings, customNameMap: newDict }, toastMsg);
+                        }
+
+                        if (hasExhibitionData) {
+                            const newExhibitionItems = Array.from(newExhibitionMap.values());
+                            updateCloudData('systemExhibitionItems', newExhibitionItems);
+                            showToast(`📦 成功同步 ${newExhibitionItems.length} 筆陳列品應有庫存`);
                         }
                     } catch (error) {
                         showToast('讀取失敗，請確認檔案格式');
@@ -1920,6 +1950,77 @@
                 ).catch(err => { showToast('⚠️ 無法啟動相機，請確認瀏覽器權限'); setScannerOpen(false); });
                 return () => { if (html5QrCode.isScanning) html5QrCode.stop().catch(console.error); };
             }, [scannerOpen, scannerTarget]);
+
+            // ✨ 陳列品盤點總覽資料集 (合併應有數量與實際數量，並進行差異比對)
+            const overviewItems = useMemo(() => {
+                const map = new Map();
+
+                // 1. 建立應有數量 (Base = systemExhibitionItems)
+                systemExhibitionItems.forEach(sysItem => {
+                    map.set(sysItem.barcode, {
+                        id: sysItem.id, // 基底 ID，如果在 displayItems 找不到，也能有 ID
+                        barcode: sysItem.barcode,
+                        name: sysItem.name,
+                        expected: sysItem.expectedQuantity,
+                        actual: 0,
+                        stored: 0,
+                        displayed: 0
+                    });
+                });
+
+                // 2. 疊加實際門市數量 (陳列中 + 已撤下)
+                displayItems.forEach(item => {
+                    if (!map.has(item.barcode)) {
+                        map.set(item.barcode, {
+                            id: item.id,
+                            barcode: item.barcode,
+                            name: item.name,
+                            expected: 0,
+                            actual: 0,
+                            stored: 0,
+                            displayed: 0
+                        });
+                    }
+                    const obj = map.get(item.barcode);
+                    obj.actual += item.quantity;
+                    if (item.status === 'stored') obj.stored += item.quantity;
+                    if (item.status === 'displayed') obj.displayed += item.quantity;
+                    // 若有顯示名稱，可選擇更新為最新的顯示名稱
+                    if (item.name) obj.name = item.name;
+                });
+
+                // 3. 計算 Badge 狀態，4種狀態
+                let items = Array.from(map.values()).map(item => {
+                    let matchingStatus = 'match';
+                    if (item.actual === 0 && item.expected > 0) matchingStatus = 'missing';   // 🔴 未尋獲
+                    else if (item.actual < item.expected) matchingStatus = 'shortage';        // 🟡 短缺
+                    else if (item.actual > item.expected) matchingStatus = 'surplus';         // 🔵 溢出
+                    // 否則為 🟢 吻合 (match)
+
+                    return { ...item, matchingStatus };
+                });
+
+                // 4. 重點排序：有差異的放前面 (missing -> shortage -> surplus -> match)
+                const statusWeight = { missing: 1, shortage: 2, surplus: 3, match: 4 };
+                items.sort((a, b) => statusWeight[a.matchingStatus] - statusWeight[b.matchingStatus] || (a.name || '').localeCompare(b.name || ''));
+
+                return items;
+            }, [systemExhibitionItems, displayItems]);
+
+            const overviewData = useMemo(() => {
+                const searchLower = displaySearch.toLowerCase();
+                const filtered = overviewItems.filter(item =>
+                    !displaySearch ||
+                    (item.name || '').toLowerCase().includes(searchLower) ||
+                    (item.barcode || '').toLowerCase().includes(searchLower)
+                );
+                const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+                const safeCurrentPage = Math.min(overviewCurrentPage, totalPages);
+                const paginated = filtered.slice((safeCurrentPage - 1) * itemsPerPage, safeCurrentPage * itemsPerPage);
+                return { paginated, totalPages, safeCurrentPage, filteredCount: filtered.length };
+            }, [overviewItems, overviewCurrentPage, itemsPerPage, displaySearch]);
+
+            useEffect(() => { setOverviewCurrentPage(1); }, [itemsPerPage, displaySearch]);
 
             const handleLogin = (e) => {
                 e.preventDefault();
@@ -2476,8 +2577,9 @@
                                                     </button>
                                                 </div>
                                                 <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shadow-inner w-full md:w-auto h-auto md:h-10 shrink-0">
-                                                    <button onClick={() => setDisplayFilter('stored')} className={`flex-1 md:w-28 text-sm font-bold rounded-lg transition-all duration-300 py-1.5 md:py-1 ${displayFilter === 'stored' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}><i className="fa-solid fa-box-archive mr-2"></i>已撤下</button>
-                                                    <button onClick={() => setDisplayFilter('displayed')} className={`flex-1 md:w-28 text-sm font-bold rounded-lg transition-all duration-300 py-1.5 md:py-1 ${displayFilter === 'displayed' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}><i className="fa-solid fa-lightbulb mr-2"></i>陳列中</button>
+                                                    <button onClick={() => setDisplayFilter('stored')} className={`flex-1 md:w-24 text-sm font-bold rounded-lg transition-all duration-300 py-1.5 md:py-1 ${displayFilter === 'stored' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}><i className="fa-solid fa-box-archive mr-1"></i>撤下</button>
+                                                    <button onClick={() => setDisplayFilter('displayed')} className={`flex-1 md:w-24 text-sm font-bold rounded-lg transition-all duration-300 py-1.5 md:py-1 ${displayFilter === 'displayed' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}><i className="fa-solid fa-lightbulb mr-1"></i>陳列</button>
+                                                    <button onClick={() => setDisplayFilter('overview')} className={`flex-1 md:w-24 text-sm font-bold rounded-lg transition-all duration-300 py-1.5 md:py-1 ${displayFilter === 'overview' ? 'bg-blue-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}><i className="fa-solid fa-clipboard-check mr-1"></i>總覽</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -2492,145 +2594,263 @@
                                         />
                                     </div>
 
-                                    {displayItems.filter(item => item.status === displayFilter).length === 0 ? (
-                                        <EmptyState
-                                            icon={`fa-solid ${displayFilter === 'stored' ? 'fa-box-open' : 'fa-store-slash text-amber-500/30 text-5xl'}`}
-                                            title={`目前沒有${displayFilter === 'stored' ? '撤下' : '展示中'}的品項`}
-                                        />
-                                    ) : (
-                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4 items-start">
-
-                                            {/* 左側：總覽與篩選 (加入手機版摺疊功能) */}
-                                            <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 flex flex-col h-auto lg:h-[calc(100vh-16rem)] lg:sticky top-28 transition-colors">
-                                                {/* 點擊標頭可以在手機版展開/收合 */}
-                                                <div
-                                                    className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center cursor-pointer lg:cursor-default"
-                                                    onClick={() => { if (window.innerWidth < 1024) setIsDisplayOverviewExpanded(!isDisplayOverviewExpanded); }}
-                                                >
-                                                    <div className="relative group flex-1">
-                                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                                            <i className="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-amber-500 transition-colors"></i>
-                                                        </div>
-                                                        <input
-                                                            type="text"
-                                                            value={displaySearch}
-                                                            onChange={(e) => {
-                                                                setDisplaySearch(e.target.value);
-                                                                // 搜尋時如果是手機版，自動展開總覽方便看結果
-                                                                if (window.innerWidth < 1024 && e.target.value) setIsDisplayOverviewExpanded(true);
-                                                            }}
-                                                            onClick={(e) => e.stopPropagation()} /* 防止點擊輸入框時觸發摺疊 */
-                                                            className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 transition-all shadow-sm dark:text-white"
-                                                            placeholder="搜尋品名或條碼..."
-                                                        />
+                                    {displayFilter === 'overview' ? (
+                                        <div className="animate-scale-in origin-top mt-4 flex-1 flex flex-col">
+                                            <div className="border border-slate-200 dark:border-slate-700 flex flex-col rounded-2xl bg-white dark:bg-slate-900/40 shadow-sm relative h-auto lg:h-[calc(100vh-16rem)]">
+                                                {overviewItems.length === 0 ? (
+                                                    <div className="flex flex-col items-center justify-center text-slate-400 text-sm font-medium p-8 h-full min-h-[200px] bg-slate-50/30 dark:bg-slate-800/30 rounded-2xl">
+                                                        <i className="fa-solid fa-clipboard-question text-3xl text-slate-300 dark:text-slate-600 mb-3"></i>
+                                                        尚無陳列品盤點資料
                                                     </div>
-                                                    {/* 手機版下拉箭頭圖示 */}
-                                                    <div className="lg:hidden ml-4 text-slate-400 p-2">
-                                                        <i className={`fa-solid fa-chevron-${isDisplayOverviewExpanded ? 'up' : 'down'} transition-transform duration-300`}></i>
+                                                ) : (
+                                                    <>
+                                                        {/* Top Search Bar */}
+                                                        <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex justify-between items-center rounded-t-2xl shrink-0">
+                                                            <div className="relative flex-1 max-w-md">
+                                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                                    <i className="fa-solid fa-search text-slate-400"></i>
+                                                                </div>
+                                                                <input
+                                                                    type="text"
+                                                                    value={displaySearch}
+                                                                    onChange={(e) => setDisplaySearch(e.target.value)}
+                                                                    className="w-full pl-10 pr-4 py-2 flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 transition-all shadow-sm dark:text-white text-sm"
+                                                                    placeholder="搜尋品名或條碼..."
+                                                                />
+                                                            </div>
+                                                            <div className="ml-4 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-700 py-1.5 px-3 rounded-lg shadow-inner shrink-0">
+                                                                共 {overviewData.filteredCount} 項
+                                                            </div>
+                                                        </div>
+
+                                                        {overviewData.filteredCount === 0 ? (
+                                                            <div className="flex flex-col items-center justify-center text-slate-400 text-sm font-medium p-8 h-full min-h-[200px] bg-slate-50/30 dark:bg-slate-800/30">
+                                                                <i className="fa-solid fa-magnifying-glass-minus text-3xl text-slate-300 dark:text-slate-600 mb-3"></i>
+                                                                找不到符合條件的項目
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/30 dark:bg-slate-900/20">
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 p-4 lg:p-6 content-start">
+                                                                    {overviewData.paginated.map((item) => (
+                                                                        <div key={item.barcode} className="relative flex flex-col justify-between p-4 lg:p-5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] min-h-[140px] hover:border-blue-200 dark:hover:border-blue-500/50 hover:shadow-md transition-all group">
+
+                                                                            {/* Top row: Name & Actions */}
+                                                                            <div className="flex justify-between items-start gap-4 mb-4">
+                                                                                <div className="text-[14px] md:text-[15px] font-bold text-slate-800 dark:text-slate-100 leading-relaxed line-clamp-2 pr-2">
+                                                                                    {item.name}
+                                                                                </div>
+                                                                                <div className="flex items-center gap-2 shrink-0">
+                                                                                    <QuickActionMenu
+                                                                                        barcode={item.barcode}
+                                                                                        name={item.name}
+                                                                                        onAction={(action, b, n, status) => {
+                                                                                            if (action === 'display') handleUnifiedSubmit(action, [{ barcode: b, name: n }], status);
+                                                                                            else if (action === 'track_new') handleTrackNewFromShortcut(b);
+                                                                                            else handleUnifiedSubmit(action, [{ barcode: b, name: n }]); // fallback focus
+                                                                                        }}
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {/* Bottom row: Barcode, Center Status, Right Quantities */}
+                                                                            <div className="flex justify-between items-end mt-auto gap-2">
+
+                                                                                {/* Left: Barcode */}
+                                                                                <div className="flex items-center gap-2 pb-1">
+                                                                                    <span className="text-[12px] md:text-[13px] font-mono font-bold text-teal-600 bg-teal-50 dark:text-teal-400 dark:bg-teal-500/10 px-2 py-1 rounded-md tracking-wider border border-teal-100/50 dark:border-teal-500/20">
+                                                                                        {item.barcode}
+                                                                                    </span>
+                                                                                    <button onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        if (navigator.clipboard && window.isSecureContext) {
+                                                                                            navigator.clipboard.writeText(item.barcode).then(() => showToast('📋 已複製條碼')).catch(() => { });
+                                                                                        }
+                                                                                    }} className="text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 p-1.5 rounded transition-colors" title="複製條碼">
+                                                                                        <i className="fa-regular fa-copy text-sm"></i>
+                                                                                    </button>
+                                                                                </div>
+
+                                                                                {/* Middle: Badge (Absolute position to auto-center regardless of items width) */}
+                                                                                <div className="absolute left-1/2 bottom-[1.375rem] -translate-x-1/2 flex flex-col items-center pointer-events-none z-0 opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all">
+                                                                                    {item.matchingStatus === 'match' && <span className="text-[11px] font-bold text-green-600 bg-green-100 border border-green-200/50 dark:text-green-400 dark:bg-green-500/20 dark:border-green-500/30 px-3 py-1 rounded-full shadow-sm whitespace-nowrap"><i className="fa-solid fa-check mr-1.5"></i>吻合</span>}
+                                                                                    {item.matchingStatus === 'shortage' && <span className="text-[11px] font-bold text-amber-600 bg-amber-100 border border-amber-200/50 dark:text-amber-400 dark:bg-amber-500/20 dark:border-amber-500/30 px-3 py-1 rounded-full shadow-sm whitespace-nowrap"><i className="fa-solid fa-triangle-exclamation mr-1.5"></i>短缺</span>}
+                                                                                    {item.matchingStatus === 'missing' && <span className="text-[11px] font-bold text-rose-600 bg-rose-100 border border-rose-200/50 dark:text-rose-400 dark:bg-rose-500/20 dark:border-rose-500/30 px-3 py-1 rounded-full shadow-sm whitespace-nowrap"><i className="fa-solid fa-xmark mr-1.5"></i>未尋獲</span>}
+                                                                                    {item.matchingStatus === 'surplus' && <span className="text-[11px] font-bold text-blue-600 bg-blue-100 border border-blue-200/50 dark:text-blue-400 dark:bg-blue-500/20 dark:border-blue-500/30 px-3 py-1 rounded-full shadow-sm whitespace-nowrap"><i className="fa-solid fa-plus mr-1.5"></i>溢出</span>}
+                                                                                </div>
+
+                                                                                {/* Right: Quantities - Simplified */}
+                                                                                <div className="flex items-center gap-2.5 relative z-10 cursor-default bg-slate-50/80 dark:bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800/80 text-[11px] font-bold whitespace-nowrap tracking-wide">
+                                                                                    <span className="text-slate-500 dark:text-slate-400">系統 <span className="text-slate-700 dark:text-slate-300">{item.expected}</span></span>
+                                                                                    <div className="w-px h-3 bg-slate-300 dark:bg-slate-700"></div>
+                                                                                    <span className="text-slate-500 dark:text-slate-400">撤下 <span className="text-slate-700 dark:text-slate-300">{item.stored}</span></span>
+                                                                                    <div className="w-px h-3 bg-slate-300 dark:bg-slate-700"></div>
+                                                                                    <span className="text-slate-500 dark:text-slate-400">陳列 <span className="text-slate-700 dark:text-slate-300">{item.displayed}</span></span>
+                                                                                </div>
+
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Pagination Footer */}
+                                                        {overviewData.totalPages > 1 && (
+                                                            <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shrink-0 sticky bottom-0 z-10 rounded-b-2xl">
+                                                                <button disabled={overviewCurrentPage === 1} onClick={() => { setOverviewCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="px-4 md:px-5 py-2 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-[0_1px_2px_rgba(0,0,0,0.05)] flex items-center border border-slate-200 dark:border-slate-600/50">
+                                                                    <i className="fa-solid fa-angle-left mr-2"></i> 上一頁
+                                                                </button>
+                                                                <span className="text-sm font-bold text-slate-500 dark:text-slate-400">第 {overviewData.safeCurrentPage} / {overviewData.totalPages} 頁</span>
+                                                                <button disabled={overviewCurrentPage === overviewData.totalPages} onClick={() => { setOverviewCurrentPage(p => Math.min(overviewData.totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="px-4 md:px-5 py-2 bg-slate-50 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-[0_1px_2px_rgba(0,0,0,0.05)] flex items-center border border-slate-200 dark:border-slate-600/50">
+                                                                    下一頁 <i className="fa-solid fa-angle-right ml-2"></i>
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        displayItems.filter(item => item.status === displayFilter).length === 0 ? (
+                                            <EmptyState
+                                                icon={`fa-solid ${displayFilter === 'stored' ? 'fa-box-open' : 'fa-store-slash text-amber-500/30 text-5xl'}`}
+                                                title={`目前沒有${displayFilter === 'stored' ? '撤下' : '展示中'}的品項`}
+                                            />
+                                        ) : (
+                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4 items-start">
+
+                                                {/* 左側：總覽與篩選 (加入手機版摺疊功能) */}
+                                                <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 flex flex-col h-auto lg:h-[calc(100vh-16rem)] lg:sticky top-28 transition-colors">
+                                                    {/* 點擊標頭可以在手機版展開/收合 */}
+                                                    <div
+                                                        className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center cursor-pointer lg:cursor-default"
+                                                        onClick={() => { if (window.innerWidth < 1024) setIsDisplayOverviewExpanded(!isDisplayOverviewExpanded); }}
+                                                    >
+                                                        <div className="relative group flex-1">
+                                                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                                <i className="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-amber-500 transition-colors"></i>
+                                                            </div>
+                                                            <input
+                                                                type="text"
+                                                                value={displaySearch}
+                                                                onChange={(e) => {
+                                                                    setDisplaySearch(e.target.value);
+                                                                    // 搜尋時如果是手機版，自動展開總覽方便看結果
+                                                                    if (window.innerWidth < 1024 && e.target.value) setIsDisplayOverviewExpanded(true);
+                                                                }}
+                                                                onClick={(e) => e.stopPropagation()} /* 防止點擊輸入框時觸發摺疊 */
+                                                                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 transition-all shadow-sm dark:text-white"
+                                                                placeholder="搜尋品名或條碼..."
+                                                            />
+                                                        </div>
+                                                        {/* 手機版下拉箭頭圖示 */}
+                                                        <div className="lg:hidden ml-4 text-slate-400 p-2">
+                                                            <i className={`fa-solid fa-chevron-${isDisplayOverviewExpanded ? 'up' : 'down'} transition-transform duration-300`}></i>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* 透過 isDisplayOverviewExpanded 控制手機版顯示隱藏 */}
+                                                    <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 ${isDisplayOverviewExpanded ? 'block' : 'hidden lg:block'}`}>
+                                                        <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-700 flex justify-between items-end">
+                                                            <span className="text-sm">分類總覽</span>
+                                                            <span className="text-amber-500 font-black text-sm">{displayData.filtered.reduce((sum, i) => sum + i.quantity, 0)} 件</span>
+                                                        </h4>
+                                                        {displayData.grouped.length === 0 ? (
+                                                            <p className="text-center text-sm text-slate-400 py-4">無符合的資料</p>
+                                                        ) : (
+                                                            <div className="space-y-4">
+                                                                {displayData.grouped.map(([category, items]) => (
+                                                                    <div key={category} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                                                                        <div className="text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">{category}</div>
+                                                                        <ul className="space-y-2">
+                                                                            {items.map(item => (
+                                                                                <li key={`list-${item.id}`} className="flex justify-between items-start text-sm">
+                                                                                    <span className="text-slate-600 dark:text-slate-400 pr-2 line-clamp-1 flex-1 text-xs">{item.name}</span>
+                                                                                    <span className="font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-600 shadow-sm text-xs whitespace-nowrap">x {item.quantity}</span>
+                                                                                </li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
 
-                                                {/* 透過 isDisplayOverviewExpanded 控制手機版顯示隱藏 */}
-                                                <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 ${isDisplayOverviewExpanded ? 'block' : 'hidden lg:block'}`}>
-                                                    <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-4 pb-2 border-b border-slate-100 dark:border-slate-700 flex justify-between items-end">
-                                                        <span className="text-sm">分類總覽</span>
-                                                        <span className="text-amber-500 font-black text-sm">{displayData.filtered.reduce((sum, i) => sum + i.quantity, 0)} 件</span>
-                                                    </h4>
-                                                    {displayData.grouped.length === 0 ? (
-                                                        <p className="text-center text-sm text-slate-400 py-4">無符合的資料</p>
+                                                {/* 右側：卡片列表與分頁 */}
+                                                {/* 拿掉手機版的固定高度 h-[500px]，改為 h-auto 讓手機版自然向下長，靠瀏覽器原生滾動 */}
+                                                <div className="lg:col-span-8 flex flex-col h-auto lg:h-[calc(100vh-16rem)]">
+                                                    {displayData.paginated.length === 0 ? (
+                                                        <EmptyState
+                                                            icon="fa-solid fa-magnifying-glass-minus text-4xl mb-3"
+                                                            title="找不到相符的品項"
+                                                            className="flex-1 flex flex-col items-center justify-center p-10 text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700"
+                                                        />
                                                     ) : (
-                                                        <div className="space-y-4">
-                                                            {displayData.grouped.map(([category, items]) => (
-                                                                <div key={category} className="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                                                                    <div className="text-xs font-bold text-slate-600 dark:text-slate-400 mb-2">{category}</div>
-                                                                    <ul className="space-y-2">
-                                                                        {items.map(item => (
-                                                                            <li key={`list-${item.id}`} className="flex justify-between items-start text-sm">
-                                                                                <span className="text-slate-600 dark:text-slate-400 pr-2 line-clamp-1 flex-1 text-xs">{item.name}</span>
-                                                                                <span className="font-bold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-600 shadow-sm text-xs whitespace-nowrap">x {item.quantity}</span>
-                                                                            </li>
-                                                                        ))}
-                                                                    </ul>
-                                                                </div>
-                                                            ))}
+                                                        // 手機版解除 overflow 限制，桌面版保留內部滾動
+                                                        <div className="flex-1 overflow-y-visible lg:overflow-y-auto custom-scrollbar p-1 pb-4 pr-1 lg:pr-3">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 content-start p-2">
+                                                                {displayData.paginated.map((item) => (
+                                                                    <ProductListItem
+                                                                        key={item.id}
+                                                                        variant="card"
+                                                                        item={item}
+                                                                        isSelected={selectedDisplayItems.has(item.id)}
+                                                                        onToggleSelect={(id, e) => toggleDisplaySelection(id, e?.shiftKey)}
+                                                                        onUpdateName={(id, bc, name) => handleUpdateItemName('display', id, bc, name)}
+                                                                        onUpdateQuantity={(diff) => updateDisplayQuantity(item.id, diff)}
+                                                                        onSetQuantity={(val) => setDisplayItemQuantity(item.id, val)}
+                                                                        onDelete={() => {
+                                                                            if (window.confirm(`⚠️ 確定要強行刪除「${item.name}」的所有紀錄嗎？\n此操作無法還原，建議改用「收回典藏」。`)) {
+                                                                                removeDisplayItem(item.id);
+                                                                            }
+                                                                        }}
+                                                                        renderExtraTags={(it) => (
+                                                                            <button onClick={(e) => { e.stopPropagation(); toggleDisplayStatus(it.id, it.status); }} className={`absolute -top-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm z-20 ${it.status === 'displayed' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-400 hover:bg-blue-100 hover:text-blue-600'}`} title={it.status === 'displayed' ? '收回典藏' : '轉為陳列'}>
+                                                                                <i className={`fa-solid ${it.status === 'displayed' ? 'fa-boxes-packing' : 'fa-lightbulb'} text-xs`}></i>
+                                                                            </button>
+                                                                        )}
+                                                                        renderExtraActions={(it) => (
+                                                                            <>
+                                                                                <div className="relative flex items-center justify-center mr-1" title={selectedDisplayItems.has(it.id) ? '取消選取' : '點擊選取'}>
+                                                                                    <input
+                                                                                        type="checkbox"
+                                                                                        checked={selectedDisplayItems.has(it.id)}
+                                                                                        readOnly
+                                                                                        className="w-5 h-5 md:w-6 md:h-6 rounded border-2 border-slate-300 text-amber-500 focus:ring-amber-500 appearance-none checked:bg-amber-500 checked:border-amber-500 transition-colors shadow-sm bg-slate-50 dark:bg-slate-700 dark:border-slate-500 outline-none pointer-events-none"
+                                                                                    />
+                                                                                    {selectedDisplayItems.has(it.id) && <i className="fa-solid fa-check text-white text-xs md:text-sm absolute pointer-events-none"></i>}
+                                                                                </div>
+                                                                                <button onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    const textToCopy = `${it.barcode}\t${it.name}`;
+                                                                                    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製條碼與品名！')).catch(() => { }); }
+                                                                                }} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-blue-50" title="複製條碼與品名"><i className="fa-solid fa-copy"></i></button>
+                                                                                <button onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    if (window.confirm(`⚠️ 確定要強行刪除「${it.name}」的所有紀錄嗎？\n此操作無法還原，建議改用「收回典藏」。`)) {
+                                                                                        removeDisplayItem(it.id);
+                                                                                    }
+                                                                                }} className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400 focus:bg-rose-50" title="強行刪除此商品"><i className="fa-solid fa-trash-can"></i></button>
+                                                                            </>
+                                                                        )}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* 分頁器：加入 mb-24 確保在手機版滑到底部時，不會被 Nav Bar 擋住 */}
+                                                    {displayData.totalPages > 1 && (
+                                                        <div className="flex items-center justify-between p-3 mt-4 lg:mb-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm shrink-0">
+                                                            <button disabled={displayCurrentPage === 1} onClick={() => { setDisplayCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center"><i className="fa-solid fa-angle-left mr-1.5"></i> 上一頁</button>
+                                                            <span className="text-sm font-bold text-slate-500 dark:text-slate-400">第 {displayData.safeCurrentPage} / {displayData.totalPages} 頁</span>
+                                                            <button disabled={displayCurrentPage === displayData.totalPages} onClick={() => { setDisplayCurrentPage(p => Math.min(displayData.totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center">下一頁 <i className="fa-solid fa-angle-right ml-1.5"></i></button>
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
-
-                                            {/* 右側：卡片列表與分頁 */}
-                                            {/* 拿掉手機版的固定高度 h-[500px]，改為 h-auto 讓手機版自然向下長，靠瀏覽器原生滾動 */}
-                                            <div className="lg:col-span-8 flex flex-col h-auto lg:h-[calc(100vh-16rem)]">
-                                                {displayData.paginated.length === 0 ? (
-                                                    <EmptyState
-                                                        icon="fa-solid fa-magnifying-glass-minus text-4xl mb-3"
-                                                        title="找不到相符的品項"
-                                                        className="flex-1 flex flex-col items-center justify-center p-10 text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700"
-                                                    />
-                                                ) : (
-                                                    // 手機版解除 overflow 限制，桌面版保留內部滾動
-                                                    <div className="flex-1 overflow-y-visible lg:overflow-y-auto custom-scrollbar p-1 pb-4 pr-1 lg:pr-3">
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 content-start p-2">
-                                                            {displayData.paginated.map((item) => (
-                                                                <ProductListItem
-                                                                    key={item.id}
-                                                                    variant="card"
-                                                                    item={item}
-                                                                    isSelected={selectedDisplayItems.has(item.id)}
-                                                                    onToggleSelect={(id, e) => toggleDisplaySelection(id, e?.shiftKey)}
-                                                                    onUpdateName={(id, bc, name) => handleUpdateItemName('display', id, bc, name)}
-                                                                    onUpdateQuantity={(diff) => updateDisplayQuantity(item.id, diff)}
-                                                                    onSetQuantity={(val) => setDisplayItemQuantity(item.id, val)}
-                                                                    onDelete={() => {
-                                                                        if (window.confirm(`⚠️ 確定要強行刪除「${item.name}」的所有紀錄嗎？\n此操作無法還原，建議改用「收回典藏」。`)) {
-                                                                            removeDisplayItem(item.id);
-                                                                        }
-                                                                    }}
-                                                                    renderExtraTags={(it) => (
-                                                                        <button onClick={(e) => { e.stopPropagation(); toggleDisplayStatus(it.id, it.status); }} className={`absolute -top-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm z-20 ${it.status === 'displayed' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-400 hover:bg-blue-100 hover:text-blue-600'}`} title={it.status === 'displayed' ? '收回典藏' : '轉為陳列'}>
-                                                                            <i className={`fa-solid ${it.status === 'displayed' ? 'fa-boxes-packing' : 'fa-lightbulb'} text-xs`}></i>
-                                                                        </button>
-                                                                    )}
-                                                                    renderExtraActions={(it) => (
-                                                                        <>
-                                                                            <div className="relative flex items-center justify-center mr-1" title={selectedDisplayItems.has(it.id) ? '取消選取' : '點擊選取'}>
-                                                                                <input
-                                                                                    type="checkbox"
-                                                                                    checked={selectedDisplayItems.has(it.id)}
-                                                                                    readOnly
-                                                                                    className="w-5 h-5 md:w-6 md:h-6 rounded border-2 border-slate-300 text-amber-500 focus:ring-amber-500 appearance-none checked:bg-amber-500 checked:border-amber-500 transition-colors shadow-sm bg-slate-50 dark:bg-slate-700 dark:border-slate-500 outline-none pointer-events-none"
-                                                                                />
-                                                                                {selectedDisplayItems.has(it.id) && <i className="fa-solid fa-check text-white text-xs md:text-sm absolute pointer-events-none"></i>}
-                                                                            </div>
-                                                                            <button onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                const textToCopy = `${it.barcode}\t${it.name}`;
-                                                                                if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(textToCopy).then(() => showToast('📋 已複製條碼與品名！')).catch(() => { }); }
-                                                                            }} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-blue-50" title="複製條碼與品名"><i className="fa-solid fa-copy"></i></button>
-                                                                            <button onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                if (window.confirm(`⚠️ 確定要強行刪除「${it.name}」的所有紀錄嗎？\n此操作無法還原，建議改用「收回典藏」。`)) {
-                                                                                    removeDisplayItem(it.id);
-                                                                                }
-                                                                            }} className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400 focus:bg-rose-50" title="強行刪除此商品"><i className="fa-solid fa-trash-can"></i></button>
-                                                                        </>
-                                                                    )}
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* 分頁器：加入 mb-24 確保在手機版滑到底部時，不會被 Nav Bar 擋住 */}
-                                                {displayData.totalPages > 1 && (
-                                                    <div className="flex items-center justify-between p-3 mt-4 lg:mb-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm shrink-0">
-                                                        <button disabled={displayCurrentPage === 1} onClick={() => { setDisplayCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center"><i className="fa-solid fa-angle-left mr-1.5"></i> 上一頁</button>
-                                                        <span className="text-sm font-bold text-slate-500 dark:text-slate-400">第 {displayData.safeCurrentPage} / {displayData.totalPages} 頁</span>
-                                                        <button disabled={displayCurrentPage === displayData.totalPages} onClick={() => { setDisplayCurrentPage(p => Math.min(displayData.totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold shadow-sm flex items-center">下一頁 <i className="fa-solid fa-angle-right ml-1.5"></i></button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
+                                        )
                                     )}
                                 </div>
                             )}
