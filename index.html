@@ -153,7 +153,33 @@
             return key ? dict[key] : null;
         };
 
-        function BarcodeImage({ value, name, printMode = false, mini = false, quantity = 1, printStyle = 'default' }) {
+        const getSalesStatus = (dateStr) => {
+            if (!dateStr || dateStr.includes('到貨') || dateStr.includes('收到')) {
+                return { label: '🟢 到貨即售', color: 'text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20' };
+            }
+
+            const match = dateStr.match(/([0-9]{1,2})\/([0-9]{1,2})/);
+            if (!match) return { label: '⚪ 待確認', color: 'text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700' };
+
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const [_, month, day] = match;
+            const targetDate = new Date(currentYear, parseInt(month) - 1, parseInt(day));
+
+            // 將時間設為午夜 00:00:00 進行純日期比較
+            today.setHours(0, 0, 0, 0);
+            targetDate.setHours(0, 0, 0, 0);
+
+            if (today >= targetDate) {
+                return { label: '🟢 現正販售', color: 'text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20' };
+            } else {
+                const diffTime = Math.abs(targetDate - today);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return { label: `⏳ 倒數 ${diffDays} 天`, color: 'text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/20' };
+            }
+        };
+
+        function BarcodeImage({ value, name, printMode = false, mini = false, quantity = 1, printStyle = 'default', itemData }) {
             const svgRef = useRef(null);
 
             useEffect(() => {
@@ -175,6 +201,39 @@
             }, [value, printMode, printStyle]);
 
             if (mini) return <svg ref={svgRef} className="dark:invert"></svg>;
+
+            if (printMode && printStyle === 'notice' && itemData) {
+                return (
+                    <div className="notice-wrapper">
+                        <div className="notice-header">【營運作業提醒】</div>
+                        <div className="notice-table">
+                            <div className="notice-row">
+                                <div className="notice-date-sec">
+                                    <div className="notice-date-group">
+                                        {itemData.sellDate && <span className="notice-date-badge sell">販售: {itemData.sellDate}</span>}
+                                        {itemData.displayDate && <span className="notice-date-badge display">陳列: {itemData.displayDate}</span>}
+                                    </div>
+                                    {itemData.needExhibition && <span className="notice-badge-warn">⚠️ 須留存</span>}
+                                </div>
+                                <div className="notice-title">{itemData.name}</div>
+                                {itemData.restrict && <div className="notice-restrict">{itemData.restrict}</div>}
+                                {itemData.displayDate && (
+                                    <span className="notice-date-badge display">
+                                        陳列: {itemData.displayDate}
+                                        {itemData.displayTime ? ` [${itemData.displayTime}]` : ''}
+                                    </span>
+                                )}
+                                {itemData.needExhibition && (
+                                    <div className="notice-checkbox-row">
+                                        <div className="notice-checkbox-square"></div>
+                                        <span>我已確認陳列品已留存，未當作商品販售</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
 
             if (printMode && printStyle === 'popmart') {
                 return (
@@ -909,9 +968,13 @@
             const [damagedItems, setDamagedItems] = useState([]);
             const [displayItems, setDisplayItems] = useState([]);
             const [systemExhibitionItems, setSystemExhibitionItems] = useState([]);
+            const [printSubTab, setPrintSubTab] = useState('scan');
+            const [announcementInput, setAnnouncementInput] = useState('');
+            const [announcementItems, setAnnouncementItems] = useState([]);
+
             const [dbStatus, setDbStatus] = useState('連線中...');
-            const [dataLoaded, setDataLoaded] = useState({ records: false, settings: false, damaged: false, display: false, systemExhibition: false });
-            const isDataReady = dataLoaded.records && dataLoaded.settings && dataLoaded.damaged && dataLoaded.display && dataLoaded.systemExhibition;
+            const [dataLoaded, setDataLoaded] = useState({ records: false, settings: false, damaged: false, display: false, systemExhibition: false, announcement: false });
+            const isDataReady = dataLoaded.records && dataLoaded.settings && dataLoaded.damaged && dataLoaded.display && dataLoaded.systemExhibition && dataLoaded.announcement;
 
             useEffect(() => {
                 if (!user || !db) return;
@@ -937,7 +1000,11 @@
                     if (doc.exists) setSystemExhibitionItems(doc.data().data || []);
                     if (!doc.metadata.fromCache) setDataLoaded(prev => ({ ...prev, systemExhibition: true }));
                 });
-                return () => { unsubRecords(); unsubSettings(); unsubDamaged(); unsubDisplay(); unsubSystemExhibition(); };
+                const unsubAnnouncement = db.collection('retailOps').doc('announcementItems').onSnapshot(options, doc => {
+                    if (doc.exists) setAnnouncementItems(doc.data().data || []);
+                    if (!doc.metadata.fromCache) setDataLoaded(prev => ({ ...prev, announcement: true }));
+                });
+                return () => { unsubRecords(); unsubSettings(); unsubDamaged(); unsubDisplay(); unsubSystemExhibition(); unsubAnnouncement(); };
             }, [user]);
 
             const updateCloudData = (docName, newData, successMsg) => {
@@ -1559,6 +1626,173 @@
                 setBarcodeItems([]);
                 triggerUndo('已清空待印清單', () => setBarcodeItems(backup));
             };
+
+            // ✨ 修復2：用來進行 日期 > 系列 的兩層群組分類
+            const groupedAnnouncements = useMemo(() => {
+                const groups = {};
+                announcementItems.forEach(item => {
+                    const d = item.sellDate ? `🛒 販售: ${item.sellDate}` : (item.displayDate ? `👀 陳列: ${item.displayDate}` : '未定日期');
+                    if (!groups[d]) groups[d] = {};
+                    const s = item.series || '其他商品';
+                    if (!groups[d][s]) groups[d][s] = [];
+                    groups[d][s].push(item);
+                });
+
+                // 將「到貨即售」等字眼排在最前面
+                const sortedDates = Object.keys(groups).sort((a, b) => {
+                    if (a.includes('到貨')) return -1;
+                    if (b.includes('到貨')) return 1;
+                    return a.localeCompare(b);
+                });
+
+                return sortedDates.map(date => ({
+                    date,
+                    seriesGroups: Object.keys(groups[date]).map(series => ({
+                        series,
+                        items: groups[date][series]
+                    }))
+                }));
+            }, [announcementItems]);
+
+            const parseAnnouncement = (text) => {
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+                let currentSellDate = null;
+                let currentDisplayDate = null;
+                let currentDisplayTime = null; // ✨ 新增：儲存陳列時間 (如：閉店後)
+                let globalNeedExhibition = false;
+                let currentSeries = '其他';
+                let isLineCard = false;
+                const newItems = [];
+
+                const extractAndPushItem = (name, index, lines, globalNeedExhibition, sellDate, displayDate, displayTime, series, newItems) => {
+                    let itemNeedExhibition = globalNeedExhibition || lines[index].includes('陳列') || lines[index].includes('留存');
+                    let restrictInfo = '';
+
+                    let cleanName = name.replace(/\s*[\(（].*?[\)）]\s*$/, '').trim();
+                    if (!cleanName) return;
+
+                    for (let j = 1; j <= 2; j++) {
+                        if (index + j < lines.length) {
+                            const nextLine = lines[index + j];
+                            if (nextLine.startsWith('👉') || nextLine.startsWith('·') || nextLine.startsWith('-') || nextLine.includes('---')) break;
+                            if (nextLine.includes('限購') || nextLine.includes('單人')) {
+                                restrictInfo = nextLine.replace(/^[\u{10000}-\u{10FFFF}\u{2000}-\u{2BFF}\(（]?[a-zA-Z\s]+[\)）]?/gu, '').trim();
+                            }
+                        }
+                    }
+                    newItems.push({
+                        id: Date.now() + Math.random(),
+                        sellDate,
+                        displayDate,
+                        displayTime, // ✨ 存入物件
+                        name: cleanName,
+                        series,
+                        restrict: restrictInfo,
+                        needExhibition: itemNeedExhibition,
+                        isChecked: false
+                    });
+                };
+
+                for (let i = 0; i < lines.length; i++) {
+                    let line = lines[i];
+
+                    // 偵測日期與時間
+                    const dateMatch = line.match(/([0-9]{1,2})\/([0-9]{1,2})/);
+                    if (dateMatch) {
+                        const parsedDate = `${dateMatch[1]}/${dateMatch[2]}`;
+                        // ✨ 偵測同列是否有「閉店後」或「XX:XX」時間格式
+                        const timeMatch = line.match(/([0-9]{1,2}:[0-9]{2}|閉店後|1[0-9]:[0-9]{2})/);
+                        const lineTime = timeMatch ? timeMatch[0] : null;
+
+                        if (line.includes('陳列')) {
+                            currentDisplayDate = parsedDate;
+                            currentDisplayTime = lineTime;
+                        } else {
+                            currentSellDate = parsedDate;
+                        }
+                    } else if (line.includes('收到即可販售') || line.includes('到貨即售')) {
+                        currentSellDate = '到貨即售';
+                    } else if (line.includes('到貨立即陳列')) {
+                        currentDisplayDate = '到貨即陳列';
+                        const timeMatch = line.match(/([0-9]{1,2}:[0-9]{2}|閉店後)/);
+                        if (timeMatch) currentDisplayTime = timeMatch[0];
+                    }
+
+                    if (line.includes('請務必留存') || line.includes('陳列通知') || line.includes('新品陳列')) {
+                        globalNeedExhibition = true;
+                    }
+                    if (line.includes('-------------------------------')) {
+                        globalNeedExhibition = false;
+                        currentSeries = '其他';
+                        isLineCard = false;
+                    }
+
+                    if (line.includes('LINE刮刮卡')) {
+                        isLineCard = true;
+                        currentSeries = 'LINE刮刮卡';
+                    }
+
+                    let cleanLine = line.replace(/^[\u{10000}-\u{10FFFF}\u{2000}-\u{2BFF}👉·\-\s★]+/gu, '').trim();
+
+                    if (line.startsWith('👉') || line.startsWith('·')) {
+                        if (!isLineCard) currentSeries = cleanLine;
+                        extractAndPushItem(cleanLine, i, lines, globalNeedExhibition, currentSellDate, currentDisplayDate, currentDisplayTime, currentSeries, newItems);
+                    } else if (line.startsWith('-')) {
+                        let combinedName = currentSeries && currentSeries !== '其他' && currentSeries !== 'LINE刮刮卡' ? `${currentSeries} - ${cleanLine}` : cleanLine;
+                        extractAndPushItem(combinedName, i, lines, globalNeedExhibition, currentSellDate, currentDisplayDate, currentDisplayTime, currentSeries, newItems);
+                    }
+                }
+
+                setAnnouncementItems(prevItems => {
+                    const mergedList = [...prevItems];
+                    newItems.forEach(newItem => {
+                        const existingIndex = mergedList.findIndex(item => item.name === newItem.name);
+                        if (existingIndex >= 0) {
+                            const existing = mergedList[existingIndex];
+                            mergedList[existingIndex] = {
+                                ...existing,
+                                sellDate: newItem.sellDate || existing.sellDate,
+                                displayDate: newItem.displayDate || existing.displayDate,
+                                displayTime: newItem.displayTime || existing.displayTime, // ✨ 合併時間
+                                restrict: newItem.restrict || existing.restrict,
+                                needExhibition: existing.needExhibition || newItem.needExhibition,
+                                series: newItem.series || existing.series
+                            };
+                        } else {
+                            mergedList.push(newItem);
+                        }
+                    });
+                    updateCloudData('announcementItems', mergedList, `解析完畢！已更新陳列時間`);
+                    return mergedList;
+                });
+                setAnnouncementInput('');
+            };
+
+            // 輔助函式：提取限購資訊並推入陣列
+            const extractAndPushItem = (name, index, lines, globalNeedExhibition, sellDate, displayDate, newItems) => {
+                let itemNeedExhibition = globalNeedExhibition || lines[index].includes('陳列') || lines[index].includes('留存');
+                let restrictInfo = '';
+
+                // 往下找 1~2 行看有沒有限購
+                for (let j = 1; j <= 2; j++) {
+                    if (index + j < lines.length) {
+                        const nextLine = lines[index + j];
+                        if (nextLine.startsWith('👉') || nextLine.startsWith('·') || nextLine.startsWith('-') || nextLine.includes('---')) break;
+                        if (nextLine.includes('限購') || nextLine.includes('單人')) {
+                            restrictInfo = nextLine.replace(/^[\u{10000}-\u{10FFFF}\u{2000}-\u{2BFF}\(（]?[a-zA-Z\s]+[\)）]?/gu, '').trim();
+                        }
+                    }
+                }
+                newItems.push({ id: Date.now() + Math.random(), sellDate, displayDate, name, restrict: restrictInfo, needExhibition: itemNeedExhibition, isChecked: false });
+            };
+
+            const clearAnnouncements = () => {
+                if (window.confirm('確定要清除所有公告紀錄嗎？')) {
+                    setAnnouncementItems([]);
+                    updateCloudData('announcementItems', [], '已清除所有公告紀錄');
+                }
+            };
+
 
             const filteredBarcodeItems = useMemo(() => {
                 if (!barcodeSearch.trim()) return barcodeItems; const q = barcodeSearch.toLowerCase();
@@ -2932,11 +3166,6 @@
                                                                                     {it.status === 'displayed' ? <><span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> 陳列中</> : <><i className="fa-solid fa-boxes-packing opacity-60"></i> 已撤下</>}
                                                                                 </span>
                                                                             )}
-                                                                            renderExtraActions={(it) => (
-                                                                                <button onClick={(e) => { e.stopPropagation(); toggleDisplayStatus(it.id, it.status); }} className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 text-slate-500 bg-transparent border border-transparent hover:border-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 dark:hover:border-slate-600 dark:text-slate-400" title={it.status === 'displayed' ? '撤下商品' : '重新陳列此商品'}>
-                                                                                    <i className={`fa-solid ${it.status === 'displayed' ? 'fa-boxes-packing' : 'fa-lightbulb'}`}></i> {it.status === 'displayed' ? '撤下' : '陳列'}
-                                                                                </button>
-                                                                            )}
                                                                         />
                                                                     ))}
                                                                 </div>
@@ -2961,89 +3190,190 @@
 
                             {/* 分頁 4: 條碼列印中心 */}
                             {activeTab === 'barcode-print' && (
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full pb-10 animate-scale-in mt-2 w-full">
-
-                                    {/* 👇 請整段覆蓋這個左側區塊 (lg:col-span-4) 👇 */}
-                                    <div className="lg:col-span-4 space-y-6">
-                                        <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
-                                            <div className="mb-5">
-                                                <div className="w-11 h-11 bg-blue-50 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400 rounded-lg flex items-center justify-center mb-3"><i className="fa-solid fa-barcode text-xl"></i></div>
-                                                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">連續條碼掃描</h3>
-                                            </div>
-
-                                            <BarcodeScannerInput
-                                                target="print"
-                                                placeholder="掃描或輸入中文品名..."
-                                                iconClass="fa-magnifying-glass"
-                                                onSubmit={(items) => handleUnifiedSubmit('print', items)}
-                                                onOpenCamera={handleOpenCamera}
-                                                allDictEntries={allDictEntries}
-                                                settings={settings}
-                                            />
-                                        </div>
+                                <div className="w-full pb-10 animate-scale-in flex flex-col gap-4 mt-2">
+                                    <div className="flex bg-slate-100 dark:bg-slate-700/50 p-1 rounded-xl w-max shadow-inner shadow-slate-200/50 dark:shadow-slate-900/50">
+                                        <button onClick={() => setPrintSubTab('scan')} className={`px-5 py-2 font-bold text-sm rounded-lg transition-all ${printSubTab === 'scan' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>連印掃描</button>
+                                        <button onClick={() => setPrintSubTab('announcement')} className={`px-5 py-2 font-bold text-sm rounded-lg transition-all ${printSubTab === 'announcement' ? 'bg-white dark:bg-slate-600 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>公告列印</button>
                                     </div>
-                                    {/* 👆 左側區塊結束，下方接著是右側 lg:col-span-8 待印清單區塊... */}
-                                    <div className="lg:col-span-8 relative flex flex-col h-[calc(100vh-16rem)]">
-                                        <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 flex flex-col h-full transition-colors">
-                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 shrink-0 gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
-                                                <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center whitespace-nowrap shrink-0">
-                                                    <i className="fa-solid fa-list-check text-blue-400 mr-2"></i>待印清單
-                                                    <span className="ml-3 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs px-2 py-0.5 rounded font-medium">{barcodeItems.length} 筆</span>
-                                                </h2>
-                                                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-start md:justify-end">
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-14rem)]">
 
-                                                    {/* ✨ 樣式切換器 */}
-                                                    <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg shadow-inner shrink-0 mr-1">
-                                                        <button onClick={() => setPrintStyle('popmart')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${printStyle === 'popmart' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>公版明細</button>
-                                                        <button onClick={() => setPrintStyle('default')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${printStyle === 'default' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>原有樣式</button>
+                                        {/* 左側 Input 區塊 */}
+                                        <div className="lg:col-span-4 space-y-6 flex flex-col h-full">
+                                            {printSubTab === 'scan' ? (
+                                                <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
+                                                    <div className="mb-5">
+                                                        <div className="w-11 h-11 bg-blue-50 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400 rounded-lg flex items-center justify-center mb-3"><i className="fa-solid fa-barcode text-xl"></i></div>
+                                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">連續條碼掃描</h3>
                                                     </div>
-                                                    {barcodeItems.length > 0 && (
-                                                        <button onClick={clearAllBarcodeItems} className="px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 rounded-lg text-sm font-bold transition-colors shadow-sm flex items-center whitespace-nowrap shrink-0">
-                                                            <i className="fa-solid fa-trash-can mr-1.5"></i>全部刪除
-                                                        </button>
-                                                    )}
-                                                    {barcodeItems.length > 0 && (
-                                                        <button onClick={() => executePrint('barcode-all')} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center whitespace-nowrap shrink-0">
-                                                            <i className="fa-solid fa-print mr-1.5"></i>全部列印
-                                                        </button>
-                                                    )}
-                                                    {barcodeItems.length > 0 && (
-                                                        <div className="relative flex-1 min-w-[140px] sm:max-w-xs group">
-                                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i className="fa-solid fa-filter text-slate-400 text-xs group-focus-within:text-blue-500"></i></div>
-                                                            <input type="text" value={barcodeSearch} onChange={e => setBarcodeSearch(e.target.value)} className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 transition-shadow" placeholder="過濾清單..." />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                                                {barcodeItems.length === 0 ? (
-                                                    <EmptyState
-                                                        icon="fa-solid fa-print"
-                                                        title="待印清單為空"
-                                                        className="h-full flex flex-col items-center justify-center border-2 border-slate-100 dark:border-slate-700 border-dashed rounded-xl bg-slate-50/50 dark:bg-slate-900/50"
+
+                                                    <BarcodeScannerInput
+                                                        target="print"
+                                                        placeholder="掃描或輸入中文品名..."
+                                                        iconClass="fa-magnifying-glass"
+                                                        onSubmit={(items) => handleUnifiedSubmit('print', items)}
+                                                        onOpenCamera={handleOpenCamera}
+                                                        allDictEntries={allDictEntries}
+                                                        settings={settings}
                                                     />
-                                                ) : filteredBarcodeItems.length === 0 ? (
-                                                    <div className="text-center py-10"><p className="text-slate-500 dark:text-slate-400 font-medium">無符合的過濾結果</p></div>
-                                                ) : (
-                                                    <div className="flex flex-col">
-                                                        {filteredBarcodeItems.map(item => (
-                                                            <ProductListItem
-                                                                key={item.id}
-                                                                variant="list"
-                                                                item={item}
-                                                                onUpdateName={(id, bc, name) => handleUpdateItemName('barcode', id, bc, name)}
-                                                                onUpdateQuantity={(diff) => updateBarcodeItemQuantity(item.id, diff)}
-                                                                onSetQuantity={(val) => setBarcodeQuantity(item.id, val)}
-                                                                onDelete={() => removeBarcodeItem(item.id)}
-                                                                renderExtraActions={(it) => (
-                                                                    <>
-                                                                        <button onClick={(e) => { e.stopPropagation(); executePrint({ type: 'barcode-single', item: it }); }} className="px-3 py-1.5 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors whitespace-nowrap">單獨印</button>
-                                                                        <button onClick={(e) => { e.stopPropagation(); removeBarcodeItem(it.id); }} className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0"><i className="fa-solid fa-trash-can text-lg"></i></button>
-                                                                    </>
-                                                                )}
-                                                            />
-                                                        ))}
+                                                </div>
+                                            ) : (
+                                                <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 flex flex-col h-full transition-colors overflow-hidden">
+                                                    <div className="mb-4 shrink-0">
+                                                        <div className="w-11 h-11 bg-amber-50 dark:bg-amber-500/20 text-amber-500 dark:text-amber-400 rounded-lg flex items-center justify-center mb-3"><i className="fa-solid fa-bullhorn text-xl"></i></div>
+                                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">貼上群組公告</h3>
+                                                        <p className="text-xs text-slate-400 mt-1">系統自動分析日期、系列關聯，並能自動合併相同品項</p>
                                                     </div>
+                                                    <textarea value={announcementInput} onChange={e => setAnnouncementInput(e.target.value)} placeholder="請將公告內容整段貼上..." className="flex-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm focus:ring-2 focus:ring-amber-500 outline-none resize-none custom-scrollbar mb-4 dark:text-slate-200 leading-relaxed overflow-y-auto"></textarea>
+                                                    <button onClick={() => parseAnnouncement(announcementInput)} disabled={!announcementInput.trim()} className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-md shadow-amber-500/30 transition-all active:scale-95 disabled:opacity-50 flex justify-center items-center shrink-0"><i className="fa-solid fa-bolt mr-2"></i>智能解析轉換</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {/* 👆 左側區塊結束，下方接著是右側 lg:col-span-8 待印清單區塊 */}
+                                        <div className="lg:col-span-8 relative flex flex-col h-[calc(100vh-14rem)] min-h-[500px]">
+                                            {/* ✨ 加上 overflow-hidden 確保內部可以滾動，不會撐爆網頁高度 */}
+                                            <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 flex flex-col h-full transition-colors overflow-hidden">
+                                                {printSubTab === 'scan' ? (
+                                                    <>
+                                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 shrink-0 gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
+                                                            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center whitespace-nowrap shrink-0">
+                                                                <i className="fa-solid fa-list-check text-blue-400 mr-2"></i>待印清單
+                                                                <span className="ml-3 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs px-2 py-0.5 rounded font-medium">{barcodeItems.length} 筆</span>
+                                                            </h2>
+                                                            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-start md:justify-end">
+                                                                <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg shadow-inner shrink-0 mr-1">
+                                                                    <button onClick={() => setPrintStyle('popmart')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${printStyle === 'popmart' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>公版明細</button>
+                                                                    <button onClick={() => setPrintStyle('default')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${printStyle === 'default' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>原有樣式</button>
+                                                                </div>
+                                                                {barcodeItems.length > 0 && (
+                                                                    <button onClick={clearAllBarcodeItems} className="px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 rounded-lg text-sm font-bold transition-colors shadow-sm flex items-center whitespace-nowrap shrink-0">
+                                                                        <i className="fa-solid fa-trash-can mr-1.5"></i>全部刪除
+                                                                    </button>
+                                                                )}
+                                                                {barcodeItems.length > 0 && (
+                                                                    <button onClick={() => executePrint('barcode-all')} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center whitespace-nowrap shrink-0">
+                                                                        <i className="fa-solid fa-print mr-1.5"></i>全部列印
+                                                                    </button>
+                                                                )}
+                                                                {barcodeItems.length > 0 && (
+                                                                    <div className="relative flex-1 min-w-[140px] sm:max-w-xs group">
+                                                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i className="fa-solid fa-filter text-slate-400 text-xs group-focus-within:text-blue-500"></i></div>
+                                                                        <input type="text" value={barcodeSearch} onChange={e => setBarcodeSearch(e.target.value)} className="w-full pl-8 pr-3 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg dark:bg-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500 transition-shadow" placeholder="過濾清單..." />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-4">
+                                                            {/* ✨ 復原了原本的 barcodeItems 渲染邏輯，修復被覆寫的問題 */}
+                                                            {barcodeItems.length === 0 ? (
+                                                                <EmptyState icon="fa-solid fa-barcode text-slate-300 dark:text-slate-600 text-5xl" title="待印清單目前空空的" subtitle="請使用左側輸入框掃描或手動加入條碼" className="h-full flex flex-col items-center justify-center border-2 border-slate-100 dark:border-slate-700 border-dashed rounded-xl bg-slate-50/50 dark:bg-slate-900/50" />
+                                                            ) : (
+                                                                <div className="flex flex-col gap-3">
+                                                                    {filteredBarcodeItems.map(item => (
+                                                                        <ProductListItem
+                                                                            key={item.id}
+                                                                            variant="list"
+                                                                            item={item}
+                                                                            onUpdateName={(id, bc, name) => handleUpdateItemName('print', id, bc, name)}
+                                                                            onUpdateQuantity={(diff) => updateBarcodeItemQuantity(item.id, diff)}
+                                                                            onSetQuantity={(val) => setBarcodeQuantity(item.id, val)}
+                                                                            renderExtraActions={(it) => (
+                                                                                <>
+                                                                                    <button onClick={(e) => { e.stopPropagation(); executePrint({ type: 'barcode-single', item: it }); }} className="px-3 py-1.5 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors whitespace-nowrap">單獨印</button>
+                                                                                    <button onClick={(e) => { e.stopPropagation(); removeBarcodeItem(it.id); }} className="w-11 h-11 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0"><i className="fa-solid fa-trash-can text-lg"></i></button>
+                                                                                </>
+                                                                            )} />
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 shrink-0 gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
+                                                            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center whitespace-nowrap shrink-0">
+                                                                <i className="fa-solid fa-clipboard-check text-amber-500 mr-2"></i>公告預覽
+                                                                <span className="ml-3 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-xs px-2 py-0.5 rounded font-medium">{announcementItems.length} 筆</span>
+                                                            </h2>
+                                                            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-start md:justify-end">
+                                                                {announcementItems.length > 0 && (
+                                                                    <button onClick={clearAnnouncements} className="px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 rounded-lg text-sm font-bold transition-colors shadow-sm flex items-center whitespace-nowrap shrink-0">
+                                                                        <i className="fa-solid fa-trash-can mr-1.5"></i>清除所有
+                                                                    </button>
+                                                                )}
+                                                                {announcementItems.length > 0 && (
+                                                                    <button onClick={() => executePrint('announcement-all')} className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-600 transition-colors shadow-sm flex items-center whitespace-nowrap shrink-0">
+                                                                        <i className="fa-solid fa-print mr-1.5"></i>列印所有公告單
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-4">
+                                                            {announcementItems.length === 0 ? (
+                                                                <EmptyState icon="fa-regular fa-clipboard" title="清單空空如也" className="h-full flex flex-col items-center justify-center border-2 border-slate-100 dark:border-slate-700 border-dashed rounded-xl bg-slate-50/50 dark:bg-slate-900/50" />
+                                                            ) : (
+                                                                <div className="flex flex-col gap-6">
+                                                                    {groupedAnnouncements.map((dateGroup) => (
+                                                                        <div key={dateGroup.date} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden animate-scale-in origin-top">
+                                                                            {/* 大標題：日期 */}
+                                                                            <div className={`px-4 py-3 border-b border-slate-200 dark:border-slate-700 ${dateGroup.date.includes('販售') ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-amber-50 dark:bg-amber-900/30'}`}>
+                                                                                <h3 className={`font-black text-lg ${dateGroup.date.includes('販售') ? 'text-blue-700 dark:text-blue-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                                                                                    {dateGroup.date}
+                                                                                </h3>
+                                                                            </div>
+
+                                                                            <div className="p-4 flex flex-col gap-6">
+                                                                                {dateGroup.seriesGroups.map(sg => (
+                                                                                    <div key={sg.series} className="flex flex-col gap-3">
+                                                                                        {/* 小標題：系列名稱 */}
+                                                                                        <div className="text-sm font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-1.5 flex items-center">
+                                                                                            <i className="fa-solid fa-layer-group mr-1.5 opacity-70"></i> {sg.series}
+                                                                                        </div>
+
+                                                                                        <div className="flex flex-col gap-3 pl-1 sm:pl-3">
+                                                                                            {sg.items.map(item => (
+                                                                                                <div key={item.id} className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-4 rounded-xl flex items-start justify-between gap-4 group">
+                                                                                                    <div className="flex flex-col min-w-0 flex-1">
+                                                                                                        {item.needExhibition && (
+                                                                                                            <div className="mb-2"><span className="font-bold text-xs border border-amber-500 text-amber-600 px-1.5 py-0.5 rounded animate-pulse">⚠️ 須留存</span></div>
+                                                                                                        )}
+                                                                                                        <div className="font-black text-slate-800 dark:text-slate-100 text-base leading-snug mb-1">{item.name}</div>
+                                                                                                        {item.restrict && <div className="text-sm font-bold text-rose-500 mt-1"><i className="fa-solid fa-circle-exclamation mr-1"></i> {item.restrict}</div>}
+                                                                                                        {item.needExhibition && (
+                                                                                                            <label className="flex items-center gap-2 mt-3 cursor-pointer w-max bg-white dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                                                                                                                <input type="checkbox" checked={item.isChecked || false} onChange={(e) => {
+                                                                                                                    const updated = announcementItems.map(i => i.id === item.id ? { ...i, isChecked: e.target.checked } : i);
+                                                                                                                    setAnnouncementItems(updated);
+                                                                                                                    updateCloudData('announcementItems', updated);
+                                                                                                                }} className="w-4 h-4 rounded border-2 border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer" />
+                                                                                                                <span className={`text-sm font-bold ${item.isChecked ? 'text-slate-400 line-through' : 'text-slate-600 dark:text-slate-300'}`}>已陳列，留存未售</span>
+                                                                                                            </label>
+                                                                                                        )}
+                                                                                                        {/* 修改預覽卡片中的陳列標籤部分 */}
+                                                                                                        {item.displayDate && (
+                                                                                                            <span className="font-bold text-xs bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm flex items-center">
+                                                                                                                <i className="fa-solid fa-clock mr-1.5 text-[10px]"></i>
+                                                                                                                陳列: {item.displayDate}
+                                                                                                                {item.displayTime ? ` (${item.displayTime})` : ''}
+                                                                                                            </span>
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                    <button onClick={() => {
+                                                                                                        const n = announcementItems.filter(i => i.id !== item.id);
+                                                                                                        setAnnouncementItems(n);
+                                                                                                        updateCloudData('announcementItems', n);
+                                                                                                    }} className="w-8 h-8 shrink-0 flex items-center justify-center text-slate-300 hover:text-rose-500 bg-white hover:bg-rose-50 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg transition-colors"><i className="fa-solid fa-xmark"></i></button>
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </>
                                                 )}
                                             </div>
                                         </div>
@@ -3875,6 +4205,14 @@
                         {printContext?.type === 'barcode-single' && (
                             <div id="print-area-barcode"><BarcodeImage value={printContext.item.barcode} name={printContext.item.name} quantity={printContext.item.quantity} printMode={true} printStyle={printStyle} /></div>
                         )}
+                        {printContext === 'announcement-all' && (
+                            <div id="print-area-barcode">
+                                {announcementItems.map(item => (<BarcodeImage key={item.id} printMode={true} printStyle="notice" itemData={item} />))}
+                            </div>
+                        )}
+                        {printContext?.type === 'announcement-single' && (
+                            <div id="print-area-barcode"><BarcodeImage printMode={true} printStyle="notice" itemData={printContext.item} /></div>
+                        )}
                         {/* ✨ 新增：陳列品列表列印 (套用相同排版，並依據目前的 Filter 印出陳列中或撤下) */}
                         {printContext?.type === 'display-list' && (
                             <div id="print-area-barcode">
@@ -3904,7 +4242,7 @@
                     </footer>
                 </div>
             );
-        }
+        }  // 👈 就是這個！請在這裡補上這個大括號
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
