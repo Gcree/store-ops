@@ -217,12 +217,6 @@
                                 </div>
                                 <div className="notice-title">{itemData.name}</div>
                                 {itemData.restrict && <div className="notice-restrict">{itemData.restrict}</div>}
-                                {itemData.displayDate && (
-                                    <span className="notice-date-badge display">
-                                        陳列: {itemData.displayDate}
-                                        {itemData.displayTime ? ` [${itemData.displayTime}]` : ''}
-                                    </span>
-                                )}
                                 {itemData.needExhibition && (
                                     <div className="notice-checkbox-row">
                                         <div className="notice-checkbox-square"></div>
