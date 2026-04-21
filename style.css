@@ -606,7 +606,7 @@ button:active {
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
 
 .popmart-wrapper {
-    width: 70mm; /* ✨ 關鍵修復2：整體寬度從 72mm 縮小到 66mm，絕對防裁切 */
+    width: 70mm; 
     margin: 0 auto;
     padding: 0 0 8mm 0; 
     color: #000;
@@ -636,8 +636,8 @@ button:active {
     flex-direction: row;
     align-items: center;
     min-height: 1.5cm;
-    padding: 0 4px; /* 縮小內部左右邊距 */
-    gap: 4px; /* ✨ 關鍵修復1：大幅縮減左右區塊的間距，消除紅圈留白 */
+    padding: 0 4px; 
+    gap: 4px; 
 }
 
 .popmart-row:last-child {
@@ -649,14 +649,14 @@ button:active {
     flex-direction: column;
     justify-content: center;
     flex-shrink: 0;
-    width: 48px; /* ✨ 關鍵修復1：壓縮左側標籤寬度，把空間還給右側 */
+    width: 48px; 
 }
 
 .popmart-label {
     font-size: 20px;
     font-weight: 900;
     line-height: 1;
-    letter-spacing: -0.5px; /* 微調字距防溢出 */
+    letter-spacing: -0.5px; 
 }
 
 .popmart-sub {
@@ -684,20 +684,18 @@ button:active {
     text-align: left;
 }
 
-/* ✨ 關鍵修復4：門市字體特化加大 */
 .popmart-val.store-name {
     font-size: 18px; 
     font-weight: 900;
 }
 
-/* ✨ 關鍵修復3：條碼與文字置中對齊 */
 .popmart-barcode-container {
     display: flex;
     flex-direction: column;
-    align-items: center; /* 讓裡面的條碼跟數字置中 */
-    align-self: flex-start; /* 讓整個模組靠左貼齊 */
+    align-items: center; 
+    align-self: flex-start; 
     padding: 2px 0;
-    margin-left: -4px; /* 抵消 SVG 自帶的空白 */
+    margin-left: -4px; 
 }
 
 .popmart-barcode-wrapper svg {
@@ -712,6 +710,122 @@ button:active {
     font-weight: 900;
     letter-spacing: 2px;
     margin-top: 1px;
-    text-align: center; /* 數字置中 */
+    text-align: center; 
     width: 100%;
+}
+
+/* =========================================
+   公告列印專用樣式 (Notice Print)
+========================================= */
+.notice-wrapper {
+    width: 70mm;
+    margin: 0 auto;
+    padding: 0 0 8mm 0;
+    color: #000 !important;
+    background: #fff;
+    font-family: "Microsoft JhengHei", "PingFang TC", "Heiti TC", sans-serif !important;
+    page-break-inside: avoid;
+    box-sizing: border-box;
+}
+
+.notice-wrapper * {
+    color: #000 !important; 
+}
+
+.notice-header {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 900;
+    margin-bottom: 6px;
+    letter-spacing: 0px;
+}
+
+.notice-table {
+    border: 2px solid #000;
+    display: flex;
+    flex-direction: column;
+}
+
+.notice-row {
+    border-bottom: 2px solid #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-height: 1.5cm;
+    padding: 8px 6px;
+    gap: 4px;
+}
+
+.notice-row:last-child {
+    border-bottom: none;
+}
+
+.notice-date-sec {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.notice-date-group {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.notice-date-badge {
+    font-size: 14px;
+    font-weight: 900;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+}
+
+.notice-date-badge.sell {
+    background: transparent !important;
+    color: #000 !important;
+    border: 2px solid #000 !important;
+}
+
+.notice-date-badge.display {
+    background: transparent !important;
+    color: #000 !important;
+    border: 2px dashed #000 !important;
+}
+
+.notice-badge-warn {
+    font-size: 12px;
+    font-weight: 900;
+    border: 1.5px solid #000;
+    border-radius: 4px;
+    padding: 1px 4px;
+}
+
+.notice-title {
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.3;
+}
+
+.notice-restrict {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.notice-checkbox-row {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 900;
+    margin-top: 4px;
+    padding-top: 6px;
+    border-top: 1.5px dashed #000;
+}
+
+.notice-checkbox-square {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #000;
+    margin-right: 8px;
+    border-radius: 2px;
 }
