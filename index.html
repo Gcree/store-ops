@@ -205,25 +205,49 @@
             if (printMode && printStyle === 'notice' && itemData) {
                 return (
                     <div className="notice-wrapper">
-                        <div className="notice-header">【營運作業提醒】</div>
-                        <div className="notice-table">
-                            <div className="notice-row">
-                                <div className="notice-date-sec">
-                                    <div className="notice-date-group">
-                                        {itemData.sellDate && <span className="notice-date-badge sell">販售: {itemData.sellDate}</span>}
-                                        {itemData.displayDate && <span className="notice-date-badge display">陳列: {itemData.displayDate}</span>}
-                                    </div>
-                                    {itemData.needExhibition && <span className="notice-badge-warn">⚠️ 須留存</span>}
+                        <div className="notice-card">
+                            {/* 1. 頂部標籤區 (日期與警告) */}
+                            <div className="notice-header-tags">
+                                <div className="notice-date-col">
+                                    {itemData.sellDate && (
+                                        <div className="notice-badge sell">
+                                            <span className="badge-label">販售</span>
+                                            <span className="badge-val">{itemData.sellDate}</span>
+                                        </div>
+                                    )}
+                                    {itemData.displayDate && (
+                                        <div className="notice-badge display">
+                                            <span className="badge-label">陳列</span>
+                                            <span className="badge-val">{itemData.displayDate} {itemData.displayTime || ''}</span>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="notice-title">{itemData.name}</div>
-                                {itemData.restrict && <div className="notice-restrict">{itemData.restrict}</div>}
                                 {itemData.needExhibition && (
-                                    <div className="notice-checkbox-row">
-                                        <div className="notice-checkbox-square"></div>
-                                        <span>我已確認陳列品已留存，未當作商品販售</span>
+                                    <div className="notice-warn-box">
+                                        <div className="warn-icon">!</div>
+                                        <div className="warn-text">須留<br/>存</div>
                                     </div>
                                 )}
                             </div>
+
+                            {/* 2. 標題與限購區 */}
+                            <div className="notice-title-box">
+                                <div className="notice-title">{itemData.name}</div>
+                                {itemData.restrict && (
+                                    <div className="notice-restrict">
+                                        <span className="restrict-label">限購</span>
+                                        <span>{itemData.restrict}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 3. 任務確認區 */}
+                            {itemData.needExhibition && (
+                                <div className="notice-task-box">
+                                    <div className="task-checkbox"></div>
+                                    <div className="task-desc">確認陳列品已留存<br/>未當作商品販售</div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
@@ -3417,53 +3441,90 @@
                                                                     {groupedAnnouncements.map((dateGroup) => (
                                                                         <div key={dateGroup.date} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden animate-scale-in origin-top">
                                                                             {/* 大標題：日期 */}
-                                                                            <div className={`px-4 py-3 border-b border-slate-200 dark:border-slate-700 ${dateGroup.date.includes('販售') ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-amber-50 dark:bg-amber-900/30'}`}>
-                                                                                <h3 className={`font-black text-lg ${dateGroup.date.includes('販售') ? 'text-blue-700 dark:text-blue-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                                                                            <div className={`px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3 ${dateGroup.date.includes('販售') ? 'bg-blue-50/80 dark:bg-blue-900/20' : 'bg-amber-50/80 dark:bg-amber-900/20'}`}>
+                                                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm shrink-0 border ${dateGroup.date.includes('販售') ? 'bg-white text-blue-500 border-blue-100 dark:bg-blue-800 dark:border-blue-700 dark:text-blue-200' : 'bg-white text-amber-500 border-amber-100 dark:bg-amber-800 dark:border-amber-700 dark:text-amber-200'}`}>
+                                                                                    <i className={`fa-solid ${dateGroup.date.includes('販售') ? 'fa-cart-shopping' : 'fa-calendar-day'} text-sm`}></i>
+                                                                                </div>
+                                                                                <h3 className={`font-black text-lg tracking-tight ${dateGroup.date.includes('販售') ? 'text-blue-700 dark:text-blue-400' : 'text-amber-700 dark:text-amber-400'}`}>
                                                                                     {dateGroup.date}
                                                                                 </h3>
                                                                             </div>
 
-                                                                            <div className="p-4 flex flex-col gap-6">
+                                                                            <div className="p-4 md:p-5 flex flex-col gap-8 bg-slate-50/30 dark:bg-slate-900/20">
                                                                                 {dateGroup.seriesGroups.map(sg => (
-                                                                                    <div key={sg.series} className="flex flex-col gap-3">
+                                                                                    <div key={sg.series} className="flex flex-col gap-3.5">
                                                                                         {/* 小標題：系列名稱 */}
-                                                                                        <div className="text-sm font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-1.5 flex items-center">
-                                                                                            <i className="fa-solid fa-layer-group mr-1.5 opacity-70"></i> {sg.series}
+                                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                                            <div className="w-6 h-6 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0 shadow-inner">
+                                                                                                <i className="fa-solid fa-layer-group text-[11px]"></i>
+                                                                                            </div>
+                                                                                            <div className="text-[15px] font-black text-slate-700 dark:text-slate-200 tracking-tight">
+                                                                                                {sg.series}
+                                                                                            </div>
                                                                                         </div>
 
-                                                                                        <div className="flex flex-col gap-3 pl-1 sm:pl-3">
+                                                                                        <div className="flex flex-col gap-3">
                                                                                             {sg.items.map(item => (
-                                                                                                <div key={item.id} className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-4 rounded-xl flex items-start justify-between gap-4 group">
-                                                                                                    <div className="flex flex-col min-w-0 flex-1">
-                                                                                                        {item.needExhibition && (
-                                                                                                            <div className="mb-2"><span className="font-bold text-xs border border-amber-500 text-amber-600 px-1.5 py-0.5 rounded animate-pulse">⚠️ 須留存</span></div>
-                                                                                                        )}
-                                                                                                        <div className="font-black text-slate-800 dark:text-slate-100 text-base leading-snug mb-1">{item.name}</div>
-                                                                                                        {item.restrict && <div className="text-sm font-bold text-rose-500 mt-1"><i className="fa-solid fa-circle-exclamation mr-1"></i> {item.restrict}</div>}
-                                                                                                        {item.needExhibition && (
-                                                                                                            <label className="flex items-center gap-2 mt-3 cursor-pointer w-max bg-white dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-                                                                                                                <input type="checkbox" checked={item.isChecked || false} onChange={(e) => {
-                                                                                                                    const updated = announcementItems.map(i => i.id === item.id ? { ...i, isChecked: e.target.checked } : i);
-                                                                                                                    setAnnouncementItems(updated);
-                                                                                                                    updateCloudData('announcementItems', updated);
-                                                                                                                }} className="w-4 h-4 rounded border-2 border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer" />
-                                                                                                                <span className={`text-sm font-bold ${item.isChecked ? 'text-slate-400 line-through' : 'text-slate-600 dark:text-slate-300'}`}>已陳列，留存未售</span>
-                                                                                                            </label>
-                                                                                                        )}
-                                                                                                        {/* 修改預覽卡片中的陳列標籤部分 */}
-                                                                                                        {item.displayDate && (
-                                                                                                            <span className="font-bold text-xs bg-amber-500 text-white px-2 py-0.5 rounded shadow-sm flex items-center">
-                                                                                                                <i className="fa-solid fa-clock mr-1.5 text-[10px]"></i>
+                                                                                                <div key={item.id} className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden group hover:border-slate-300 dark:hover:border-slate-600 transition-all flex flex-col hover:shadow-md">
+                                                                                                    {/* Main Card Content */}
+                                                                                                    <div className="p-4 sm:p-5 flex flex-col relative w-full">
+                                                                                                        
+                                                                                                        {/* Delete Button */}
+                                                                                                        <button onClick={() => {
+                                                                                                            const n = announcementItems.filter(i => i.id !== item.id);
+                                                                                                            setAnnouncementItems(n);
+                                                                                                            updateCloudData('announcementItems', n);
+                                                                                                        }} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-slate-300 dark:text-slate-500 hover:text-rose-500 bg-white hover:bg-rose-50 border border-slate-200 dark:border-slate-600 dark:bg-slate-800 rounded-lg transition-colors z-10 opacity-60 group-hover:opacity-100 hover:!opacity-100 focus:opacity-100" aria-label="刪除公告">
+                                                                                                            <i className="fa-solid fa-xmark"></i>
+                                                                                                        </button>
+
+                                                                                                        <div className="pr-10">
+                                                                                                            {item.needExhibition && (
+                                                                                                                <div className="mb-2.5">
+                                                                                                                    <span className="font-bold text-[11px] bg-amber-50 text-amber-600 border border-amber-200/60 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20 px-2.5 py-1 rounded-md flex items-center w-max shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                                                                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse mr-1.5"></span>
+                                                                                                                        須留存
+                                                                                                                    </span>
+                                                                                                                </div>
+                                                                                                            )}
+                                                                                                            
+                                                                                                            <h4 className="font-black text-slate-800 dark:text-slate-100 text-base leading-snug mb-1">{item.name}</h4>
+                                                                                                            
+                                                                                                            {item.restrict && (
+                                                                                                                <div className="text-[13px] font-bold text-rose-600 bg-rose-50/80 border border-rose-100/60 dark:text-rose-400 dark:bg-rose-500/10 dark:border-rose-500/20 px-3 py-1.5 rounded-lg flex items-center w-max mt-2">
+                                                                                                                    <i className="fa-solid fa-circle-exclamation mr-1.5 opacity-80"></i>
+                                                                                                                    {item.restrict}
+                                                                                                                </div>
+                                                                                                            )}
+
+                                                                                                            {item.needExhibition && (
+                                                                                                                <label className="flex items-center gap-2.5 mt-4 cursor-pointer w-max group/lbl bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/50 dark:hover:bg-slate-900 border border-slate-100 dark:border-slate-800 pl-2 pr-3.5 py-2 rounded-xl transition-colors">
+                                                                                                                    <div className="relative flex items-center justify-center">
+                                                                                                                        <input type="checkbox" checked={item.isChecked || false} onChange={(e) => {
+                                                                                                                            const updated = announcementItems.map(i => i.id === item.id ? { ...i, isChecked: e.target.checked } : i);
+                                                                                                                            setAnnouncementItems(updated);
+                                                                                                                            updateCloudData('announcementItems', updated);
+                                                                                                                        }} className="absolute opacity-0 w-full h-full cursor-pointer z-10" />
+                                                                                                                        <div className={`w-5 h-5 rounded border-[1.5px] flex items-center justify-center transition-colors shadow-sm ${item.isChecked ? 'bg-amber-500 border-amber-500 text-white dark:bg-amber-600 dark:border-amber-600' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 group-hover/lbl:border-amber-400'}`}>
+                                                                                                                            <i className={`fa-solid fa-check text-[10px] transition-transform duration-200 ${item.isChecked ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}></i>
+                                                                                                                        </div>
+                                                                                                                    </div>
+                                                                                                                    <span className={`text-[13px] font-bold transition-colors select-none ${item.isChecked ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-700 dark:text-slate-300'}`}>已陳列，留存未售</span>
+                                                                                                                </label>
+                                                                                                            )}
+                                                                                                        </div>
+                                                                                                    </div>
+
+                                                                                                    {/* Footer Section for Display Date */}
+                                                                                                    {item.displayDate && (
+                                                                                                        <div className="bg-amber-50 dark:bg-amber-900/20 border-t border-amber-100/60 dark:border-amber-800/40 px-4 sm:px-5 py-2.5 flex items-center w-full mt-auto">
+                                                                                                            <span className="font-bold text-[12px] text-amber-700 dark:text-amber-400 flex items-center tracking-wide">
+                                                                                                                <i className="fa-solid fa-clock mr-1.5 opacity-80 text-amber-600 dark:text-amber-400"></i>
                                                                                                                 陳列: {item.displayDate}
                                                                                                                 {item.displayTime ? ` (${item.displayTime})` : ''}
                                                                                                             </span>
-                                                                                                        )}
-                                                                                                    </div>
-                                                                                                    <button onClick={() => {
-                                                                                                        const n = announcementItems.filter(i => i.id !== item.id);
-                                                                                                        setAnnouncementItems(n);
-                                                                                                        updateCloudData('announcementItems', n);
-                                                                                                    }} className="w-8 h-8 shrink-0 flex items-center justify-center text-slate-300 hover:text-rose-500 bg-white hover:bg-rose-50 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded-lg transition-colors"><i className="fa-solid fa-xmark"></i></button>
+                                                                                                        </div>
+                                                                                                    )}
                                                                                                 </div>
                                                                                             ))}
                                                                                         </div>
