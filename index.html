@@ -963,8 +963,19 @@
             const [displayItems, setDisplayItems] = useState([]);
             const [systemExhibitionItems, setSystemExhibitionItems] = useState([]);
             const [printSubTab, setPrintSubTab] = useState('scan');
-            const [announcementInput, setAnnouncementInput] = useState('');
+            // 公告相關狀態
             const [announcementItems, setAnnouncementItems] = useState([]);
+            const [announcementInput, setAnnouncementInput] = useState('');
+
+            // ✨ 新增：手動輸入面板專用的 State
+            const [inputMode, setInputMode] = useState('auto'); // 'auto' | 'manual'
+            const [manualSeries, setManualSeries] = useState('');
+            const [manualName, setManualName] = useState('');
+            const [manualSellDate, setManualSellDate] = useState('');
+            const [manualDisplayDate, setManualDisplayDate] = useState('');
+            const [manualDisplayTime, setManualDisplayTime] = useState('');
+            const [manualRestrict, setManualRestrict] = useState('');
+            const [manualNeedExhibition, setManualNeedExhibition] = useState(false);
 
             const [dbStatus, setDbStatus] = useState('連線中...');
             const [dataLoaded, setDataLoaded] = useState({ records: false, settings: false, damaged: false, display: false, systemExhibition: false, announcement: false });
@@ -1785,6 +1796,48 @@
                     setAnnouncementItems([]);
                     updateCloudData('announcementItems', [], '已清除所有公告紀錄');
                 }
+            };
+
+            // ✨ 新增：手動將結構化資料新增至清單的函式
+            const handleManualAdd = () => {
+                if (!manualName.trim()) {
+                    showToast('⚠️ 商品名稱為必填項目');
+                    return;
+                }
+
+                const newItem = {
+                    id: Date.now() + Math.random(),
+                    name: manualName.trim(),
+                    series: manualSeries.trim() || '其他',
+                    sellDate: manualSellDate.trim() || null,
+                    displayDate: manualDisplayDate.trim() || null,
+                    displayTime: manualDisplayTime.trim() || null,
+                    restrict: manualRestrict.trim() || '',
+                    needExhibition: manualNeedExhibition,
+                    isChecked: false
+                };
+
+                setAnnouncementItems(prevItems => {
+                    const mergedList = [...prevItems];
+                    const existingIndex = mergedList.findIndex(item => item.name === newItem.name);
+
+                    if (existingIndex >= 0) {
+                        // 遇到同名商品一樣執行智能合併
+                        mergedList[existingIndex] = { ...mergedList[existingIndex], ...newItem };
+                    } else {
+                        mergedList.push(newItem);
+                    }
+
+                    updateCloudData('announcementItems', mergedList, `已手動新增：${newItem.name}`);
+                    return mergedList;
+                });
+
+                showToast('✅ 成功加入清單');
+
+                // 貼心設計：保留日期與系列，只清空名稱與打勾，方便使用者連續建檔同系列商品
+                setManualName('');
+                setManualRestrict('');
+                setManualNeedExhibition(false);
             };
 
 
@@ -3212,13 +3265,68 @@
                                                 </div>
                                             ) : (
                                                 <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 flex flex-col h-full transition-colors overflow-hidden">
-                                                    <div className="mb-4 shrink-0">
-                                                        <div className="w-11 h-11 bg-amber-50 dark:bg-amber-500/20 text-amber-500 dark:text-amber-400 rounded-lg flex items-center justify-center mb-3"><i className="fa-solid fa-bullhorn text-xl"></i></div>
-                                                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">貼上群組公告</h3>
-                                                        <p className="text-xs text-slate-400 mt-1">系統自動分析日期、系列關聯，並能自動合併相同品項</p>
+                                                    <div className="mb-4 shrink-0 flex flex-col xl:flex-row xl:justify-between xl:items-start gap-3">
+                                                        <div>
+                                                            <div className="w-11 h-11 bg-amber-50 dark:bg-amber-500/20 text-amber-500 dark:text-amber-400 rounded-lg flex items-center justify-center mb-3"><i className="fa-solid fa-bullhorn text-xl"></i></div>
+                                                            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">新增公告商品</h3>
+                                                        </div>
+                                                        {/* ✨ 切換模式按鈕 */}
+                                                        {/* 外層加上 w-full xl:w-auto 讓它在小螢幕填滿寬度，大螢幕維持剛好的寬度 */}
+                                                        <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg shrink-0 w-full xl:w-auto">
+                                                            {/* 兩個 button 都加上 flex-1 讓它們平分寬度 */}
+                                                            <button onClick={() => setInputMode('auto')} className={`flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${inputMode === 'auto' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>智能貼上</button>
+                                                            <button onClick={() => setInputMode('manual')} className={`flex-1 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${inputMode === 'manual' ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>手動輸入</button>
+                                                        </div>
                                                     </div>
-                                                    <textarea value={announcementInput} onChange={e => setAnnouncementInput(e.target.value)} placeholder="請將公告內容整段貼上..." className="flex-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm focus:ring-2 focus:ring-amber-500 outline-none resize-none custom-scrollbar mb-4 dark:text-slate-200 leading-relaxed overflow-y-auto"></textarea>
-                                                    <button onClick={() => parseAnnouncement(announcementInput)} disabled={!announcementInput.trim()} className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-md shadow-amber-500/30 transition-all active:scale-95 disabled:opacity-50 flex justify-center items-center shrink-0"><i className="fa-solid fa-bolt mr-2"></i>智能解析轉換</button>
+
+                                                    {inputMode === 'auto' ? (
+                                                        <>
+                                                            <p className="text-xs text-slate-400 mb-3 shrink-0">系統自動分析日期、系列關聯，並能自動合併相同品項</p>
+                                                            <textarea value={announcementInput} onChange={e => setAnnouncementInput(e.target.value)} placeholder="請將公告內容整段貼上..." className="flex-1 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm focus:ring-2 focus:ring-amber-500 outline-none resize-none custom-scrollbar mb-4 dark:text-slate-200 leading-relaxed overflow-y-auto"></textarea>
+                                                            <button onClick={() => parseAnnouncement(announcementInput)} disabled={!announcementInput.trim()} className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-md shadow-amber-500/30 transition-all active:scale-95 disabled:opacity-50 flex justify-center items-center shrink-0"><i className="fa-solid fa-bolt mr-2"></i>智能解析轉換</button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            {/* ✨ 結構化手動輸入表單 */}
+                                                            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3 mb-4">
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">系列名稱 <span className="text-slate-400 font-normal">(可留空)</span></label>
+                                                                    <input type="text" value={manualSeries} onChange={e => setManualSeries(e.target.value)} placeholder="如：SKULLPANDA" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none dark:text-white" />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">商品名稱 <span className="text-rose-500">*</span></label>
+                                                                    <input type="text" value={manualName} onChange={e => setManualName(e.target.value)} placeholder="如：香氛噴霧" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none dark:text-white" />
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    <div>
+                                                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">販售日期</label>
+                                                                        <input type="text" value={manualSellDate} onChange={e => setManualSellDate(e.target.value)} placeholder="如：4/22" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none dark:text-white" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">陳列日期</label>
+                                                                        <input type="text" value={manualDisplayDate} onChange={e => setManualDisplayDate(e.target.value)} placeholder="如：4/21" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none dark:text-white" />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    <div>
+                                                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">陳列時間</label>
+                                                                        <input type="text" value={manualDisplayTime} onChange={e => setManualDisplayTime(e.target.value)} placeholder="如：閉店後" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none dark:text-white" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">限購規則</label>
+                                                                        <input type="text" value={manualRestrict} onChange={e => setManualRestrict(e.target.value)} placeholder="如：每人限購一個" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none dark:text-white" />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="pt-2">
+                                                                    <label className="flex items-center gap-2 cursor-pointer w-max select-none">
+                                                                        <input type="checkbox" checked={manualNeedExhibition} onChange={e => setManualNeedExhibition(e.target.checked)} className="w-4 h-4 rounded border-2 border-slate-300 text-amber-500 focus:ring-amber-500 cursor-pointer" />
+                                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">此商品須留存陳列 (將標記 ⚠️)</span>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                            <button onClick={handleManualAdd} className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow-md shadow-blue-500/30 transition-all active:scale-95 flex justify-center items-center shrink-0"><i className="fa-solid fa-plus mr-2"></i>確認新增至清單</button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
