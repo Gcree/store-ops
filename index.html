@@ -225,7 +225,7 @@
                                 {itemData.needExhibition && (
                                     <div className="notice-warn-box">
                                         <div className="warn-icon">!</div>
-                                        <div className="warn-text">須留<br/>存</div>
+                                        <div className="warn-text">須留<br />存</div>
                                     </div>
                                 )}
                             </div>
@@ -245,7 +245,7 @@
                             {itemData.needExhibition && (
                                 <div className="notice-task-box">
                                     <div className="task-checkbox"></div>
-                                    <div className="task-desc">確認陳列品已留存<br/>未當作商品販售</div>
+                                    <div className="task-desc">確認陳列品已留存<br />未當作商品販售</div>
                                 </div>
                             )}
                         </div>
@@ -3468,7 +3468,7 @@
                                                                                                 <div key={item.id} className="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden group hover:border-slate-300 dark:hover:border-slate-600 transition-all flex flex-col hover:shadow-md">
                                                                                                     {/* Main Card Content */}
                                                                                                     <div className="p-4 sm:p-5 flex flex-col relative w-full">
-                                                                                                        
+
                                                                                                         {/* Delete Button */}
                                                                                                         <button onClick={() => {
                                                                                                             const n = announcementItems.filter(i => i.id !== item.id);
@@ -3487,9 +3487,9 @@
                                                                                                                     </span>
                                                                                                                 </div>
                                                                                                             )}
-                                                                                                            
+
                                                                                                             <h4 className="font-black text-slate-800 dark:text-slate-100 text-base leading-snug mb-1">{item.name}</h4>
-                                                                                                            
+
                                                                                                             {item.restrict && (
                                                                                                                 <div className="text-[13px] font-bold text-rose-600 bg-rose-50/80 border border-rose-100/60 dark:text-rose-400 dark:bg-rose-500/10 dark:border-rose-500/20 px-3 py-1.5 rounded-lg flex items-center w-max mt-2">
                                                                                                                     <i className="fa-solid fa-circle-exclamation mr-1.5 opacity-80"></i>
