@@ -1,9 +1,9 @@
-const CACHE_NAME = 'p-ops-cache-v3';
+const CACHE_NAME = 'p-ops-cache-v4';
 // 這裡放你要讓手機「離線下載」的檔案清單
 const urlsToCache = [
   './',
   './index.html',
-  './style.css'
+  './style.css?v=4'
 ];
 
 // 1. 安裝階段：把上面的檔案通通下載到手機快取裡
