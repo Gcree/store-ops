@@ -1920,72 +1920,95 @@
                 const idxQty = headers.indexOf('SOLD_QTY');
                 const idxAmt = headers.indexOf('AMT_WITH_TAX');
                 const idxDisc = headers.indexOf('DISC_AMT');
-                const idxDocNo = headers.indexOf('DOC_NO'); // ✨ 新增：抓取單號欄位
+                const idxDocNo = headers.indexOf('DOC_NO');
 
                 let todaySales = 0, firstDate = null, storeName = '未知店鋪';
-                let pointsRedeemed = 0; // 維持原本的變數，只算金額
+                let pointsRedeemed = 0;
                 let mega1000 = { amt: 0, qty: 0, giftQty: 0 }, mega400 = { amt: 0, qty: 0, giftQty: 0 };
                 let itemStats = {}, updatedBarcodeMap = { ...settings.barcodeMap };
-                let docDiscountMap = {}; // ✨ 新增：用來記錄每張單號的總折扣
+                let docDiscountMap = {};
 
+                // 階段一：預先計算每筆「單號 (DOC_NO)」的總折扣
                 for (let i = 1; i < rows.length; i++) {
-                    const row = rows[i]; if (row.length < 5) continue;
+                    const row = rows[i];
+                    if (row.length < 5) continue;
                     if (idxType !== -1 && !['sale', 'return', 'refund', 'exchange'].includes(String(row[idxType] || '').trim().toLowerCase())) continue;
-                    const barcode = String(row[idxBarcode] || '').trim();
-                    const rawDesc = idxDesc !== -1 ? String(row[idxDesc] || '').trim() : '';
-                    if (!barcode && !rawDesc) continue;
-                    if (!firstDate && row[idxDate]) firstDate = row[idxDate].toString().split(' ')[0];
-                    if (storeName === '未知店鋪' && row[idxStore]) storeName = row[idxStore].toString().replace(/\[.*?\]/, '').trim();
-                    let dictName = findNameInDict(barcode, settings.customNameMap);
-                    const desc = dictName || rawDesc || `未知商品 (${barcode})`;
-                    const qty = parseFloat(row[idxQty]) || 0;
-                    const amt = parseFloat(row[idxAmt]) || 0;
-                    const disc = parseFloat(row[idxDisc]) || 0;
+
                     const docNo = idxDocNo !== -1 ? String(row[idxDocNo] || '').trim() : '';
-                    const originalAmt = amt + disc;
+                    const disc = parseFloat(row[idxDisc]) || 0;
 
-                    if (barcode && desc && !dictName && barcode !== desc) updatedBarcodeMap[barcode] = desc;
-                    todaySales += amt;
-
-                    // 將每一列的折扣金額依據 DOC_NO 進行累加
                     if (docNo) {
                         if (!docDiscountMap[docNo]) docDiscountMap[docNo] = 0;
                         docDiscountMap[docNo] += disc;
                     }
+                }
 
-                    // ✨ 修改：將原本加總的 amt 替換為 originalAmt (原價)
+                // 階段二：揪出所有「點數兌換」的單號黑名單
+                let pointDocs = new Set();
+                Object.entries(docDiscountMap).forEach(([docNo, totalDisc]) => {
+                    const absDisc = Math.abs(Math.round(totalDisc));
+                    if (absDisc > 0) {
+                        if (absDisc % 330 === 0) {
+                            pointsRedeemed += absDisc;
+                            pointDocs.add(docNo);
+                        } else if (absDisc >= 300 && (absDisc - 300) % 330 === 0) {
+                            pointsRedeemed += (absDisc - 300);
+                            pointDocs.add(docNo);
+                        }
+                    }
+                });
+
+                // 階段三：正式計算業績與 Top 5
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.length < 5) continue;
+                    if (idxType !== -1 && !['sale', 'return', 'refund', 'exchange'].includes(String(row[idxType] || '').trim().toLowerCase())) continue;
+
+                    const barcode = String(row[idxBarcode] || '').trim();
+                    const rawDesc = idxDesc !== -1 ? String(row[idxDesc] || '').trim() : '';
+                    if (!barcode && !rawDesc) continue;
+
+                    if (!firstDate && row[idxDate]) firstDate = row[idxDate].toString().split(' ')[0];
+                    if (storeName === '未知店鋪' && row[idxStore]) storeName = row[idxStore].toString().replace(/\[.*?\]/, '').trim();
+
+                    let dictName = findNameInDict(barcode, settings.customNameMap);
+                    const desc = dictName || rawDesc || `未知商品 (${barcode})`;
+                    const qty = parseFloat(row[idxQty]) || 0;
+                    const amt = parseFloat(row[idxAmt]) || 0;
+                    const docNo = idxDocNo !== -1 ? String(row[idxDocNo] || '').trim() : '';
+                    const originalAmt = amt + (parseFloat(row[idxDisc]) || 0);
+
+                    if (barcode && desc && !dictName && barcode !== desc) updatedBarcodeMap[barcode] = desc;
+                    todaySales += amt;
+
                     if (rawDesc.includes('1000%') || desc.includes('1000%')) {
                         amt === 0 ? (mega1000.giftQty += qty) : (mega1000.qty += qty, mega1000.amt += originalAmt);
                     }
                     if (rawDesc.includes('400%') || desc.includes('400%')) {
                         amt === 0 ? (mega400.giftQty += qty) : (mega400.qty += qty, mega400.amt += originalAmt);
                     }
+
                     if (barcode) {
                         if (!itemStats[barcode]) itemStats[barcode] = { barcode, desc, top5Qty: 0, top5Amt: 0, singles: 0, boxes: 0 };
-                        itemStats[barcode].top5Qty += qty; itemStats[barcode].top5Amt += amt;
+
+                        // ✨ 終極攔截：被標記的單號、或是品名有寫點數兌換，通通不列入 Top 5
+                        const isPointItem = pointDocs.has(docNo) || desc.includes('點數兌換');
+
+                        if (!isPointItem) {
+                            itemStats[barcode].top5Qty += qty;
+                            itemStats[barcode].top5Amt += amt;
+                        }
+
                         const boxSize = settings.boxSizeMap[barcode] || 6;
                         if (qty >= boxSize) { itemStats[barcode].boxes += Math.floor(qty / boxSize); itemStats[barcode].singles += (qty % boxSize); }
                         else { itemStats[barcode].singles += qty; }
                     }
                 }
 
-                // ✨ 處理所有單號的總折扣，判定票券
-                Object.values(docDiscountMap).forEach(totalDisc => {
-                    const absDisc = Math.abs(Math.round(totalDisc));
-                    if (absDisc > 0) {
-                        if (absDisc % 330 === 0) {
-                            // 狀況 A：單純使用 N 張點數券 (如 330, 660, 990)
-                            pointsRedeemed += absDisc;
-                        } else if (absDisc >= 300 && (absDisc - 300) % 330 === 0) {
-                            // 狀況 B：混合使用 生日券(300) + N 張點數券(330)
-                            pointsRedeemed += (absDisc - 300);
-                        }
-                    }
-                });
-
                 setCurrentStore(storeName);
                 const newDateStr = firstDate || new Date().toISOString().split('T')[0];
                 const newStats = { dateStr: newDateStr, sales: todaySales, points: pointsRedeemed, itemStats, bigToys: { '1000': mega1000, '400': mega400 } };
+
                 setTodayStats(newStats);
                 setSelectedMonth(formatDateStr(newDateStr).split('/')[0]);
                 const formattedDate = formatDateStr(newDateStr);
@@ -2185,7 +2208,10 @@
                     return;
                 }
 
-                const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0);
+                // ✨ 小作文過濾
+                const rawArray = Object.values(todayStats.itemStats).filter(item =>
+                    item.top5Amt > 0 && (!item.desc || !item.desc.includes('點數兌換'))
+                );
                 const statsArray = rawArray.map(item => ({
                     name: item.desc,
                     quantity: item.top5Qty || 0,
@@ -2272,8 +2298,9 @@
 
                 const isTodaySelected = todayStats && (formatDateStr(todayStats.dateStr).split('/')[0] === selectedMonth);
                 if (isTodaySelected && todayStats.itemStats) {
+                    // ✨ 報表文字過濾
                     const top5 = Object.values(todayStats.itemStats)
-                        .filter(item => item.desc && item.desc.trim() !== '' && (item.top5Amt > 0 || item.top5Qty > 0))
+                        .filter(item => item.desc && item.desc.trim() !== '' && (item.top5Amt > 0 || item.top5Qty > 0) && !item.desc.includes('點數兌換'))
                         .sort((a, b) => top5SortBy === 'qty' ? (b.top5Qty - a.top5Qty || b.top5Amt - a.top5Amt) : (b.top5Amt - a.top5Amt || b.top5Qty - a.top5Qty))
                         .slice(0, 5);
                     if (top5.length > 0) { top5.forEach((item, idx) => { report += `${idx + 1}. ${item.desc}\n`; }); }
@@ -2709,7 +2736,11 @@
                                     <div className="flex flex-col gap-6 lg:col-span-5 xl:col-span-5">
 
                                         {todayStats && todayStats.itemStats && (() => {
-                                            const rawArray = Object.values(todayStats.itemStats).filter(item => item.top5Amt > 0 || item.top5Qty > 0);
+                                            // ✨ UI 面板過濾
+                                            const rawArray = Object.values(todayStats.itemStats).filter(item =>
+                                                (item.top5Amt > 0 || item.top5Qty > 0) &&
+                                                (!item.desc || !item.desc.includes('點數兌換'))
+                                            );
                                             const statsArray = rawArray.map(item => ({
                                                 name: item.desc,
                                                 quantity: item.top5Qty || 0,
@@ -3273,6 +3304,7 @@
                                             {printSubTab === 'scan' ? (
                                                 <div className="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/50 transition-colors">
                                                     <div className="mb-5">
+
                                                         <div className="w-11 h-11 bg-blue-50 dark:bg-blue-500/20 text-blue-500 dark:text-blue-400 rounded-lg flex items-center justify-center mb-3"><i className="fa-solid fa-barcode text-xl"></i></div>
                                                         <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">連續條碼掃描</h3>
                                                     </div>
