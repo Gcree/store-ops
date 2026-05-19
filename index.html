@@ -1911,16 +1911,16 @@
 
             const processData = (rows) => {
                 if (rows.length < 2) return showToast('檔案格式錯誤');
-                const headers = rows[0];
-                const idxDate = headers.indexOf('CREATED_DATE');
-                const idxType = headers.indexOf('TYPE');
-                const idxStore = headers.indexOf('STORE');
-                const idxBarcode = headers.indexOf('BARCODE');
-                const idxDesc = headers.indexOf('DESCRIPTION_CN');
-                const idxQty = headers.indexOf('SOLD_QTY');
-                const idxAmt = headers.indexOf('AMT_WITH_TAX');
-                const idxDisc = headers.indexOf('DISC_AMT');
-                const idxDocNo = headers.indexOf('DOC_NO');
+                const headers = rows[0].map(h => String(h || '').trim().toUpperCase().replace(/[\s_-]/g, ''));
+                const idxDate = headers.findIndex(h => ['CREATEDDATE'].includes(h));
+                const idxType = headers.findIndex(h => ['DOCTYPE', 'SALESTYPE', 'TYPE'].includes(h));
+                const idxStore = headers.findIndex(h => ['STORE'].includes(h));
+                const idxBarcode = headers.findIndex(h => ['BARCODE', 'ITEMCODE'].includes(h));
+                const idxDesc = headers.findIndex(h => ['DESCCN', 'DESCRIPTIONCN'].includes(h));
+                const idxQty = headers.findIndex(h => ['SOLDQTY', 'QTY'].includes(h));
+                const idxAmt = headers.findIndex(h => ['WITHTAXAMT', 'AMTWITHTAX'].includes(h));
+                const idxDisc = headers.findIndex(h => ['DISCAMT'].includes(h));
+                const idxDocNo = headers.findIndex(h => ['DOCNO'].includes(h));
 
                 let todaySales = 0, firstDate = null, storeName = '未知店鋪';
                 let pointsRedeemed = 0;
