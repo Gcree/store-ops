@@ -3395,6 +3395,11 @@
                                                                                     removeDisplayItem(item.id);
                                                                                 }
                                                                             }}
+                                                                            renderExtraActions={(it) => (
+                                                                                <button onClick={(e) => { e.stopPropagation(); toggleDisplayStatus(it.id, it.status); }} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 ${it.status === 'displayed' ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-500/40' : 'bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-400 hover:bg-indigo-100 hover:text-indigo-600 dark:hover:bg-indigo-500/30 dark:hover:text-indigo-300'}`} title={it.status === 'displayed' ? '收回典藏' : '轉為陳列'}>
+                                                                                    <i className={`fa-solid ${it.status === 'displayed' ? 'fa-boxes-packing' : 'fa-lightbulb'}`}></i>
+                                                                                </button>
+                                                                            )}
                                                                             renderStatus={(it) => (
                                                                                 <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border flex items-center gap-1.5 shadow-sm whitespace-nowrap ${it.status === 'displayed' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' : 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20'}`}>
                                                                                     {it.status === 'displayed' ? <><span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> 陳列中</> : <><i className="fa-solid fa-boxes-packing opacity-60"></i> 已撤下</>}
