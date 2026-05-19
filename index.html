@@ -4012,57 +4012,6 @@
                                                 )}
                                             </div>
 
-                                            {/* 動態欄位對應表 */}
-                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors flex flex-col min-w-0">
-                                                <div className="flex flex-col mb-4">
-                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">動態欄位對應表</h3>
-                                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">手動管理匯入報表時的欄位名稱自動對應與容錯。</p>
-                                                </div>
-                                                <div className="space-y-4 mt-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
-                                                    {Object.entries(settings.columnAliases || defaultSettings.columnAliases).map(([key, aliases]) => (
-                                                        <div key={key} className="flex flex-col bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-700">
-                                                            <div className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 capitalize">{key} 欄位</div>
-                                                            <div className="flex flex-wrap gap-2 mb-3">
-                                                                {aliases.map((alias, idx) => (
-                                                                    <span key={idx} className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg text-xs font-mono font-bold border border-blue-200 dark:border-blue-700/50 flex items-center">
-                                                                        {alias}
-                                                                        <button onClick={() => {
-                                                                            const newAliases = { ...settings.columnAliases };
-                                                                            newAliases[key] = newAliases[key].filter(a => a !== alias);
-                                                                            updateCloudData('settings', { ...settings, columnAliases: newAliases }, `已移除對應：${alias}`);
-                                                                        }} className="ml-1.5 text-blue-400 hover:text-rose-500 transition-colors"><i className="fa-solid fa-xmark"></i></button>
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                            <div className="flex gap-2">
-                                                                <input type="text" placeholder="新增對應名稱..." id={`alias-input-${key}`} className="flex-1 px-3 py-1.5 border border-white dark:border-slate-700 rounded-xl outline-none dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 text-xs shadow-inner" onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter' && e.target.value.trim()) {
-                                                                        const val = e.target.value.trim().toUpperCase().replace(/[\s_-]/g, '');
-                                                                        const newAliases = { ...(settings.columnAliases || defaultSettings.columnAliases) };
-                                                                        if (!newAliases[key].includes(val)) {
-                                                                            newAliases[key] = [...newAliases[key], val];
-                                                                            updateCloudData('settings', { ...settings, columnAliases: newAliases }, `已新增對應：${val}`);
-                                                                        }
-                                                                        e.target.value = '';
-                                                                    }
-                                                                }} />
-                                                                <button onClick={() => {
-                                                                    const input = document.getElementById(`alias-input-${key}`);
-                                                                    if (input && input.value.trim()) {
-                                                                        const val = input.value.trim().toUpperCase().replace(/[\s_-]/g, '');
-                                                                        const newAliases = { ...(settings.columnAliases || defaultSettings.columnAliases) };
-                                                                        if (!newAliases[key].includes(val)) {
-                                                                            newAliases[key] = [...newAliases[key], val];
-                                                                            updateCloudData('settings', { ...settings, columnAliases: newAliases }, `已新增對應：${val}`);
-                                                                        }
-                                                                        input.value = '';
-                                                                    }
-                                                                }} className="px-3 py-1.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 shadow-sm text-xs font-bold transition-colors shrink-0">新增</button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
                                         </div>
 
                                         {/* 右上角：批量匯入 */}
@@ -4194,6 +4143,57 @@
                                             );
                                         })()}
                                     </div>
+                                            {/* 動態欄位對應表 */}
+                                            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700/50 transition-colors flex flex-col min-w-0">
+                                                <div className="flex flex-col mb-4">
+                                                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">動態欄位對應表</h3>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">手動管理匯入報表時的欄位名稱自動對應與容錯。</p>
+                                                </div>
+                                                <div className="space-y-4 mt-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                                                    {Object.entries(settings.columnAliases || defaultSettings.columnAliases).map(([key, aliases]) => (
+                                                        <div key={key} className="flex flex-col bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-700">
+                                                            <div className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 capitalize">{key} 欄位</div>
+                                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                                {aliases.map((alias, idx) => (
+                                                                    <span key={idx} className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg text-xs font-mono font-bold border border-blue-200 dark:border-blue-700/50 flex items-center">
+                                                                        {alias}
+                                                                        <button onClick={() => {
+                                                                            const newAliases = { ...settings.columnAliases };
+                                                                            newAliases[key] = newAliases[key].filter(a => a !== alias);
+                                                                            updateCloudData('settings', { ...settings, columnAliases: newAliases }, `已移除對應：${alias}`);
+                                                                        }} className="ml-1.5 text-blue-400 hover:text-rose-500 transition-colors"><i className="fa-solid fa-xmark"></i></button>
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <input type="text" placeholder="新增對應名稱..." id={`alias-input-${key}`} className="flex-1 px-3 py-1.5 border border-white dark:border-slate-700 rounded-xl outline-none dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 text-xs shadow-inner" onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter' && e.target.value.trim()) {
+                                                                        const val = e.target.value.trim().toUpperCase().replace(/[\s_-]/g, '');
+                                                                        const newAliases = { ...(settings.columnAliases || defaultSettings.columnAliases) };
+                                                                        if (!newAliases[key].includes(val)) {
+                                                                            newAliases[key] = [...newAliases[key], val];
+                                                                            updateCloudData('settings', { ...settings, columnAliases: newAliases }, `已新增對應：${val}`);
+                                                                        }
+                                                                        e.target.value = '';
+                                                                    }
+                                                                }} />
+                                                                <button onClick={() => {
+                                                                    const input = document.getElementById(`alias-input-${key}`);
+                                                                    if (input && input.value.trim()) {
+                                                                        const val = input.value.trim().toUpperCase().replace(/[\s_-]/g, '');
+                                                                        const newAliases = { ...(settings.columnAliases || defaultSettings.columnAliases) };
+                                                                        if (!newAliases[key].includes(val)) {
+                                                                            newAliases[key] = [...newAliases[key], val];
+                                                                            updateCloudData('settings', { ...settings, columnAliases: newAliases }, `已新增對應：${val}`);
+                                                                        }
+                                                                        input.value = '';
+                                                                    }
+                                                                }} className="px-3 py-1.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 shadow-sm text-xs font-bold transition-colors shrink-0">新增</button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
 
                                 </div>
                             )}
