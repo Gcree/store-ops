@@ -2104,9 +2104,9 @@
                         }
 
                         const headers = rows[0].map(h => String(h || '').trim().toUpperCase());
-                        const idxBarcode = headers.indexOf('BARCODE', 'Barcode');
-                        const idxDesc = headers.indexOf('CNDESCRIPTION', 'DescCN');
-                        const idxInventoryType = headers.indexOf('INVENTORY_TYPE', 'InventoryType');
+                        const idxBarcode = headers.indexOf('Barcode');
+                        const idxDesc = headers.indexOf('DescCN');
+                        const idxInventoryType = headers.indexOf('InventoryType');
                         const idxQty = headers.findIndex(h => ['QTY', 'QUANTITY', 'ON_HAND_QTY', 'STOCK_QTY', 'STOCK', '應有數量', '數量', 'BOH'].includes(h));
 
                         if (idxBarcode === -1 || idxDesc === -1) {
