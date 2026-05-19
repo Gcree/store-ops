@@ -2103,11 +2103,11 @@
                             return;
                         }
 
-                        const headers = rows[0].map(h => String(h || '').trim().toUpperCase());
-                        const idxBarcode = headers.indexOf('Barcode');
-                        const idxDesc = headers.indexOf('DescCN');
-                        const idxInventoryType = headers.indexOf('InventoryType');
-                        const idxQty = headers.findIndex(h => ['QTY', 'QUANTITY', 'ON_HAND_QTY', 'STOCK_QTY', 'STOCK', '應有數量', '數量', 'BOH'].includes(h));
+                        const headers = rows[0].map(h => String(h || '').trim().toUpperCase().replace(/[\s_-]/g, ''));
+                        const idxBarcode = headers.findIndex(h => ['BARCODE'].includes(h));
+                        const idxDesc = headers.findIndex(h => ['DESCCN', 'LOCALDESC', 'CNDESCRIPTION', 'DESCRIPTIONCN'].includes(h));
+                        const idxInventoryType = headers.findIndex(h => ['INVENTORYTYPE'].includes(h));
+                        const idxQty = headers.findIndex(h => ['BOH', 'QTY', 'QUANTITY', 'ONHANDQTY', 'STOCKQTY', 'STOCK', '應有數量', '數量'].includes(h));
 
                         if (idxBarcode === -1 || idxDesc === -1) {
                             showToast('⚠️ 找不到 條碼 或 品名 欄位');
