@@ -2104,13 +2104,13 @@
                         }
 
                         const headers = rows[0].map(h => String(h || '').trim().toUpperCase());
-                        const idxBarcode = headers.indexOf('BARCODE');
-                        const idxDesc = headers.indexOf('CNDESCRIPTION');
-                        const idxInventoryType = headers.indexOf('INVENTORY_TYPE');
-                        const idxQty = headers.findIndex(h => ['QTY', 'QUANTITY', 'ON_HAND_QTY', 'STOCK_QTY', 'STOCK', '應有數量', '數量'].includes(h));
+                        const idxBarcode = headers.indexOf('BARCODE', 'Barcode');
+                        const idxDesc = headers.indexOf('CNDESCRIPTION', 'DescCN');
+                        const idxInventoryType = headers.indexOf('INVENTORY_TYPE', 'InventoryType');
+                        const idxQty = headers.findIndex(h => ['QTY', 'QUANTITY', 'ON_HAND_QTY', 'STOCK_QTY', 'STOCK', '應有數量', '數量', 'BOH'].includes(h));
 
                         if (idxBarcode === -1 || idxDesc === -1) {
-                            showToast('⚠️ 找不到 BARCODE 或 CNDESCRIPTION 欄位');
+                            showToast('⚠️ 找不到 條碼 或 品名 欄位');
                             return;
                         }
 
